@@ -32,6 +32,7 @@ class WyzeApi():
 			self._state = state
 			self._brightness = None
 			self._colortemp = None
+			self._just_changed_state = False
 
 		def turn_on(self):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
@@ -115,6 +116,7 @@ class WyzeApi():
 			requests.post(url, headers=headers, data=json.dumps(bulb_on))
 
 			self._state = True
+			self._just_changed_state = True
 
 		def turn_off(self):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property'
@@ -135,39 +137,43 @@ class WyzeApi():
 			requests.post(url, headers=headers, data=json.dumps(bulb_on))
 
 			self._state = False
+			self._just_changed_state = True
 
 		def is_on(self):
 			return self._state
 
 		def update(self):
-			url = "https://api.wyzecam.com/app/v2/device/get_property_list"
+			if self._just_changed_state == True:
+				self._just_changed_state == False
+			else:
+				url = "https://api.wyzecam.com/app/v2/device/get_property_list"
 
-			payload = {
-				"target_pid_list":[],
-				"phone_id": self._device_id,
-				"device_model":"WLPA19",
-				"app_name":"com.hualai.WyzeCam",
-				"app_version":"2.6.62",
-				"sc":"01dd431d098546f9baf5233724fa2ee2",
-				"sv":"22bd9023a23b4b0b9977e4297ca100dd",
-				"device_mac": self._device_mac,
-				"app_ver":"com.hualai.WyzeCam___2.6.62",
-				"phone_system_type":"1",
-				"ts":"1575955054511",
-				"access_token": self._access_token
-			}
+				payload = {
+					"target_pid_list":[],
+					"phone_id": self._device_id,
+					"device_model":"WLPA19",
+					"app_name":"com.hualai.WyzeCam",
+					"app_version":"2.6.62",
+					"sc":"01dd431d098546f9baf5233724fa2ee2",
+					"sv":"22bd9023a23b4b0b9977e4297ca100dd",
+					"device_mac": self._device_mac,
+					"app_ver":"com.hualai.WyzeCam___2.6.62",
+					"phone_system_type":"1",
+					"ts":"1575955054511",
+					"access_token": self._access_token
+				}
 
-			r = requests.post(url, headers=headers, data=json.dumps(payload))
+				r = requests.post(url, headers=headers, data=json.dumps(payload))
 
-			data = r.json()
+				data = r.json()
 
-			for item in data['data']['property_list']:
-				if item['pid'] == "P3":
-					self._state = True if int(item['value']) == 1 else False
-				elif item['pid'] == "P1501":
-					self._brightness = translate(int(item['value']), 1, 100, 0, 255)
-				elif item['pid'] == "P1502":
-					self._colortemp = translate(int(item['value']), 2700, 6500, 500, 153)
+				for item in data['data']['property_list']:
+					if item['pid'] == "P3":
+						self._state = True if int(item['value']) == 1 else False
+					elif item['pid'] == "P1501":
+						self._brightness = translate(int(item['value']), 1, 100, 0, 255)
+					elif item['pid'] == "P1502":
+						self._colortemp = translate(int(item['value']), 2700, 6500, 500, 153)
 
 	def __init__(self, user_name, password):
 		self._user_name = user_name
