@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import json
-import uuid
 import requests
 import hashlib
 from configparser import ConfigParser
@@ -176,7 +175,7 @@ class WyzeApi():
 		self.parseConfig()
 
 		if self._access_token == None or self._device_id == None:
-			self._device_id = str(uuid.uuid4())
+			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
 			self._access_token = self.login(self._user_name, self._password, self._device_id)
 
 			self.updateConfig()
@@ -197,8 +196,8 @@ class WyzeApi():
 		config = ConfigParser()
 		config.read('wyzeconfig.ini')
 		config.add_section('auth')
-		config.set('auth', 'access_token', self._access_token)
-		config.set('auth', 'device_id', self._device_id)
+		config.set('auth', 'access_token', str(self._access_token))
+		config.set('auth', 'device_id', str(self._device_id))
 		with open('wyzeconfig.ini', 'w') as f:
 			config.write(f)
 
@@ -227,6 +226,7 @@ class WyzeApi():
 		r = requests.post(url, headers=headers, data=json.dumps(payload))
 
 		data = r.json()
+		print(data)
 
 		try:
 			access_token = data['data']['access_token']
