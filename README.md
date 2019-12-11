@@ -23,6 +23,4 @@ light:
 
 * Entities will show up as `light.<friendly name>` for example (`light.livingroom_lamp`).
 
-* Call the services below to add and remove sensors from your WYZE sense hub.
-
 ## Please report any issues you find
