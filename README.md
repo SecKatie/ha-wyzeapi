@@ -14,7 +14,6 @@ light:
   - platform: wyze_api
     username: <email for wyze>
     password: <password for wyze>
-    device_id: <id that phone uses to connect>
     
 ```
 
