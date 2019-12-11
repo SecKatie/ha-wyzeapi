@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import json
+import uuid
 import requests
 import hashlib
 from configparser import ConfigParser
@@ -167,14 +168,17 @@ class WyzeApi():
 				elif item['pid'] == "P1502":
 					self._colortemp = translate(int(item['value']), 2700, 6500, 500, 153)
 
-	def __init__(self, user_name, password, device_id):
+	def __init__(self, user_name, password):
 		self._user_name = user_name
 		self._password = self.create_md5_md5(password)
-		self._device_id = device_id
-		self._access_token = self.parseConfig()
+		self._device_id = None
+		self._access_token = None
+		self.parseConfig()
 
-		if self._access_token == None:
+		if self._access_token == None or self._device_id == None:
+			self._device_id = str(uuid.uuid4())
 			self._access_token = self.login(self._user_name, self._password, self._device_id)
+
 			self.updateConfig()
 
 		self._bulbs = None
@@ -184,15 +188,15 @@ class WyzeApi():
 		config.read('wyzeconfig.ini')
 
 		try:
-			return config.get('auth', 'access_token')
-		except:
-			return None
+			self._access_token = config.get('auth', 'access_token')
+			self._device_id = config.get('auth', 'device_id')
 
 	def updateConfig(self):
 		config = ConfigParser()
 		config.read('wyzeconfig.ini')
 		config.add_section('auth')
 		config.set('auth', 'access_token', self._access_token)
+		config.set('auth', 'device_id', self._device_id)
 		with open('wyzeconfig.ini', 'w') as f:
 			config.write(f)
 
@@ -264,19 +268,3 @@ class WyzeApi():
 					))
 
 		return self._bulbs
-		"""print("Nickname: " + device['nickname'])
-		print("Mac: " + device['mac'])
-		print("Type: " + device['product_type'])
-		print("Status: " + ("On" if device['device_params']['switch_state'] == 1 else "Off")) """
-
-if __name__ == "__main__":
-    # Run tests
-	wyze_api = WyzeApi("jocoder6@gmail.com", "fl2Tmlf9rLKMzKrK852oL", 'D01C09DE-FC02-4A45-8967-845DDB8E15A2')
-	for bulb in wyze_api.list_bulbs():
-		print("##################")
-		bulb.update()
-		print(bulb._friendly_name)
-		print(bulb._device_mac)
-		print(bulb._state)
-		print(bulb._brightness)
-		print(bulb._colortemp)
