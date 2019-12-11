@@ -190,6 +190,8 @@ class WyzeApi():
 		try:
 			self._access_token = config.get('auth', 'access_token')
 			self._device_id = config.get('auth', 'device_id')
+		except:
+			pass
 
 	def updateConfig(self):
 		config = ConfigParser()
