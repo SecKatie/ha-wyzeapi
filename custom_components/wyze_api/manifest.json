@@ -1,0 +1,9 @@
+{
+  "domain": "wyze_bulb",
+  "name": "Wyze Bulb",
+  "documentation": "",
+  "dependencies": [],
+  "codeowners": [],
+	"requirements": [],
+	"icons": []
+}
