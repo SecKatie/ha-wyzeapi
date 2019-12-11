@@ -94,12 +94,12 @@ class WyzeBulb(Light):
 		self._light._brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
 		self._light._colortemp = kwargs.get(ATTR_COLOR_TEMP)
 		self._light.turn_on()
-		self._state = 1
+		self._state = True
 
 	def turn_off(self, **kwargs):
 		"""Instruct the light to turn off."""
 		self._light.turn_off()
-		self._state = 0
+		self._state = False
 
 	def update(self):
 		"""Fetch new state data for this light.
