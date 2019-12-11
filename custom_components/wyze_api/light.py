@@ -16,13 +16,13 @@ from homeassistant.components.light import (
 	SUPPORT_COLOR_TEMP,
 	Light
 	)
+
 from homeassistant.const import CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
 
 _LOGGER = logging.getLogger(__name__)
 
 # Validation of the user's configuration
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-	vol.Required(CONF_DEVICE_ID): cv.string,
 	vol.Required(CONF_USERNAME): cv.string,
 	vol.Required(CONF_PASSWORD): cv.string,
 })
@@ -32,12 +32,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Awesome Light platform."""
 	# Assign configuration variables.
 	# The configuration check takes care they are present.
-	device_id = config[CONF_DEVICE_ID]
 	user_name = config[CONF_USERNAME]
 	password = config.get(CONF_PASSWORD)
 
 	# Setup connection with the WyzeApi
-	wyze = WyzeApi(user_name, password, device_id)
+	wyze = WyzeApi(user_name, password)
 
 	# Verify that passed in configuration works
 	if not wyze.is_valid_login():
