@@ -114,6 +114,8 @@ class WyzeApi():
 
 			requests.post(url, headers=headers, data=json.dumps(bulb_on))
 
+			self._state = True
+
 		def turn_off(self):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
@@ -132,10 +134,10 @@ class WyzeApi():
 
 			requests.post(url, headers=headers, data=json.dumps(bulb_on))
 
-			self._state = "off"
+			self._state = False
 
 		def is_on(self):
-			return self._state == 'on'
+			return self._state
 
 		def update(self):
 			url = "https://api.wyzecam.com/app/v2/device/get_property_list"
@@ -161,7 +163,7 @@ class WyzeApi():
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
-					self._state = int(item['value'])
+					self._state = True if int(item['value']) == 1 else False
 				elif item['pid'] == "P1501":
 					self._brightness = translate(int(item['value']), 1, 100, 0, 255)
 				elif item['pid'] == "P1502":
