@@ -22,4 +22,4 @@ light:
 
 * Entities will show up as `light.<friendly name>` for example (`light.livingroom_lamp`).
 
-## Please report any issues you find
+### Please report any issues you find!
