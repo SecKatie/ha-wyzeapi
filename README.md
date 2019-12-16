@@ -11,7 +11,7 @@ Add the following to your configuration file
 
 ```yaml
 light:
-  - platform: wyze_api
+  - platform: wyzeapi
     username: <email for wyze>
     password: <password for wyze>
     
