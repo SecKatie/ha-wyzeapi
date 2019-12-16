@@ -2,7 +2,7 @@
 
 """Platform for light integration."""
 import logging
-from .wyze_api import WyzeApi
+from .wyzeapi.wyzeapi import WyzeApi
 
 import voluptuous as vol
 
