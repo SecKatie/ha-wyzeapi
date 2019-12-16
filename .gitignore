@@ -136,3 +136,4 @@ dmypy.json
 
 # Secrets
 secrets.py
+wyzeconfig.ini
