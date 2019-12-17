@@ -76,9 +76,10 @@ class WyzeBulb():
 				"access_token": self._access_token
 			}
 		else:
-			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+			url = 'https://api.wyzecam.com/app/v2/device/set_property'
+
 			payload = {
-				'phone_id': 'D01C09DE-FC02-4A45-8967-845DDB8E15A2',
+				'phone_id': self._device_id,
 				'access_token': self._access_token,
 				'device_model': 'WLPA19',
 				'ts': '1575948896791',
@@ -90,7 +91,7 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		data = do_request(url, payload)
+		data = do_request(url, payload, no_return=True)
 
 		self._state = True
 		self._just_changed_state = True
@@ -111,7 +112,7 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload)
+		data = do_request(url, payload, no_return=True)
 
 		self._state = False
 		self._just_changed_state = True
