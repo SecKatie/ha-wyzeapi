@@ -66,7 +66,7 @@ class WyzeBulb():
 		elif (self._brightness != self._old_brightness and self._colortemp == self._old_colortemp):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
-			brightness = self.translate(self._brightness, 0, 255, 0, 100)
+			brightness = self.translate(self._brightness, 1, 255, 1, 100)
 
 			payload = {
 				"phone_id": self._device_id,
