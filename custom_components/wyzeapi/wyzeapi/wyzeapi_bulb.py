@@ -12,35 +12,13 @@ class WyzeBulb():
 		self._just_changed_state = False
 
 	def turn_on(self):
-		url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
-
 		if (self._brightness != None and self._colortemp != None):
+			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
 			brightness = self.translate(self._brightness, 0, 255, 1, 100)
 			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
 
-			payload = {
-				"phone_id": self._device_id,
-				"property_list": [
-					{"pid": "P3", "pvalue": "1"},
-					{"pid": "P1501", "pvalue": brightness},
-					{"pid": "P1502", "pvalue": colortemp}
-				],
-				"device_model": "WLPA19",
-				"app_name": "com.hualai.WyzeCam",
-				"app_version": "2.6.62",
-				"sc": "01dd431d098546f9baf5233724fa2ee2",
-				"sv": "a8290b86080a481982b97045b8710611",
-				"device_mac": self._device_mac,
-				"app_ver": "com.hualai.WyzeCam___2.6.62",
-				"ts": "1575951274357",
-				"access_token": self._access_token
-			}
-
-		elif (self._brightness == None and self._colortemp != None):
-			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
-
-			payload = {
+			payloads = [{
 				"phone_id": self._device_id,
 				"property_list": [
 					{"pid": "P3", "pvalue": "1"},
@@ -55,11 +33,8 @@ class WyzeBulb():
 				"app_ver": "com.hualai.WyzeCam___2.6.62",
 				"ts": "1575951274357",
 				"access_token": self._access_token
-			}
-		elif (self._brightness != None and self._colortemp == None):
-			brightness = self.translate(self._brightness, 0, 255, 1, 100)
-
-			payload = {
+			},
+			{
 				"phone_id": self._device_id,
 				"property_list": [
 					{"pid": "P3", "pvalue": "1"},
@@ -74,11 +49,54 @@ class WyzeBulb():
 				"app_ver": "com.hualai.WyzeCam___2.6.62",
 				"ts": "1575951274357",
 				"access_token": self._access_token
-			}
+			}]
+
+		elif (self._brightness == None and self._colortemp != None):
+			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+
+			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
+
+			payloads = [{
+				"phone_id": self._device_id,
+				"property_list": [
+					{"pid": "P3", "pvalue": "1"},
+					{"pid": "P1502", "pvalue": colortemp}
+				],
+				"device_model": "WLPA19",
+				"app_name": "com.hualai.WyzeCam",
+				"app_version": "2.6.62",
+				"sc": "01dd431d098546f9baf5233724fa2ee2",
+				"sv": "a8290b86080a481982b97045b8710611",
+				"device_mac": self._device_mac,
+				"app_ver": "com.hualai.WyzeCam___2.6.62",
+				"ts": "1575951274357",
+				"access_token": self._access_token
+			}]
+		elif (self._brightness != None and self._colortemp == None):
+			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+
+			brightness = self.translate(self._brightness, 0, 255, 1, 100)
+
+			payloads = [{
+				"phone_id": self._device_id,
+				"property_list": [
+					{"pid": "P3", "pvalue": "1"},
+					{"pid": "P1501", "pvalue": brightness}
+				],
+				"device_model": "WLPA19",
+				"app_name": "com.hualai.WyzeCam",
+				"app_version": "2.6.62",
+				"sc": "01dd431d098546f9baf5233724fa2ee2",
+				"sv": "a8290b86080a481982b97045b8710611",
+				"device_mac": self._device_mac,
+				"app_ver": "com.hualai.WyzeCam___2.6.62",
+				"ts": "1575951274357",
+				"access_token": self._access_token
+			}]
 		else:
 			url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
-			payload = {
+			payload = [{
 				'phone_id': self._device_id,
 				'access_token': self._access_token,
 				'device_model': 'WLPA19',
@@ -89,9 +107,10 @@ class WyzeBulb():
 				'pvalue': "1",
 				'pid': 'P3',
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
-			}
+			}]
 
-		data = do_request(url, payload, no_return=True)
+		for payload in payloads:
+			data = do_request(url, payload, no_return=True)
 
 		self._state = True
 		self._just_changed_state = True
@@ -147,7 +166,7 @@ class WyzeBulb():
 				if item['pid'] == "P3":
 					self._state = True if int(item['value']) == 1 else False
 				elif item['pid'] == "P1501":
-					self._brightness = self.translate(int(item['value']), 1, 100, 0, 255)
+					self._brightness = self.translate(int(item['value']), 0, 100, 0, 255)
 				elif item['pid'] == "P1502":
 					self._colortemp = self.translate(int(item['value']), 2700, 6500, 500, 153)
 
