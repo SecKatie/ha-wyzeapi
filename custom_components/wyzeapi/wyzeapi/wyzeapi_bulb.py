@@ -76,7 +76,8 @@ class WyzeBulb():
 				"access_token": self._access_token
 			}
 		else:
-			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+			url = 'https://api.wyzecam.com/app/v2/device/set_property'
+
 			payload = {
 				'phone_id': self._device_id,
 				'access_token': self._access_token,
