@@ -13,34 +13,12 @@ class WyzeBulb():
 		self._state = state
 		self._brightness = self._colortemp = self._just_changed_state = False
 
+		self._old_brightness = self._old_colortemp = None
+
 	def turn_on(self):
 		_LOGGER.debug("Turning on: " + self._device_mac + " with brightness: " + str(self._brightness) + " and color temp: " + str(self._colortemp))
 
-		if (self._brightness != None and self._colortemp != None):
-			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
-
-			brightness = self.translate(self._brightness, 1, 255, 1, 100)
-			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
-
-			payload = {
-				"phone_id": self._device_id,
-				"property_list": [
-					{"pid": "P1501", "pvalue": brightness},
-					{"pid": "P1502", "pvalue": colortemp},
-					{"pid": "P3", "pvalue": "1"},
-				],
-				"device_model": "WLPA19",
-				"app_name": "com.hualai.WyzeCam",
-				"app_version": "2.6.62",
-				"sc": "01dd431d098546f9baf5233724fa2ee2",
-				"sv": "a8290b86080a481982b97045b8710611",
-				"device_mac": self._device_mac,
-				"app_ver": "com.hualai.WyzeCam___2.6.62",
-				"ts": "1575951274357",
-				"access_token": self._access_token
-			}
-
-		elif (self._brightness == None and self._colortemp != None):
+		if (self._colortemp != None):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
 			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
@@ -61,7 +39,7 @@ class WyzeBulb():
 				"ts": "1575951274357",
 				"access_token": self._access_token
 			}
-		elif (self._brightness != None and self._colortemp == None):
+		elif (self._brightness != None):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
 			brightness = self.translate(self._brightness, 1, 255, 1, 100)
@@ -100,8 +78,6 @@ class WyzeBulb():
 
 		data = do_request(url, payload, no_return=True)
 
-		self._old_brightness = self._brightness
-		self._old_colortemp = self._colortemp
 		self._state = True
 		self._just_changed_state = True
 
