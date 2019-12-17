@@ -1,9 +1,9 @@
 {
-  "domain": "wyze_bulb",
-  "name": "Wyze Bulb",
+  "domain": "wyzeapi",
+  "name": "Wyze Bulb Api Integration",
   "documentation": "",
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@joshmulliken"],
 	"requirements": [],
 	"icons": []
 }
