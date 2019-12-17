@@ -32,6 +32,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Awesome Light platform."""
 	# Assign configuration variables.
 	# The configuration check takes care they are present.
+	_LOGGER.debug("WYZEAPI v0.2.0")
+	_LOGGER.debug("Attempting to open connection")
+
 	user_name = config[CONF_USERNAME]
 	password = config.get(CONF_PASSWORD)
 
