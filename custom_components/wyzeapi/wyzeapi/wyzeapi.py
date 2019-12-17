@@ -12,6 +12,8 @@ class WyzeApi():
 		self._password = self.create_md5_md5(password)
 		self._device_id, self._access_token = (None, None) if no_save else parseConfig()
 
+		self._request_queue = []
+
 		if self._access_token == None or self._device_id == None:
 			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
 			self._access_token = self.login(self._user_name, self._password, self._device_id)

@@ -61,4 +61,4 @@ if __name__ == '__main__':
 	TestAccessTokenError()
 	TestBadPassword()
 	TestTurnOffBulbs()
-	TestTurnOnBulbs()
+	#TestTurnOnBulbs()
