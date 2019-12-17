@@ -3,7 +3,7 @@
   "name": "Wyze Bulb Api Integration",
   "documentation": "",
   "dependencies": [],
-  "codeowners": ["@joshmulliken"],
+  "codeowners": ["@joshuamulliken"],
 	"requirements": [],
 	"icons": []
 }
