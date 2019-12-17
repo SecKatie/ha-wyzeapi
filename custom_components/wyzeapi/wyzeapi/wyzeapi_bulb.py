@@ -23,7 +23,7 @@ class WyzeBulb():
 
 			self._brightness = self._old_brightness
 
-			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
+			colortemp = self.translate(self._colortemp, 500, 140, 2700, 6500)
 
 			payload = {
 				"phone_id": self._device_id,
