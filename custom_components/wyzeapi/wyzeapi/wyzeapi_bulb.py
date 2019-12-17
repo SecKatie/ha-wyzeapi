@@ -21,7 +21,6 @@ class WyzeBulb():
 		if (self._brightness != self._old_brightness and self._colortemp != self._old_colortemp):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
-			self._brightness = self._old_brightness
 			brightness = self.translate(self._brightness, 0, 255, 0, 100)
 			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
 
