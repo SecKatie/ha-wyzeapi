@@ -32,6 +32,33 @@ def TestBadPassword():
 
 	print("ERROR")
 
+def TestTurnOffBulbs():
+	print("Test: TestTurnOffBulbs")
+
+	wyze = WyzeApi(username, password, no_save=True)
+
+	bulbs = wyze.list_bulbs()
+
+	for bulb in bulbs:
+		bulb.turn_off()
+
+	print("SUCCESS")
+
+def TestTurnOnBulbs():
+	print("Test: TestTurnOnBulbs")
+
+	wyze = WyzeApi(username, password, no_save=True)
+
+	bulbs = wyze.list_bulbs()
+
+	for bulb in bulbs:
+		bulb.turn_on()
+
+	print("SUCCESS")
+
+
 if __name__ == '__main__':
 	TestAccessTokenError()
 	TestBadPassword()
+	TestTurnOffBulbs()
+	TestTurnOnBulbs()

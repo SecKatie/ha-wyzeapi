@@ -78,7 +78,7 @@ class WyzeBulb():
 		else:
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 			payload = {
-				'phone_id': 'D01C09DE-FC02-4A45-8967-845DDB8E15A2',
+				'phone_id': self._device_id,
 				'access_token': self._access_token,
 				'device_model': 'WLPA19',
 				'ts': '1575948896791',
