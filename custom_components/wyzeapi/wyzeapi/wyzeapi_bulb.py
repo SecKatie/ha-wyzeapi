@@ -13,13 +13,15 @@ class WyzeBulb():
 		self._state = state
 		self._brightness = self._colortemp = self._just_changed_state = False
 
-		self._old_brightness = self._old_colortemp = None
+		self._old_brightness = None
 
 	def turn_on(self):
 		_LOGGER.debug("Turning on: " + self._device_mac + " with brightness: " + str(self._brightness) + " and color temp: " + str(self._colortemp))
 
 		if (self._colortemp != None):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+
+			self._brightness = self._old_brightness
 
 			colortemp = self.translate(self._colortemp, 500, 153, 2700, 6500)
 
@@ -41,6 +43,8 @@ class WyzeBulb():
 			}
 		elif (self._brightness != None):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+
+			self._old_brightness = self._brightness
 
 			brightness = self.translate(self._brightness, 1, 255, 1, 100)
 
