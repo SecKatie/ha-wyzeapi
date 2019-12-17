@@ -91,7 +91,7 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		data = do_request(url, payload)
+		data = do_request(url, payload, no_return=True)
 
 		self._state = True
 		self._just_changed_state = True
@@ -112,7 +112,7 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload)
+		data = do_request(url, payload, no_return=True)
 
 		self._state = False
 		self._just_changed_state = True
