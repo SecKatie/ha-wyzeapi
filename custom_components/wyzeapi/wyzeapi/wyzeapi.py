@@ -5,6 +5,7 @@ import hashlib
 from .wyzeapi_request import *
 from .wyzeapi_config import *
 from .wyzeapi_bulb import WyzeBulb
+from .wyzeapi_switch import WyzeSwitch
 
 class WyzeApi():
 	def __init__(self, user_name, password, no_save=False):
@@ -13,6 +14,8 @@ class WyzeApi():
 		self._device_id, self._access_token = (None, None) if no_save else parseConfig()
 
 		self._request_queue = []
+
+		self._all_devices = []
 
 		if self._access_token == None or self._device_id == None:
 			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
@@ -56,26 +59,32 @@ class WyzeApi():
 			return False
 		return True
 
+
+	def get_devices(self):
+		if not self._all_devices:
+			url = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
+
+			payload = {
+				"phone_system_type":"1",
+				"app_version":"2.6.62",
+				"app_ver":"com.hualai.WyzeCam___2.6.62",
+				"sc":"9f275790cab94a72bd206c8876429f3c",
+				"ts":"1575953834054",
+				"sv":"9d74946e652647e9b6c9d59326aef104",
+				"access_token": self._access_token,
+				"phone_id": self._device_id,
+				"app_name":"com.hualai.WyzeCam"
+			}
+
+			data = do_request(url, payload)
+			self._all_devices = data['data']['device_list']
+
+		return self._all_devices
+
 	def list_bulbs(self):
-		url = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
-
-		payload = {
-			"phone_system_type":"1",
-			"app_version":"2.6.62",
-			"app_ver":"com.hualai.WyzeCam___2.6.62",
-			"sc":"9f275790cab94a72bd206c8876429f3c",
-			"ts":"1575953834054",
-			"sv":"9d74946e652647e9b6c9d59326aef104",
-			"access_token": self._access_token,
-			"phone_id": self._device_id,
-			"app_name":"com.hualai.WyzeCam"
-		}
-
-		data = do_request(url, payload)
-
 		bulbs = []
 
-		for device in data['data']['device_list']:
+		for device in self.get_devices():
 			if (device['product_type'] == "Light"):
 				bulbs.append(WyzeBulb(
 					self._device_id,
@@ -86,3 +95,19 @@ class WyzeApi():
 					))
 
 		return bulbs
+
+	def list_switches(self):
+		switches = []
+
+		for device in self.get_devices():
+			if (device['product_type'] == "Plug"):
+				switches.append(WyzeSwitch(
+					self._device_id,
+					self._access_token,
+					device['mac'],
+					device['nickname'],
+					("on" if device['device_params']['switch_state'] == 1 else "off"),
+                    device['product_model']
+					))
+
+		return switches

@@ -23,11 +23,16 @@ light:
     username: <email for wyze>
     password: <password for wyze>
     
+switch:
+  - platform: wyzeapi
+    username: <email for wyze>
+    password: <password for wyze>
+    
 ```
 
 ## Usage
 * Restart HA
 
-* Entities will show up as `light.<friendly name>` for example (`light.livingroom_lamp`).
+* Entities will show up as `light.<friendly name>` or  `switch.<friendly name>` for example (`light.livingroom_lamp`).
 
 ### Please report any issues you find!
