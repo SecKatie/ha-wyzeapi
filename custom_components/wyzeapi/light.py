@@ -32,7 +32,17 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Awesome Light platform."""
 	# Assign configuration variables.
 	# The configuration check takes care they are present.
-	_LOGGER.debug("WYZEAPI v0.2.0")
+	_LOGGER.debug("""
+	-------------------------------------------------------------------
+	Wyze Bulb and Switch Home Assistant Integration
+
+	Version: v0.3.1-beta
+	This is a custom integration
+	If you have any issues with this you need to open an issue here:
+	https://github.com/JoshuaMulliken/ha-wyzeapi/issues
+	-------------------------------------------------------------------
+	""")
+
 
 	user_name = config[CONF_USERNAME]
 	password = config.get(CONF_PASSWORD)

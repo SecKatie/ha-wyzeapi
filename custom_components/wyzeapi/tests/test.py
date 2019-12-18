@@ -1,3 +1,5 @@
+import time
+
 from .secrets import *
 from ..wyzeapi.wyzeapi_exceptions import *
 from ..wyzeapi.wyzeapi import WyzeApi
@@ -11,8 +13,13 @@ def TestAccessTokenError():
 	# Kill access token
 
 	wyze._access_token = "Killed"
+	assert(wyze._access_token == "Killed")
 
 	bulbs[0].turn_off()
+
+	time.sleep(2)
+
+	assert(wyze._access_token != "Killed")
 
 	print("SUCCESS")
 
