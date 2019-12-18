@@ -1,7 +1,7 @@
 {
   "domain": "wyzeapi",
-  "name": "Wyze Bulb Api Integration",
-  "documentation": "",
+  "name": "Wyze Bulb and Switch Api Integration",
+  "documentation": "https://github.com/JoshuaMulliken/ha-wyzebulb/blob/master/README.md",
   "dependencies": [],
   "codeowners": ["@joshuamulliken"],
 	"requirements": [],
