@@ -17,7 +17,7 @@
 
 ## Configuration
 
-Add the following to your configuration file. ***Note: This will change in a future release I am expecting to integrate the platform section so you only need to include the email and password once if you use both the light and the switch.***
+Add the following to your configuration file. ***Note: This will change in a future release I am expecting to integrate the platform section so you only need to include the email and password once if you use both the light and the switch. Please refer to issue [#12](https://github.com/JoshuaMulliken/ha-wyzeapi/issues/12)***
 
 ```yaml
 light:
