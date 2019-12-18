@@ -12,14 +12,9 @@ def TestAccessTokenError():
 
 	wyze._access_token = "Killed"
 
-	try:
-		wyze.list_bulbs()
-		assert(True)
-	except WyzeApiError:
-		print("SUCCESS")
-		return
+	bulbs[0].turn_off()
 
-	print("ERROR")
+	print("SUCCESS")
 
 def TestBadPassword():
 	print("Test: TestBadPassword")
@@ -32,8 +27,8 @@ def TestBadPassword():
 
 	print("ERROR")
 
-def TestTurnOffBulbs():
-	print("Test: TestTurnOffBulbs")
+def TestBulbs():
+	print("Test: TestBulbs")
 
 	wyze = WyzeApi(username, password, no_save=True)
 
@@ -41,23 +36,13 @@ def TestTurnOffBulbs():
 
 	for bulb in bulbs:
 		bulb.turn_off()
-
-	print("SUCCESS")
-
-def TestTurnOnBulbs():
-	print("Test: TestTurnOnBulbs")
-
-	wyze = WyzeApi(username, password, no_save=True)
-
-	bulbs = wyze.list_bulbs()
-
-	for bulb in bulbs:
 		bulb.turn_on()
+		bulb.update()
 
 	print("SUCCESS")
 
-def TestTurnOffSwitches():
-	print("Test: TestTurnOffSwitches")
+def TestSwitches():
+	print("Test: TestSwitches")
 
 	wyze = WyzeApi(username, password, no_save=True)
 
@@ -65,27 +50,14 @@ def TestTurnOffSwitches():
 
 	for switch in switches:
 		switch.turn_off()
-
-	print("SUCCESS")
-
-def TestTurnOnSwitches():
-	print("Test: TestTurnOnSwitches")
-
-	wyze = WyzeApi(username, password, no_save=True)
-
-	switches = wyze.list_switches()
-
-	for switch in switches:
 		switch.turn_on()
+		switch.update()
 
 	print("SUCCESS")
-
 
 if __name__ == '__main__':
 	TestAccessTokenError()
 	TestBadPassword()
-	TestTurnOnBulbs()
-	TestTurnOffBulbs()
-	TestTurnOnSwitches()
-	TestTurnOffSwitches()
+	TestBulbs()
+	TestSwitches()
 

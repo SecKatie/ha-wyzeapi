@@ -10,19 +10,23 @@ headers = {
 	'Content-Type': 'application/json'
 }
 
-def request_helper(url, payload):
+def request_helper(url, payload, api):
 	r = requests.post(url, headers=headers, data=json.dumps(payload))
 
 	data = r.json()
 
 	if data['code'] != '1':
-		raise WyzeApiError(data['msg'])
+		if data['msg'] == 'AccessTokenError':
+			api._access_token = None
+			api.initialize()
+		else:
+			raise WyzeApiError(data['msg'])
 
 	return data
 
-def do_request(url, payload, no_return=False):
+def do_request(url, payload, api, no_return=False):
 	if no_return:
-		x = threading.Thread(target=request_helper, args=(url, payload))
+		x = threading.Thread(target=request_helper, args=(url, payload, api))
 		x.start()
 	else:
-		return request_helper(url, payload)
+		return request_helper(url, payload, api)

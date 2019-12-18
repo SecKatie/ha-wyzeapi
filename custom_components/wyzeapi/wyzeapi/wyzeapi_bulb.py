@@ -5,9 +5,8 @@ from .wyzeapi_request import *
 _LOGGER = logging.getLogger(__name__)
 
 class WyzeBulb():
-	def __init__(self, device_id, access_token, device_mac, friendly_name, state):
-		self._device_id = device_id
-		self._access_token = access_token
+	def __init__(self, api, device_mac, friendly_name, state):
+		self._api = api
 		self._device_mac = device_mac
 		self._friendly_name = friendly_name
 		self._state = state
@@ -27,7 +26,7 @@ class WyzeBulb():
 			colortemp = self.translate(self._colortemp, 500, 140, 2700, 6500)
 
 			payload = {
-				"phone_id": self._device_id,
+				"phone_id": self._api._device_id,
 				"property_list": [
 					{"pid": "P3", "pvalue": "1"},
 					{"pid": "P1502", "pvalue": colortemp}
@@ -40,7 +39,7 @@ class WyzeBulb():
 				"device_mac": self._device_mac,
 				"app_ver": "com.hualai.WyzeCam___2.6.62",
 				"ts": "1575951274357",
-				"access_token": self._access_token
+				"access_token": self._api._access_token
 			}
 		elif (self._brightness != None):
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
@@ -51,7 +50,7 @@ class WyzeBulb():
 			brightness = self.translate(self._brightness, 1, 255, 1, 100)
 
 			payload = {
-				"phone_id": self._device_id,
+				"phone_id": self._api._device_id,
 				"property_list": [
 					{"pid": "P3", "pvalue": "1"},
 					{"pid": "P1501", "pvalue": brightness}
@@ -64,14 +63,14 @@ class WyzeBulb():
 				"device_mac": self._device_mac,
 				"app_ver": "com.hualai.WyzeCam___2.6.62",
 				"ts": "1575951274357",
-				"access_token": self._access_token
+				"access_token": self._api._access_token
 			}
 		else:
 			url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 			payload = {
-				'phone_id': self._device_id,
-				'access_token': self._access_token,
+				'phone_id': self._api._device_id,
+				'access_token': self._api._access_token,
 				'device_model': 'WLPA19',
 				'ts': '1575948896791',
 				'sc': '01dd431d098546f9baf5233724fa2ee2',
@@ -82,7 +81,7 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		data = do_request(url, payload, no_return=True)
+		data = do_request(url, payload, self._api, no_return=True)
 
 		self._state = True
 		self._just_changed_state = True
@@ -93,8 +92,8 @@ class WyzeBulb():
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 		payload = {
-			'phone_id': self._device_id,
-			'access_token': self._access_token,
+			'phone_id': self._api._device_id,
+			'access_token': self._api._access_token,
 			'device_model': 'WLPA19',
 			'ts': '1575948896791',
 			'sc': '01dd431d098546f9baf5233724fa2ee2',
@@ -105,7 +104,7 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, no_return=True)
+		data = do_request(url, payload, self._api, no_return=True)
 
 		self._state = False
 		self._just_changed_state = True
@@ -121,7 +120,7 @@ class WyzeBulb():
 
 			payload = {
 				"target_pid_list":[],
-				"phone_id": self._device_id,
+				"phone_id": self._api._device_id,
 				"device_model":"WLPA19",
 				"app_name":"com.hualai.WyzeCam",
 				"app_version":"2.6.62",
@@ -131,10 +130,10 @@ class WyzeBulb():
 				"app_ver":"com.hualai.WyzeCam___2.6.62",
 				"phone_system_type":"1",
 				"ts":"1575955054511",
-				"access_token": self._access_token
+				"access_token": self._api._access_token
 			}
 
-			data = do_request(url, payload)
+			data = do_request(url, payload, self._api)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":

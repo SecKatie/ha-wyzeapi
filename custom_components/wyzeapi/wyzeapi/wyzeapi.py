@@ -12,16 +12,17 @@ class WyzeApi():
 		self._user_name = user_name
 		self._password = self.create_md5_md5(password)
 		self._device_id, self._access_token = (None, None) if no_save else parseConfig()
-
-		self._request_queue = []
-
 		self._all_devices = []
+		self._no_save = no_save
 
+		self.initialize()
+
+	def initialize(self):
 		if self._access_token == None or self._device_id == None:
 			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
 			self._access_token = self.login(self._user_name, self._password, self._device_id)
 
-			if not no_save:
+			if not self._no_save:
 				updateConfig(self._device_id, self._access_token)
 
 	def create_md5_md5(self, password):
@@ -46,7 +47,7 @@ class WyzeApi():
 			"access_token":""
 		}
 
-		data = do_request(url, payload)
+		data = do_request(url, payload, self)
 
 		try:
 			access_token = data['data']['access_token']
@@ -76,7 +77,7 @@ class WyzeApi():
 				"app_name":"com.hualai.WyzeCam"
 			}
 
-			data = do_request(url, payload)
+			data = do_request(url, payload, self)
 			self._all_devices = data['data']['device_list']
 
 		return self._all_devices
@@ -87,8 +88,7 @@ class WyzeApi():
 		for device in self.get_devices():
 			if (device['product_type'] == "Light"):
 				bulbs.append(WyzeBulb(
-					self._device_id,
-					self._access_token,
+					self,
 					device['mac'],
 					device['nickname'],
 					("on" if device['device_params']['switch_state'] == 1 else "off")
@@ -102,8 +102,7 @@ class WyzeApi():
 		for device in self.get_devices():
 			if (device['product_type'] == "Plug"):
 				switches.append(WyzeSwitch(
-					self._device_id,
-					self._access_token,
+					self,
 					device['mac'],
 					device['nickname'],
 					("on" if device['device_params']['switch_state'] == 1 else "off"),
