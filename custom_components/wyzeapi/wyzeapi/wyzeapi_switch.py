@@ -5,9 +5,8 @@ from .wyzeapi_request import *
 _LOGGER = logging.getLogger(__name__)
 
 class WyzeSwitch():
-	def __init__(self, device_id, access_token, device_mac, friendly_name, state, device_model):
-		self._device_id = device_id
-		self._access_token = access_token
+	def __init__(self, api, device_mac, friendly_name, state, device_model):
+		self._api = api
 		self._device_mac = device_mac
 		self._device_model = device_model
 		self._friendly_name = friendly_name
@@ -20,8 +19,8 @@ class WyzeSwitch():
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 		payload = {
-			'phone_id': self._device_id,
-			'access_token': self._access_token,
+			'phone_id': self._api._device_id,
+			'access_token': self._api._access_token,
 			'device_model': self._device_model,
 			'ts': '1575948896791',
 			'sc': '01dd431d098546f9baf5233724fa2ee2',
@@ -32,7 +31,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, no_return=True)
+		data = do_request(url, payload, self._api, no_return=True)
 
 		self._state = True
 		self._just_changed_state = True
@@ -43,8 +42,8 @@ class WyzeSwitch():
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 		payload = {
-			'phone_id': self._device_id,
-			'access_token': self._access_token,
+			'phone_id': self._api._device_id,
+			'access_token': self._api._access_token,
 			'device_model': self._device_model,
 			'ts': '1575948896791',
 			'sc': '01dd431d098546f9baf5233724fa2ee2',
@@ -55,7 +54,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, no_return=True)
+		data = do_request(url, payload, self._api, no_return=True)
 
 		self._state = False
 		self._just_changed_state = True
@@ -71,8 +70,8 @@ class WyzeSwitch():
 
 			payload = {
 				"target_pid_list":[],
-				"phone_id": self._device_id,
-				"device_model": self._device_model,
+				"phone_id": self._api._device_id,
+				"device_model": self._api._device_model,
 				"app_name":"com.hualai.WyzeCam",
 				"app_version":"2.6.62",
 				"sc":"01dd431d098546f9baf5233724fa2ee2",
@@ -84,7 +83,7 @@ class WyzeSwitch():
 				"access_token": self._access_token
 			}
 
-			data = do_request(url, payload)
+			data = do_request(url, payload, self._api)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
