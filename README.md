@@ -1,4 +1,4 @@
-# Home Assistant - WYZE Bulb and Switch Integration
+# Home Assistant - Wyze Bulb and Switch Integration
 
 ## Installation (HACS) - Highly Recommended
 
