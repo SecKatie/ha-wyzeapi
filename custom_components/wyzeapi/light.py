@@ -33,15 +33,14 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 	# Assign configuration variables.
 	# The configuration check takes care they are present.
 	_LOGGER.debug("""
-	-------------------------------------------------------------------
-	Wyze Bulb and Switch Home Assistant Integration
+-------------------------------------------------------------------
+Wyze Bulb and Switch Home Assistant Integration
 
-	Version: v0.3.1-beta
-	This is a custom integration
-	If you have any issues with this you need to open an issue here:
-	https://github.com/JoshuaMulliken/ha-wyzeapi/issues
-	-------------------------------------------------------------------
-	""")
+Version: v0.3.1-beta-1
+This is a custom integration
+If you have any issues with this you need to open an issue here:
+https://github.com/JoshuaMulliken/ha-wyzeapi/issues
+-------------------------------------------------------------------""")
 
 
 	user_name = config[CONF_USERNAME]
