@@ -17,7 +17,7 @@
 
 ## Configuration
 
-Add the following to your configuration file
+Add the following to your configuration file. ***Note: This will change in a future release I am expecting to integrate the platform section so you only need to include the email and password once if you use both the light and the switch.***
 
 ```yaml
 light:
