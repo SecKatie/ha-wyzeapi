@@ -1,4 +1,4 @@
-# Home Assistant - WYZE Bulb Component
+# Home Assistant - WYZE Bulb and Switch Integration
 
 ## Installation (HACS) - Highly Recommended
 
@@ -22,12 +22,12 @@ light:
   - platform: wyzeapi
     username: <email for wyze>
     password: <password for wyze>
-    
+
 switch:
   - platform: wyzeapi
     username: <email for wyze>
     password: <password for wyze>
-    
+
 ```
 
 ## Usage
