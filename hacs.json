@@ -1,6 +1,5 @@
 {
 	"name": "Home Assistant - WYZE Bulb and Switch Integration",
-	"content_in_root": true,
 	"domains": ["switch", "light"],
 	"iot_class": "cloud_poll"
 }
