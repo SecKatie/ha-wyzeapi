@@ -56,10 +56,36 @@ def TestTurnOnBulbs():
 
 	print("SUCCESS")
 
+def TestTurnOffSwitches():
+	print("Test: TestTurnOffSwitches")
+
+	wyze = WyzeApi(username, password, no_save=True)
+
+	switches = wyze.list_switches()
+
+	for switch in switches:
+		switch.turn_off()
+
+	print("SUCCESS")
+
+def TestTurnOnSwitches():
+	print("Test: TestTurnOnSwitches")
+
+	wyze = WyzeApi(username, password, no_save=True)
+
+	switches = wyze.list_switches()
+
+	for switch in switches:
+		switch.turn_on()
+
+	print("SUCCESS")
+
 
 if __name__ == '__main__':
 	TestAccessTokenError()
 	TestBadPassword()
 	TestTurnOnBulbs()
 	TestTurnOffBulbs()
+	TestTurnOnSwitches()
+	TestTurnOffSwitches()
 
