@@ -36,7 +36,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 -------------------------------------------------------------------
 Wyze Bulb and Switch Home Assistant Integration
 
-Version: v0.3.1-beta.3
+Version: v0.3.1-beta.4
 This is a custom integration
 If you have any issues with this you need to open an issue here:
 https://github.com/JoshuaMulliken/ha-wyzeapi/issues
