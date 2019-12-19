@@ -1,8 +1,7 @@
 import logging
+_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_request import *
-
-_LOGGER = logging.getLogger(__name__)
 
 class WyzeSwitch():
 	def __init__(self, api, device_mac, friendly_name, state, device_model):

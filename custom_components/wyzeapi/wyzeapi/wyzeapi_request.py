@@ -1,6 +1,8 @@
 import requests
 import json
 import threading
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_exceptions import *
 
@@ -17,6 +19,8 @@ def request_helper(url, payload, api):
 
 	if data['code'] != '1':
 		if data['msg'] == 'AccessTokenError':
+			_LOGGER.info("Recieved AccessTokenError attempting to regenerate the AccessToken")
+
 			api._access_token = None
 			api.initialize()
 		else:
