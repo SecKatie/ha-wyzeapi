@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import hashlib
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_request import *
 from .wyzeapi_config import *
@@ -21,9 +23,11 @@ class WyzeApi():
 		if self._access_token == None or self._device_id == None:
 			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
 			self._access_token = self.login(self._user_name, self._password, self._device_id)
+			_LOGGER.info("Retrieved access token")
 
 			if not self._no_save:
 				updateConfig(self._device_id, self._access_token)
+				_LOGGER.info("Access token saved")
 
 	def create_md5_md5(self, password):
 		digest1 = hashlib.md5(password.encode('utf-8')).hexdigest()
