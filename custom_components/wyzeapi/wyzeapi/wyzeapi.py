@@ -10,7 +10,7 @@ from .wyzeapi_bulb import WyzeBulb
 from .wyzeapi_switch import WyzeSwitch
 
 class WyzeApi():
-	def __init__(self, user_name, password, no_save=False):
+	def __init__(self, user_name, password, no_save=True):
 		self._user_name = user_name
 		self._password = self.create_md5_md5(password)
 		self._device_id, self._access_token = (None, None) if no_save else parseConfig()
