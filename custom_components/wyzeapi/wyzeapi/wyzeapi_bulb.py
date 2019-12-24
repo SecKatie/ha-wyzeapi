@@ -1,7 +1,5 @@
 import logging
 
-from .wyzeapi_request import *
-
 _LOGGER = logging.getLogger(__name__)
 
 class WyzeBulb():
@@ -81,7 +79,7 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		data = do_request(url, payload, self._api, no_return=True)
+		self._api._request_man.do_request(url, payload)
 
 		self._state = True
 		self._just_changed_state = True
@@ -104,7 +102,7 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, self._api, no_return=True)
+		self._api._request_man.do_request(url, payload)
 
 		self._state = False
 		self._just_changed_state = True
@@ -133,7 +131,7 @@ class WyzeBulb():
 				"access_token": self._api._access_token
 			}
 
-			data = do_request(url, payload, self._api)
+			data = self._api._request_man.do_blocking_request(url, payload)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":

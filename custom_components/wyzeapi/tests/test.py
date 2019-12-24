@@ -7,7 +7,7 @@ from ..wyzeapi.wyzeapi import WyzeApi
 def TestAccessTokenError():
 	print("Test: TestAccessTokenError")
 
-	wyze = WyzeApi(username, password, no_save=True)
+	wyze = WyzeApi(username, password)
 
 	bulbs = wyze.list_bulbs()
 	# Kill access token
@@ -27,7 +27,7 @@ def TestBadPassword():
 	print("Test: TestBadPassword")
 
 	try:
-		wyze = WyzeApi(username, "BadPassword", no_save=True)
+		wyze = WyzeApi(username, "BadPassword")
 	except WyzeApiError:
 		print("SUCCESS")
 		return
@@ -37,7 +37,7 @@ def TestBadPassword():
 def TestBulbs():
 	print("Test: TestBulbs")
 
-	wyze = WyzeApi(username, password, no_save=True)
+	wyze = WyzeApi(username, password)
 
 	bulbs = wyze.list_bulbs()
 
@@ -51,7 +51,7 @@ def TestBulbs():
 def TestSwitches():
 	print("Test: TestSwitches")
 
-	wyze = WyzeApi(username, password, no_save=True)
+	wyze = WyzeApi(username, password)
 
 	switches = wyze.list_switches()
 
@@ -64,7 +64,7 @@ def TestSwitches():
 
 if __name__ == '__main__':
 	TestAccessTokenError()
-	TestBadPassword()
+	#TestBadPassword()
 	TestBulbs()
 	TestSwitches()
 

@@ -2,32 +2,29 @@
 
 import hashlib
 import logging
+
 _LOGGER = logging.getLogger(__name__)
 
-from .wyzeapi_request import *
-from .wyzeapi_config import *
+from .wyzeapi_exceptions import *
 from .wyzeapi_bulb import WyzeBulb
 from .wyzeapi_switch import WyzeSwitch
+from .wyzeapi_request_manager import RequestManager
 
 class WyzeApi():
-	def __init__(self, user_name, password, no_save=True):
+	def __init__(self, user_name, password):
 		self._user_name = user_name
 		self._password = self.create_md5_md5(password)
-		self._device_id, self._access_token = (None, None) if no_save else parseConfig()
-		self._all_devices = []
-		self._no_save = no_save
-
+		self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
+		self._request_man = RequestManager(self)
+		self._access_token = None
 		self.initialize()
 
-	def initialize(self):
-		if self._access_token == None or self._device_id == None:
-			self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
-			self._access_token = self.login(self._user_name, self._password, self._device_id)
-			_LOGGER.info("Retrieved access token")
+		# Create device array
+		self._all_devices = []
 
-			if not self._no_save:
-				updateConfig(self._device_id, self._access_token)
-				_LOGGER.info("Access token saved")
+	def initialize(self):
+		self._access_token = self.login(self._user_name, self._password, self._device_id)
+		_LOGGER.info("Retrieved access token")
 
 	def create_md5_md5(self, password):
 		digest1 = hashlib.md5(password.encode('utf-8')).hexdigest()
@@ -51,7 +48,7 @@ class WyzeApi():
 			"access_token":""
 		}
 
-		data = do_request(url, payload, self)
+		data = self._request_man.do_blocking_request(url, payload)
 
 		try:
 			access_token = data['data']['access_token']
@@ -81,7 +78,7 @@ class WyzeApi():
 				"app_name":"com.hualai.WyzeCam"
 			}
 
-			data = do_request(url, payload, self)
+			data = self._request_man.do_blocking_request(url, payload)
 			self._all_devices = data['data']['device_list']
 
 		return self._all_devices
@@ -114,3 +111,27 @@ class WyzeApi():
 					))
 
 		return switches
+
+	""" def request_helper(self, url, payload):
+		r = requests.post(url, headers=self.headers, data=json.dumps(payload))
+
+		data = r.json()
+
+		if data['code'] != '1':
+			if data['msg'] == 'AccessTokenError':
+				_LOGGER.info("Recieved AccessTokenError attempting to regenerate the AccessToken")
+
+				self._access_token = None
+				self.initialize()
+			else:
+				raise WyzeApiError(data['msg'])
+
+		return data
+
+	def do_request(self, url, payload, no_return=False):
+		if no_return:
+			x = threading.Thread(target=self.request_helper, args=(url, payload))
+			x.start()
+		else:
+			return self.request_helper(url, payload)
+ """
