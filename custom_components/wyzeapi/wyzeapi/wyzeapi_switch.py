@@ -1,8 +1,6 @@
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from .wyzeapi_request import *
-
 class WyzeSwitch():
 	def __init__(self, api, device_mac, friendly_name, state, device_model):
 		self._api = api
@@ -30,7 +28,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, self._api, no_return=True)
+		self._api._request_man.do_request(url, payload)
 
 		self._state = True
 		self._just_changed_state = True
@@ -53,7 +51,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		data = do_request(url, payload, self._api, no_return=True)
+		self._api._request_man.do_request(url, payload)
 
 		self._state = False
 		self._just_changed_state = True
@@ -82,7 +80,7 @@ class WyzeSwitch():
 				"access_token": self._access_token
 			}
 
-			data = do_request(url, payload, self._api)
+			data = self._api._request_man.do_blocking_request(url, payload)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
