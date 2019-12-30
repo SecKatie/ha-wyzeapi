@@ -8,27 +8,28 @@ class WyzeBulb():
 		self._device_mac = device_mac
 		self._friendly_name = friendly_name
 		self._state = state
-		self._brightness = self._colortemp = self._just_changed_state = False
-
-		self._old_brightness = self._old_colortemp = None
+		self._brightness = self._colortemp = None
+		self._just_changed_state = False
 
 	def turn_on(self):
 		_LOGGER.debug("Turning on: " + self._device_mac + " with brightness: " + str(self._brightness) + " and color temp: " + str(self._colortemp))
 
-		if (self._colortemp != None):
+		if self._colortemp is not None or self._brightness is not None:
 			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
-			self._brightness = self._old_brightness
-			self._old_colortemp = self._colortemp
+			property_list = [{"pid": "P3", "pvalue": "1"}]
 
-			colortemp = self.translate(self._colortemp, 500, 140, 2700, 6500)
+			if self._brightness:
+				brightness = self.translate(self._brightness, 1, 255, 1, 100)
+				property_list.append({"pid": "P1501", "pvalue": brightness})
+
+			if self._colortemp:
+				colortemp = self.translate(self._colortemp, 500, 140, 2700, 6500)
+				property_list.append({"pid": "P1502", "pvalue": colortemp})
 
 			payload = {
 				"phone_id": self._api._device_id,
-				"property_list": [
-					{"pid": "P3", "pvalue": "1"},
-					{"pid": "P1502", "pvalue": colortemp}
-				],
+				"property_list": property_list,
 				"device_model": "WLPA19",
 				"app_name": "com.hualai.WyzeCam",
 				"app_version": "2.6.62",
@@ -39,30 +40,7 @@ class WyzeBulb():
 				"ts": "1575951274357",
 				"access_token": self._api._access_token
 			}
-		elif (self._brightness != None):
-			url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
-			self._old_brightness = self._brightness
-			self._colortemp = self._old_colortemp
-
-			brightness = self.translate(self._brightness, 1, 255, 1, 100)
-
-			payload = {
-				"phone_id": self._api._device_id,
-				"property_list": [
-					{"pid": "P3", "pvalue": "1"},
-					{"pid": "P1501", "pvalue": brightness}
-				],
-				"device_model": "WLPA19",
-				"app_name": "com.hualai.WyzeCam",
-				"app_version": "2.6.62",
-				"sc": "01dd431d098546f9baf5233724fa2ee2",
-				"sv": "a8290b86080a481982b97045b8710611",
-				"device_mac": self._device_mac,
-				"app_ver": "com.hualai.WyzeCam___2.6.62",
-				"ts": "1575951274357",
-				"access_token": self._api._access_token
-			}
 		else:
 			url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
@@ -111,8 +89,8 @@ class WyzeBulb():
 		return self._state
 
 	def update(self):
-		if self._just_changed_state == True:
-			self._just_changed_state == False
+		if self._just_changed_state:
+			self._just_changed_state = False
 		else:
 			url = "https://api.wyzecam.com/app/v2/device/get_property_list"
 
