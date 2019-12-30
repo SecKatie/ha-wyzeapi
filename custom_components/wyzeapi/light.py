@@ -101,7 +101,7 @@ class WyzeBulb(Light):
 		You can skip the brightness part if your light does not support
 		brightness control.
 		"""
-		self._light._brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+		self._light._brightness = kwargs.get(ATTR_BRIGHTNESS)
 		self._light._colortemp = kwargs.get(ATTR_COLOR_TEMP)
 		self._light.turn_on()
 		self._state = True
