@@ -68,7 +68,7 @@ class WyzeSwitch():
 			payload = {
 				"target_pid_list":[],
 				"phone_id": self._api._device_id,
-				"device_model": self._api._device_model,
+				"device_model": self._device_model,
 				"app_name":"com.hualai.WyzeCam",
 				"app_version":"2.6.62",
 				"sc":"01dd431d098546f9baf5233724fa2ee2",
