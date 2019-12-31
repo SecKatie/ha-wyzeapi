@@ -77,7 +77,7 @@ class WyzeSwitch():
 				"app_ver":"com.hualai.WyzeCam___2.6.62",
 				"phone_system_type":"1",
 				"ts":"1575955054511",
-				"access_token": self._access_token
+				"access_token": self._api._access_token
 			}
 
 			data = self._api._request_man.do_blocking_request(url, payload)
