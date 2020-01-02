@@ -3,6 +3,7 @@
 """Platform for light integration."""
 import logging
 from .wyzeapi.wyzeapi import WyzeApi
+from . import DOMAIN
 
 import voluptuous as vol
 
@@ -17,16 +18,7 @@ from homeassistant.components.light import (
 	Light
 	)
 
-from homeassistant.const import CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
-
 _LOGGER = logging.getLogger(__name__)
-
-# Validation of the user's configuration
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-	vol.Required(CONF_USERNAME): cv.string,
-	vol.Required(CONF_PASSWORD): cv.string,
-})
-
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Awesome Light platform."""
@@ -42,19 +34,9 @@ If you have any issues with this you need to open an issue here:
 https://github.com/JoshuaMulliken/ha-wyzeapi/issues
 -------------------------------------------------------------------""")
 
-	user_name = config[CONF_USERNAME]
-	password = config.get(CONF_PASSWORD)
-
-	# Setup connection with the WyzeApi
-	wyze = WyzeApi(user_name, password)
-
-	# Verify that passed in configuration works
-	if not wyze.is_valid_login():
-		_LOGGER.error("Could not connect to Wyze Api")
-		return
 
 	# Add devices
-	add_entities(WyzeBulb(light) for light in wyze.list_bulbs())
+	add_entities(WyzeBulb(light) for light in hass.data[DOMAIN]["wyzeapi_account"].list_bulbs())
 
 class WyzeBulb(Light):
 	"""Representation of a Wyze Bulb."""
@@ -113,7 +95,6 @@ class WyzeBulb(Light):
 
 	def update(self):
 		"""Fetch new state data for this light.
-
 		This is the only method that should fetch new data for Home Assistant.
 		"""
 		self._light.update()
