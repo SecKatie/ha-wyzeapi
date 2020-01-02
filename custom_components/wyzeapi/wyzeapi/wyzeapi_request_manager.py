@@ -3,7 +3,7 @@ import json
 import threading
 from queue import Queue
 
-from .wyzeapi_exceptions import *
+from wyzeapi_exceptions import WyzeApiError
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -73,6 +73,13 @@ class RequestManager():
 		response = Queue()
 		request._response = response
 		self._request_queue.put(request)
+		return response.get()
+
+	def do_single_threaded_request(self, url, payload):
+		request = WyzeRequest(url, payload)
+		response = Queue()
+		request._response = response
+		self.request_worker(request)
 		return response.get()
 
 	def do_request(self, url, payload):
