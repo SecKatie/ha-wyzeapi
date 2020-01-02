@@ -18,9 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Wyze Switch platform."""
-	# Assign configuration variables.
-	# The configuration check takes care they are present.
-	_LOGGER.debug("WYZEAPI v0.2.0")
+	_LOGGER.debug("""Creating new WyzeApi light component""")
 
 	# Add devices
 	add_entities(WyzeSwitch(switch) for switch in hass.data[DOMAIN]["wyzeapi_account"].list_switches())
