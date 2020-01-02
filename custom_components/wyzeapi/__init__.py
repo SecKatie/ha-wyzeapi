@@ -23,7 +23,16 @@ CONFIG_SCHEMA = vol.Schema({
 
 def setup(hass, config):
     """Set up the WyzeApi parent component."""
-    _LOGGER.info("Creating new WyzeApi component")
+    _LOGGER.debug("""
+-------------------------------------------------------------------
+Wyze Bulb and Switch Home Assistant Integration
+
+Version: v0.4.0
+This is a custom integration
+If you have any issues with this you need to open an issue here:
+https://github.com/JoshuaMulliken/ha-wyzeapi/issues
+-------------------------------------------------------------------""")
+    _LOGGER.debug("""Creating new WyzeApi component""")
 
     wyzeapi_account = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
                               config[DOMAIN].get(CONF_PASSWORD))
@@ -32,7 +41,7 @@ def setup(hass, config):
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
         return False
 
-    _LOGGER.info("Connected to Wyze account")
+    _LOGGER.debug("Connected to Wyze account")
     wyzeapi_devices = wyzeapi_account.get_devices()
 
     # Store the logged in account object for the platforms to use.
