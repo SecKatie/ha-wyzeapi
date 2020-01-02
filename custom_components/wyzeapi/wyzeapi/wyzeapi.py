@@ -5,7 +5,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-from .wyzeapi_exceptions import *
+from .wyzeapi_exceptions import WyzeApiError
 from .wyzeapi_bulb import WyzeBulb
 from .wyzeapi_switch import WyzeSwitch
 from .wyzeapi_request_manager import RequestManager
@@ -48,7 +48,7 @@ class WyzeApi():
 			"access_token":""
 		}
 
-		data = self._request_man.do_blocking_request(url, payload)
+		data = self._request_man.do_single_threaded_request(url, payload)
 
 		try:
 			access_token = data['data']['access_token']
