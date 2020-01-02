@@ -3,7 +3,7 @@ import json
 import threading
 from queue import Queue
 
-from wyzeapi_exceptions import WyzeApiError
+from .wyzeapi_exceptions import WyzeApiError
 
 import logging
 _LOGGER = logging.getLogger(__name__)
