@@ -3,6 +3,7 @@
 """Platform for switch integration."""
 import logging
 from .wyzeapi.wyzeapi import WyzeApi
+from . import DOMAIN
 
 import voluptuous as vol
 
@@ -13,36 +14,16 @@ from homeassistant.components.switch import (
 	SwitchDevice
 	)
 
-from homeassistant.const import CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
-
 _LOGGER = logging.getLogger(__name__)
 
-# Validation of the user's configuration
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-	vol.Required(CONF_USERNAME): cv.string,
-	vol.Required(CONF_PASSWORD): cv.string,
-})
-
-
 def setup_platform(hass, config, add_entities, discovery_info=None):
-	"""Set up the Awesome Switch platform."""
+	"""Set up the Wyze Switch platform."""
 	# Assign configuration variables.
 	# The configuration check takes care they are present.
 	_LOGGER.debug("WYZEAPI v0.2.0")
 
-	user_name = config[CONF_USERNAME]
-	password = config.get(CONF_PASSWORD)
-
-	# Setup connection with the WyzeApi
-	wyze = WyzeApi(user_name, password)
-
-	# Verify that passed in configuration works
-	if not wyze.is_valid_login():
-		_LOGGER.error("Could not connect to Wyze Api")
-		return
-
 	# Add devices
-	add_entities(WyzeSwitch(switch) for switch in wyze.list_switches())
+	add_entities(WyzeSwitch(switch) for switch in hass.data[DOMAIN]["wyzeapi_account"].list_switches())
 
 class WyzeSwitch(SwitchDevice):
 	"""Representation of a Wyze Switch."""
@@ -64,8 +45,7 @@ class WyzeSwitch(SwitchDevice):
 		return self._state
 
 	def turn_on(self, **kwargs):
-		"""Instruct the switch to turn on.
-		"""
+		"""Instruct the switch to turn on."""
 
 		self._switch.turn_on()
 		self._state = True
@@ -77,7 +57,6 @@ class WyzeSwitch(SwitchDevice):
 
 	def update(self):
 		"""Fetch new state data for this switch.
-
 		This is the only method that should fetch new data for Home Assistant.
 		"""
 		self._switch.update()
