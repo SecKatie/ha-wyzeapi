@@ -39,7 +39,7 @@ class RequestManager():
 
 			self._lock.acquire()
 			if self._in_error_state:
-				_LOGGER.error(self._error_msg)
+				_LOGGER.warning(self._error_msg)
 				self._api._access_token = None
 				self._api.initialize()
 			self._lock.release()
