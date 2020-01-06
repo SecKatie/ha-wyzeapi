@@ -31,4 +31,15 @@ wyzeapi:
 
 * Entities will show up as `light.<friendly name>` or  `switch.<friendly name>` for example (`light.livingroom_lamp`).
 
-### *Please report any issues you find*
+## Reporting an Issue
+
+1. Setup your logger to print debug messages for this component by adding this to your `configuration.yaml`:
+    ```yaml
+    logger:
+      default: warning
+      logs:
+        custom_components.wyzeapi: debug
+    ```
+2. Restart HA
+3. Verify you're still having the issue
+4. File an issue in this Github Repository
