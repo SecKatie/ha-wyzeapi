@@ -54,7 +54,7 @@ class RequestManager():
 
 		if data['code'] != '1':
 			if data['msg'] == 'AccessTokenError':
-				_LOGGER.info("Recieved AccessTokenError attempting to regenerate the AccessToken")
+				_LOGGER.info("Recieved AccessTokenError. Attempting to regenerate the AccessToken")
 
 				self._lock.acquire()
 				self._in_error_state = True

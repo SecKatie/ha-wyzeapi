@@ -37,11 +37,17 @@ class WyzeBulb(Light):
 		self._state = light._state
 		self._brightness = light._brightness
 		self._colortemp = light._colortemp
+		self._avaliable = True
 
 	@property
 	def name(self):
 		"""Return the display name of this light."""
 		return self._name
+
+	@property
+	def available(self):
+		"""Return the connection status of this light"""
+		return self._avaliable
 
 	@property
 	def brightness(self):
@@ -88,5 +94,6 @@ class WyzeBulb(Light):
 		"""
 		self._light.update()
 		self._state = self._light.is_on()
+		self._avaliable = self._light._avaliable
 		self._brightness = self._light._brightness
 		self._colortemp = self._light._colortemp
