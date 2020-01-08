@@ -8,6 +8,7 @@ class WyzeBulb():
 		self._device_mac = device_mac
 		self._friendly_name = friendly_name
 		self._state = state
+		self._avaliable = True
 		self._brightness = self._colortemp = None
 		self._just_changed_state = False
 
@@ -114,6 +115,8 @@ class WyzeBulb():
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
 					self._state = True if int(item['value']) == 1 else False
+				elif item['pid'] == "P5":
+					self._avaliable = False if int(item['value']) == 0 else True
 				elif item['pid'] == "P1501":
 					self._brightness = self.translate(int(item['value']), 0, 100, 0, 255)
 				elif item['pid'] == "P1502":
