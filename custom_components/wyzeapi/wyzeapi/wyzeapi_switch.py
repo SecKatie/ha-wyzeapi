@@ -8,6 +8,7 @@ class WyzeSwitch():
 		self._device_model = device_model
 		self._friendly_name = friendly_name
 		self._state = state
+		self._avaliable = True
 		self._just_changed_state = False
 
 	def turn_on(self):
@@ -85,3 +86,5 @@ class WyzeSwitch():
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
 					self._state = True if int(item['value']) == 1 else False
+				elif item['pid'] == "P5":
+					self._avaliable = False if int(item['value']) == 0 else True
