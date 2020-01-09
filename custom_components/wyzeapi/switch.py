@@ -31,11 +31,17 @@ class WyzeSwitch(SwitchDevice):
 		self._switch = switch
 		self._name = switch._friendly_name
 		self._state = switch._state
+		self._avaliable = True
 
 	@property
 	def name(self):
 		"""Return the display name of this switch."""
 		return self._name
+
+	@property
+	def available(self):
+		"""Return the connection status of this switch"""
+		return self._avaliable
 
 	@property
 	def is_on(self):
