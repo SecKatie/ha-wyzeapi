@@ -42,6 +42,7 @@ class RequestManager():
 				_LOGGER.warning(self._error_msg)
 				self._api._access_token = None
 				self._api.initialize()
+				self._in_error_state = False
 			self._lock.release()
 
 			t = threading.Thread(target=self.request_worker, args=(request_item,))
