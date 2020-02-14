@@ -29,7 +29,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		self._api._request_man.do_request(url, payload)
+		self._api.do_request(url, payload)
 
 		self._state = True
 		self._just_changed_state = True
@@ -52,7 +52,7 @@ class WyzeSwitch():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		self._api._request_man.do_request(url, payload)
+		self._api.do_request(url, payload)
 
 		self._state = False
 		self._just_changed_state = True
@@ -81,7 +81,7 @@ class WyzeSwitch():
 				"access_token": self._api._access_token
 			}
 
-			data = self._api._request_man.do_blocking_request(url, payload)
+			data = self._api.do_request(url, payload)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
