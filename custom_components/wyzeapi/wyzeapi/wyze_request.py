@@ -19,7 +19,7 @@ class WyzeRequest():
             'Content-Type': 'application/json'
         }
 
-    def getResponse(self):
+    def get_response(self):
         r = requests.post(self._url, headers=self._header, data=self._payload)
 
         data = r.json()
@@ -32,7 +32,7 @@ class WyzeRequest():
 
         return data
 
-    async def async_getResponse(self):
+    async def async_get_response(self):
         async with aiohttp.ClientSession() as session:
             sslcontext = ssl.create_default_context(cafile=certifi.where())
             async with session.post(self._url, headers=self._header, data=self._payload, ssl=sslcontext) as resp:

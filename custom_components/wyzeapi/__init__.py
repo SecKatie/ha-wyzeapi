@@ -21,7 +21,7 @@ CONFIG_SCHEMA = vol.Schema({
     })
 }, extra=vol.ALLOW_EXTRA)
 
-def setup(hass, config):
+async def async_setup(hass, config):
     """Set up the WyzeApi parent component."""
     _LOGGER.debug("""
 -------------------------------------------------------------------
