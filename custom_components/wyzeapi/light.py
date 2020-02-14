@@ -20,7 +20,7 @@ from homeassistant.components.light import (
 
 _LOGGER = logging.getLogger(__name__)
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Wyze Light platform."""
 	_LOGGER.debug("""Creating new WyzeApi light component""")
 
@@ -72,7 +72,7 @@ class WyzeBulb(Light):
 	def supported_features(self):
 		return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
-	def turn_on(self, **kwargs):
+	async def async_turn_on(self, **kwargs):
 		"""Instruct the light to turn on.
 
 		You can skip the brightness part if your light does not support
@@ -83,12 +83,12 @@ class WyzeBulb(Light):
 		self._light.turn_on()
 		self._state = True
 
-	def turn_off(self, **kwargs):
+	async def async_turn_off(self, **kwargs):
 		"""Instruct the light to turn off."""
 		self._light.turn_off()
 		self._state = False
 
-	def update(self):
+	async def async_update(self):
 		"""Fetch new state data for this light.
 		This is the only method that should fetch new data for Home Assistant.
 		"""

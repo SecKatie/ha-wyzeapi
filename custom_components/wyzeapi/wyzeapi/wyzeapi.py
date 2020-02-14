@@ -17,6 +17,7 @@ class WyzeApi():
         self._password = self.create_md5_md5(password)
         self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
         self._in_error_state = False
+        self._invalid_access_tokens = []
         self._access_token = self.login(self._user_name, self._password, self._device_id)
 
         # Create device array
@@ -160,18 +161,24 @@ class WyzeApi():
 
     def do_request(self, url, payload):
         try:
-            return WyzeRequest(url, payload).getResponse()
+            return WyzeRequest(url, payload).get_response()
         except AccessTokenError:
-            self._access_token = self.login(self._user_name, self._password, self._device_id)
+            if payload["access_token"] not in self._invalid_access_tokens:
+                self._invalid_access_tokens.append(payload["access_token"])
+                self._access_token = self.login(self._user_name, self._password, self._device_id)
+
             payload["access_token"] = self._access_token
 
-            return WyzeRequest(url, payload).getResponse()
+            return WyzeRequest(url, payload).get_response()
 
     async def async_do_request(self, url, payload):
         try:
-            return await WyzeRequest(url, payload).async_getResponse()
+            return await WyzeRequest(url, payload).async_get_response()
         except AccessTokenError:
-            self._access_token = self.login(self._user_name, self._password, self._device_id)
+            if payload["access_token"] not in self._invalid_access_tokens:
+                self._invalid_access_tokens.append(payload["access_token"])
+                self._access_token = self.login(self._user_name, self._password, self._device_id)
+
             payload["access_token"] = self._access_token
 
-            return await WyzeRequest(url, payload).async_getResponse()
+            return await WyzeRequest(url, payload).async_get_response()
