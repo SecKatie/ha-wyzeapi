@@ -5,3 +5,7 @@ class Error(Exception):
 class WyzeApiError(Error):
 	"""Raised when the api returns an error"""
 	pass
+
+class AccessTokenError(WyzeApiError):
+   """Raised when the api returns an AccessTokenError"""
+   pass
