@@ -21,7 +21,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
 	_LOGGER.debug("""Creating new WyzeApi switch component""")
 
 	# Add devices
-	add_entities(WyzeSwitch(switch) for switch in hass.data[DOMAIN]["wyzeapi_account"].list_switches())
+	add_entities(WyzeSwitch(switch) for switch in await hass.data[DOMAIN]["wyzeapi_account"].async_list_switches())
 
 class WyzeSwitch(SwitchDevice):
 	"""Representation of a Wyze Switch."""
