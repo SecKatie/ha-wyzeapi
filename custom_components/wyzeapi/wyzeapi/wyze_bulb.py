@@ -207,7 +207,7 @@ class WyzeBulb():
 				"access_token": self._api._access_token
 			}
 
-			data = await self._api.do_request(url, payload)
+			data = await self._api.async_do_request(url, payload)
 
 			for item in data['data']['property_list']:
 				if item['pid'] == "P3":
