@@ -50,14 +50,15 @@ class WyzeSwitch(SwitchDevice):
 
 	async def async_turn_on(self, **kwargs):
 		"""Instruct the switch to turn on."""
-		self._state = await self._switch.async_turn_on()
+		await self._switch.async_turn_on()
 
 	async def async_turn_off(self, **kwargs):
 		"""Instruct the switch to turn off."""
-		self._state = await self._switch.async_turn_off()
+		await self._switch.async_turn_off()
 
 	async def async_update(self):
 		"""Fetch new state data for this switch.
 		This is the only method that should fetch new data for Home Assistant.
 		"""
-		self._state = await self._switch.async_update()
+		await self._switch.async_update()
+		self._state = self._switch._state

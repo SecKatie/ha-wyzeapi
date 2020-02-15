@@ -15,7 +15,7 @@ class WyzeApi():
         self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
         self._in_error_state = False
         self._invalid_access_tokens = []
-        self._access_token = self.login(self._user_name, self._password, self._device_id)
+        self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
 
         # Create device array
         self._all_devices = []
@@ -25,7 +25,7 @@ class WyzeApi():
         digest2 = md5(digest1.encode('utf-8')).hexdigest()
         return digest2
 
-    def login(self, username, password, device_id):
+    async def async_login(self, username, password, device_id):
         url = "https://api.wyzecam.com/app/user/login"
         payload = {
             "phone_id":device_id,
@@ -42,7 +42,7 @@ class WyzeApi():
             "access_token":""
         }
 
-        data = self.do_request(url, payload)
+        data = await self.async_do_request(url, payload)
 
         try:
             access_token = data['data']['access_token']
@@ -55,28 +55,6 @@ class WyzeApi():
             return False
         return True
 
-
-    def get_devices(self):
-        if not self._all_devices:
-            url = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
-
-            payload = {
-                "phone_system_type":"1",
-                "app_version":"2.6.62",
-                "app_ver":"com.hualai.WyzeCam___2.6.62",
-                "sc":"9f275790cab94a72bd206c8876429f3c",
-                "ts": datetime.datetime.now().strftime("%s"),
-                "sv":"9d74946e652647e9b6c9d59326aef104",
-                "access_token": self._access_token,
-                "phone_id": self._device_id,
-                "app_name":"com.hualai.WyzeCam"
-            }
-
-            data = self.do_request(url, payload)
-            self._all_devices = data['data']['device_list']
-
-        return self._all_devices
-    
     async def async_get_devices(self):
         if not self._all_devices:
             url = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
@@ -97,20 +75,6 @@ class WyzeApi():
             self._all_devices = data['data']['device_list']
 
         return self._all_devices
-
-    def list_bulbs(self):
-        bulbs = []
-
-        for device in self.get_devices():
-            if (device['product_type'] == "Light"):
-                bulbs.append(WyzeBulb(
-                    self,
-                    device['mac'],
-                    device['nickname'],
-                    ("on" if device['device_params']['switch_state'] == 1 else "off")
-                    ))
-
-        return bulbs
     
     async def async_list_bulbs(self):
         bulbs = []
@@ -121,30 +85,16 @@ class WyzeApi():
                     self,
                     device['mac'],
                     device['nickname'],
-                    ("on" if device['device_params']['switch_state'] == 1 else "off")
+                    ("on" if device['device_params']['switch_state'] == 1 else "off"),
+                    device['product_model']
                     ))
 
         return bulbs
 
-    def list_switches(self):
-        switches = []
-
-        for device in self.get_devices():
-            if (device['product_type'] == "Plug"):
-                switches.append(WyzeSwitch(
-                    self,
-                    device['mac'],
-                    device['nickname'],
-                    ("on" if device['device_params']['switch_state'] == 1 else "off"),
-                    device['product_model']
-                    ))
-
-        return switches
-
     async def async_list_switches(self):
         switches = []
 
-        for device in self.get_devices():
+        for device in await self.async_get_devices():
             if (device['product_type'] == "Plug"):
                 switches.append(WyzeSwitch(
                     self,
@@ -155,18 +105,6 @@ class WyzeApi():
                     ))
 
         return switches
-
-    def do_request(self, url, payload):
-        try:
-            return WyzeRequest(url, payload).get_response()
-        except AccessTokenError:
-            if payload["access_token"] not in self._invalid_access_tokens:
-                self._invalid_access_tokens.append(payload["access_token"])
-                self._access_token = self.login(self._user_name, self._password, self._device_id)
-
-            payload["access_token"] = self._access_token
-
-            return WyzeRequest(url, payload).get_response()
 
     async def async_do_request(self, url, payload):
         try:
@@ -174,7 +112,7 @@ class WyzeApi():
         except AccessTokenError:
             if payload["access_token"] not in self._invalid_access_tokens:
                 self._invalid_access_tokens.append(payload["access_token"])
-                self._access_token = self.login(self._user_name, self._password, self._device_id)
+                self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
 
             payload["access_token"] = self._access_token
 
