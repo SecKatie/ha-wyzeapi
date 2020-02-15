@@ -15,10 +15,12 @@ class WyzeApi():
         self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
         self._in_error_state = False
         self._invalid_access_tokens = []
-        self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
 
         # Create device array
         self._all_devices = []
+
+    async def async_init(self):
+        self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
 
     def create_md5_md5(self, password):
         digest1 = md5(password.encode('utf-8')).hexdigest()

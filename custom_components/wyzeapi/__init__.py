@@ -36,13 +36,14 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
 
     wyzeapi_account = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
                               config[DOMAIN].get(CONF_PASSWORD))
+    await wyzeapi_account.async_init()
 
     if not wyzeapi_account.is_valid_login():
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
         return False
 
     _LOGGER.debug("Connected to Wyze account")
-    wyzeapi_devices = wyzeapi_account.get_devices()
+    wyzeapi_devices = await wyzeapi_account.async_get_devices()
 
     # Store the logged in account object for the platforms to use.
     hass.data[DOMAIN] = {
