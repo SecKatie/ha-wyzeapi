@@ -218,6 +218,8 @@ class WyzeBulb():
 					self._brightness = self.translate(int(item['value']), 0, 100, 0, 255)
 				elif item['pid'] == "P1502":
 					self._colortemp = self.translate(int(item['value']), 2700, 6500, 500, 153)
+			
+			return self._state
 
 	def translate(self, value, leftMin, leftMax, rightMin, rightMax):
 		# Figure out how 'wide' each range is
