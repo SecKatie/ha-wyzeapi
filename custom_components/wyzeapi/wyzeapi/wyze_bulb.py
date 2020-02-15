@@ -101,7 +101,7 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		await self._api.async_do_request(url, payload)
+		self._api.async_do_request(url, payload)
 
 		self._state = True
 		self._just_changed_state = True
@@ -147,7 +147,7 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		await self._api.async_do_request(url, payload)
+		self._api.async_do_request(url, payload)
 
 		self._state = False
 		self._just_changed_state = True
