@@ -80,20 +80,17 @@ class WyzeBulb(Light):
 		"""
 		self._light._brightness = kwargs.get(ATTR_BRIGHTNESS)
 		self._light._colortemp = kwargs.get(ATTR_COLOR_TEMP)
-		self._light.turn_on()
-		self._state = True
+		self._state = await self._light.turn_on()
 
 	async def async_turn_off(self, **kwargs):
 		"""Instruct the light to turn off."""
-		self._light.turn_off()
-		self._state = False
+		self._state = await self._light.turn_off()
 
 	async def async_update(self):
 		"""Fetch new state data for this light.
 		This is the only method that should fetch new data for Home Assistant.
 		"""
-		self._light.update()
-		self._state = self._light.is_on()
+		self._state = await self._light.update()
 		self._avaliable = self._light._avaliable
 		self._brightness = self._light._brightness
 		self._colortemp = self._light._colortemp

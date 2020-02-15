@@ -52,8 +52,8 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     # Start up lights and switch components
     if wyzeapi_devices:
         _LOGGER.debug("Starting WyzeApi components")
-        discovery.load_platform(hass, "light", DOMAIN, {}, config)
-        discovery.load_platform(hass, "switch", DOMAIN, {}, config)
+        await discovery.async_load_platform(hass, "light", DOMAIN, {}, config)
+        await discovery.async_load_platform(hass, "switch", DOMAIN, {}, config)
     else:
         _LOGGER.error("WyzeApi authenticated but could not find any devices.")
 
