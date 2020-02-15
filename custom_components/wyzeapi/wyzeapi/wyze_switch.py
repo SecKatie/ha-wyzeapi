@@ -1,6 +1,3 @@
-import logging
-_LOGGER = logging.getLogger(__name__)
-
 class WyzeSwitch():
 	def __init__(self, api, device_mac, friendly_name, state, device_model):
 		self._api = api
@@ -12,8 +9,6 @@ class WyzeSwitch():
 		self._just_changed_state = False
 
 	def turn_on(self):
-		_LOGGER.debug("Turning on: " + self._device_mac)
-
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 		payload = {
@@ -35,8 +30,6 @@ class WyzeSwitch():
 		self._just_changed_state = True
 
 	def turn_off(self):
-		_LOGGER.debug("Turning off: " + self._device_mac)
-
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
 		payload = {

@@ -1,10 +1,7 @@
 #!/usr/bin/python3
 
-import logging
 import datetime
 from hashlib import md5
-
-_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_exceptions import WyzeApiError, AccessTokenError
 from .wyze_request import WyzeRequest
