@@ -106,6 +106,8 @@ class WyzeBulb():
 		self._state = True
 		self._just_changed_state = True
 
+		return self._state
+
 	def turn_off(self):
 
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
@@ -149,6 +151,8 @@ class WyzeBulb():
 
 		self._state = False
 		self._just_changed_state = True
+
+		return self._state
 
 	def is_on(self):
 		return self._state

@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
 	"""Set up the Wyze Switch platform."""
-	_LOGGER.debug("""Creating new WyzeApi light component""")
+	_LOGGER.debug("""Creating new WyzeApi switch component""")
 
 	# Add devices
 	add_entities(WyzeSwitch(switch) for switch in hass.data[DOMAIN]["wyzeapi_account"].list_switches())
