@@ -1,3 +1,5 @@
+import asyncio
+
 class WyzeBulb():
 	def __init__(self, api, device_mac, friendly_name, state):
 		self._api = api
@@ -52,7 +54,8 @@ class WyzeBulb():
 				'app_ver': 'com.hualai.WyzeCam___2.6.62'
 			}
 
-		self._api.async_do_request(url, payload)
+		loop = asyncio.get_running_loop()
+		loop.create_task(self._api.async_do_request(url, payload))
 
 		self._state = True
 		self._just_changed_state = True
@@ -74,7 +77,8 @@ class WyzeBulb():
 			'app_ver': 'com.hualai.WyzeCam___2.6.62'
 		}
 
-		self._api.async_do_request(url, payload)
+		loop = asyncio.get_running_loop()
+		loop.create_task(self._api.async_do_request(url, payload))
 
 		self._state = False
 		self._just_changed_state = True
