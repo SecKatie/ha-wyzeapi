@@ -28,6 +28,27 @@ class WyzeSwitch():
 
 		self._state = True
 		self._just_changed_state = True
+	
+	async def async_turn_on(self):
+		url = 'https://api.wyzecam.com/app/v2/device/set_property'
+
+		payload = {
+			'phone_id': self._api._device_id,
+			'access_token': self._api._access_token,
+			'device_model': self._device_model,
+			'ts': '1575948896791',
+			'sc': '01dd431d098546f9baf5233724fa2ee2',
+			'sv': '107693eb44244a948901572ddab807eb',
+			'device_mac': self._device_mac,
+			'pvalue': "1",
+			'pid': 'P3',
+			'app_ver': 'com.hualai.WyzeCam___2.6.62'
+		}
+
+		await self._api.async_do_request(url, payload)
+
+		self._state = True
+		self._just_changed_state = True
 
 	def turn_off(self):
 		url = 'https://api.wyzecam.com/app/v2/device/set_property'
@@ -46,6 +67,27 @@ class WyzeSwitch():
 		}
 
 		self._api.do_request(url, payload)
+
+		self._state = False
+		self._just_changed_state = True
+	
+	async def async_turn_off(self):
+		url = 'https://api.wyzecam.com/app/v2/device/set_property'
+
+		payload = {
+			'phone_id': self._api._device_id,
+			'access_token': self._api._access_token,
+			'device_model': self._device_model,
+			'ts': '1575948896791',
+			'sc': '01dd431d098546f9baf5233724fa2ee2',
+			'sv': '107693eb44244a948901572ddab807eb',
+			'device_mac': self._device_mac,
+			'pvalue': "0",
+			'pid': 'P3',
+			'app_ver': 'com.hualai.WyzeCam___2.6.62'
+		}
+
+		await self._api.async_do_request(url, payload)
 
 		self._state = False
 		self._just_changed_state = True
