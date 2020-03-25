@@ -15,10 +15,9 @@ This is a custom component to allow control of Wyze Bulbs and Switches in Homeas
 
 ## Installation (HACS) - Highly Recommended
 
+ha-wyzeapi is now available in the HACS Integrations store. You no longer need to add a custom repository.
 1. Have HACS installed, this will allow you to easily update
-2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzebulb) as a custom repository as Type: Integration
-3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
-4. Restart HA
+2. In the integrations tab of HACS, search for ' ha-wyzeapi ' and click install.
 
 ## Installation (Manual)
 
