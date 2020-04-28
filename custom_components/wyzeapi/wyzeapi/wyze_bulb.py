@@ -17,7 +17,7 @@ class WyzeBulb():
         self._brightness = self._colortemp = None
 
     async def async_turn_on(self):
-        _LOGGER.debug("Light " + self.friendly_name + " turning on.")
+        _LOGGER.debug("Light " + self._friendly_name + " turning on.")
         if self._colortemp is not None or self._brightness is not None:
             url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
@@ -74,7 +74,7 @@ class WyzeBulb():
         self._just_changed_state = True
 
     async def async_turn_off(self):
-        _LOGGER.debug("Light " + self.friendly_name + " turning off.")
+        _LOGGER.debug("Light " + self._friendly_name + " turning off.")
         url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
         payload = {
@@ -100,7 +100,7 @@ class WyzeBulb():
         return self._state
     
     async def async_update(self):
-        _LOGGER.debug("Light " + self.friendly_name + " updating.")
+        _LOGGER.debug("Light " + self._friendly_name + " updating.")
         if self._just_changed_state:
             self._just_changed_state = False
         else:
