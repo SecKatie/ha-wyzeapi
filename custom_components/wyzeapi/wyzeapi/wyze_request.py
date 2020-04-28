@@ -3,11 +3,15 @@ import json
 import aiohttp
 import ssl
 import certifi
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_exceptions import WyzeApiError, AccessTokenError
 
 class WyzeRequest():
     def __init__(self, url, payload, no_return=False):
+        _LOGGER.debug("Wyze Request initializing.")
         self._url = url
         self._payload = json.dumps(payload)
         self._no_return = no_return
@@ -20,6 +24,7 @@ class WyzeRequest():
         }
 
     def get_response(self):
+        _LOGGER.debug("Wyze Request getting response.")
         r = requests.post(self._url, headers=self._header, data=self._payload)
 
         data = r.json()
@@ -33,6 +38,7 @@ class WyzeRequest():
         return data
 
     async def async_get_response(self):
+        _LOGGER.debug("Wyze Request getting response async.")
         async with aiohttp.ClientSession() as session:
             sslcontext = ssl.create_default_context(cafile=certifi.where())
             async with session.post(self._url, headers=self._header, data=self._payload, ssl=sslcontext) as resp:
