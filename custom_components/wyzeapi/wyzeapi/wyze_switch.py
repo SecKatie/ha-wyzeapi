@@ -16,7 +16,7 @@ class WyzeSwitch():
         self._device_model = device_model
 
     async def async_turn_on(self):
-        _LOGGER.debug("Switch " + self.friendly_name + " turning on.")
+        _LOGGER.debug("Switch " + self._friendly_name + " turning on.")
         url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
         payload = {
@@ -39,7 +39,7 @@ class WyzeSwitch():
         self._just_changed_state = True
     
     async def async_turn_off(self):
-        _LOGGER.debug("Switch " + self.friendly_name + " turning off.")
+        _LOGGER.debug("Switch " + self._friendly_name + " turning off.")
         url = 'https://api.wyzecam.com/app/v2/device/set_property'
 
         payload = {
@@ -65,7 +65,7 @@ class WyzeSwitch():
         return self._state
 
     async def async_update(self):
-        _LOGGER.debug("Switch " + self.friendly_name + " updating.")
+        _LOGGER.debug("Switch " + self._friendly_name + " updating.")
         if self._just_changed_state == True:
             self._just_changed_state == False
         else:
