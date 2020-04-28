@@ -1,13 +1,23 @@
 import asyncio
+import logging
 
-from .wyze_device import *
+_LOGGER = logging.getLogger(__name__)
 
-class WyzeBulb(WyzeDevice):
+class WyzeBulb():
     def __init__(self, api, device_mac, friendly_name, state, device_model):
-        super().__init__(api, device_mac, friendly_name, state, device_model)
+        _LOGGER.debug("Light " + friendly_name + " initializing.")
+
+        self._api = api
+        self._device_mac = device_mac
+        self._friendly_name = friendly_name
+        self._state = state
+        self._avaliable = True
+        self._just_changed_state = False
+        self._device_model = device_model
         self._brightness = self._colortemp = None
 
     async def async_turn_on(self):
+        _LOGGER.debug("Light " + self.friendly_name + " turning on.")
         if self._colortemp is not None or self._brightness is not None:
             url = 'https://api.wyzecam.com/app/v2/device/set_property_list'
 
@@ -18,7 +28,13 @@ class WyzeBulb(WyzeDevice):
                 property_list.append({"pid": "P1501", "pvalue": brightness})
 
             if self._colortemp:
-                colortemp = self.translate(self._colortemp, 500, 140, 2700, 6500)
+                if self._colortemp >= 370:
+                    colortemp = 2700
+                elif self._colortemp <= 153:
+                    colortemp = 6500
+                else:
+                    colortemp = 1000000/self._colortemp
+                    
                 property_list.append({"pid": "P1502", "pvalue": colortemp})
 
             payload = {
@@ -56,8 +72,35 @@ class WyzeBulb(WyzeDevice):
 
         self._state = True
         self._just_changed_state = True
+
+    async def async_turn_off(self):
+        _LOGGER.debug("Light " + self.friendly_name + " turning off.")
+        url = 'https://api.wyzecam.com/app/v2/device/set_property'
+
+        payload = {
+            'phone_id': self._api._device_id,
+            'access_token': self._api._access_token,
+            'device_model': self._device_model,
+            'ts': '1575948896791',
+            'sc': '01dd431d098546f9baf5233724fa2ee2',
+            'sv': '107693eb44244a948901572ddab807eb',
+            'device_mac': self._device_mac,
+            'pvalue': "0",
+            'pid': 'P3',
+            'app_ver': 'com.hualai.WyzeCam___2.6.62'
+        }
+
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._api.async_do_request(url, payload))
+
+        self._state = False
+        self._just_changed_state = True
+
+    def is_on(self):
+        return self._state
     
     async def async_update(self):
+        _LOGGER.debug("Light " + self.friendly_name + " updating.")
         if self._just_changed_state:
             self._just_changed_state = False
         else:
@@ -88,7 +131,7 @@ class WyzeBulb(WyzeDevice):
                 elif item['pid'] == "P1501":
                     self._brightness = self.translate(int(item['value']), 0, 100, 0, 255)
                 elif item['pid'] == "P1502":
-                    self._colortemp = self.translate(int(item['value']), 2700, 6500, 500, 153)
+                    self._colortemp = 1000000/int(item['value'])
 
     def translate(self, value, leftMin, leftMax, rightMin, rightMax):
         # Figure out how 'wide' each range is

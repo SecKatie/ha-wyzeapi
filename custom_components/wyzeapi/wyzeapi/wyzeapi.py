@@ -2,6 +2,9 @@
 
 import datetime
 from hashlib import md5
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 from .wyzeapi_exceptions import WyzeApiError, AccessTokenError
 from .wyze_request import WyzeRequest
@@ -10,6 +13,7 @@ from .wyze_switch import WyzeSwitch
 
 class WyzeApi():
     def __init__(self, user_name, password):
+        _LOGGER.debug("Wyze Api initializing.")
         self._user_name = user_name
         self._password = self.create_md5_md5(password)
         self._device_id = "bc151f39-787b-4871-be27-5a20fd0a1937"
@@ -20,6 +24,7 @@ class WyzeApi():
         self._all_devices = []
 
     async def async_init(self):
+        _LOGGER.debug("Wyze Api initializing async.")
         self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
 
     def create_md5_md5(self, password):
@@ -28,6 +33,7 @@ class WyzeApi():
         return digest2
 
     async def async_login(self, username, password, device_id):
+         _LOGGER.debug("Wyze Api logging in async.")
         url = "https://api.wyzecam.com/app/user/login"
         payload = {
             "phone_id":device_id,
@@ -58,6 +64,7 @@ class WyzeApi():
         return True
 
     async def async_get_devices(self):
+        _LOGGER.debug("Wyze Api getting devices.")
         if not self._all_devices:
             url = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
 
@@ -79,6 +86,7 @@ class WyzeApi():
         return self._all_devices
     
     async def async_list_bulbs(self):
+        _LOGGER.debug("Wyze Api listing bulbs.")
         bulbs = []
 
         for device in await self.async_get_devices():
@@ -94,6 +102,7 @@ class WyzeApi():
         return bulbs
 
     async def async_list_switches(self):
+        _LOGGER.debug("Wyze Api listing switches.")
         switches = []
 
         for device in await self.async_get_devices():
@@ -109,6 +118,7 @@ class WyzeApi():
         return switches
 
     async def async_do_request(self, url, payload):
+        _LOGGER.debug("Wyze Api doing request.")
         try:
             return await WyzeRequest(url, payload).async_get_response()
         except AccessTokenError:
