@@ -33,7 +33,7 @@ class WyzeApi():
         return digest2
 
     async def async_login(self, username, password, device_id):
-         _LOGGER.debug("Wyze Api logging in async.")
+        _LOGGER.debug("Wyze Api logging in async.")
         url = "https://api.wyzecam.com/app/user/login"
         payload = {
             "phone_id":device_id,
