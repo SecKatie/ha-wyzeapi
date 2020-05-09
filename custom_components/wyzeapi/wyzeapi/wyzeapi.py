@@ -20,29 +20,31 @@ class WyzeApi():
         self._in_error_state = False
         self._invalid_access_tokens = []
 
+        self._access_token = self._refresh_token = None
+
         # Create device array
         self._all_devices = []
 
     async def async_init(self):
         _LOGGER.debug("Wyze Api initializing async.")
-        self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
+        await self.async_login()
 
     def create_md5_md5(self, password):
         digest1 = md5(password.encode('utf-8')).hexdigest()
         digest2 = md5(digest1.encode('utf-8')).hexdigest()
         return digest2
 
-    async def async_login(self, username, password, device_id):
+    async def async_login(self):
         _LOGGER.debug("Wyze Api logging in async.")
         url = "https://api.wyzecam.com/app/user/login"
         payload = {
-            "phone_id":device_id,
+            "phone_id":self._device_id,
             "app_name":"com.hualai.WyzeCam",
             "app_version":"2.6.62",
             "sc":"9f275790cab94a72bd206c8876429f3c",
-            "password":password,
+            "password":self._password,
             "sv":"41267de22d1847c8b99bfba2658f88d7",
-            "user_name":username,
+            "user_name":self._user_name,
             "two_factor_auth":"",
             "phone_system_type":"1",
             "app_ver":"com.hualai.WyzeCam___2.6.62",
@@ -53,10 +55,32 @@ class WyzeApi():
         data = await self.async_do_request(url, payload)
 
         try:
-            access_token = data['data']['access_token']
-            return access_token
+            self._access_token = data['data']['access_token']
+            self._refresh_token = data['data']['refresh_token']
         except:
-            return None
+            _LOGGER.error("Failure to login")
+    
+    async def async_refresh_token(self):
+        _LOGGER.debug("Wyze Api refreshing token.")
+        url = "https://api.wyzecam.com/app/user/refresh_token"
+        payload = {
+            "phone_id": self._device_id,
+            "app_name":"com.hualai.WyzeCam",
+            "app_version":"2.6.62",
+            "sc":"9f275790cab94a72bd206c8876429f3c",
+            "sv":"41267de22d1847c8b99bfba2658f88d7",
+            "ts":"1575955440030",
+            "access_token": self._access_token,
+            "refresh_token": self._refresh_token
+        }
+
+        data = await self.async_do_request(url, payload)
+
+        try:
+            self._access_token = data['data']['access_token']
+            self._refresh_token = data['data']['refresh_token']
+        except:
+            _LOGGER.error("Failure to refresh access token with the refresh token")
 
     def is_valid_login(self):
         if self._access_token == None:
@@ -124,7 +148,7 @@ class WyzeApi():
         except AccessTokenError:
             if payload["access_token"] not in self._invalid_access_tokens:
                 self._invalid_access_tokens.append(payload["access_token"])
-                self._access_token = await self.async_login(self._user_name, self._password, self._device_id)
+                await self.async_refresh_token()
 
             payload["access_token"] = self._access_token
 
