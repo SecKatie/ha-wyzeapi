@@ -27,7 +27,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.debug("""Creating new WyzeApi light component""")
 
     # Add devices
-	add_entities(WyzeBulb(light) for light in await hass.data[DOMAIN]["wyzeapi_account"].async_list_bulbs())
+    add_entities(WyzeBulb(light) for light in await hass.data[DOMAIN]["wyzeapi_account"].async_list_bulbs())
 
 class WyzeBulb(Light):
     """Representation of a Wyze Bulb."""

@@ -22,7 +22,7 @@ class WyzeApi():
         self._invalid_access_tokens = []
 
         self._access_token = self._refresh_token = None
-		
+        
         # Create device array
         self._all_devices = []
 
