@@ -24,9 +24,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Wyze binary_sensor platform."""
-    _LOGGER.debug("""Creating new WyzeApi binary_sensor component""")
+    _LOGGER.debug("""FARMER: Creating new WyzeApi binary_sensor component""")
 
     # Add devices
+    _LOGGER.debug("Farmer: binary_sensor.py Add entities for")
     add_entities(WyzeSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_sensor())
 
 class WyzeSensor(BinarySensorDevice):

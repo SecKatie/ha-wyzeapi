@@ -14,13 +14,10 @@ import homeassistant.helpers.config_validation as cv
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'wyzeapi'
-CONF_SENSORS = "sensors"
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_SENSORS, default=False): cv.boolean
-
+        vol.Required(CONF_PASSWORD): cv.string
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -40,8 +37,6 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     wyzeapi_account = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
                               config[DOMAIN].get(CONF_PASSWORD))
     await wyzeapi_account.async_init()
-    sensor_support = config[DOMAIN].get(CONF_SENSORS)
-    _LOGGER.debug("Farmer: checking sensors" + str(sensor_support))
 
     if not wyzeapi_account.is_valid_login():
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
@@ -60,8 +55,7 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
         _LOGGER.debug("Starting WyzeApi components")
         await discovery.async_load_platform(hass, "light", DOMAIN, {}, config)
         await discovery.async_load_platform(hass, "switch", DOMAIN, {}, config)
-        if sensor_support == True:
-            await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, {}, config)
+        await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, {}, config)
     else:
         _LOGGER.error("WyzeApi authenticated but could not find any devices.")
 
