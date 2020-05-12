@@ -185,7 +185,7 @@ class WyzeApi():
         except AccessTokenError:
             if payload["access_token"] not in self._invalid_access_tokens:
                 self._invalid_access_tokens.append(payload["access_token"])
-                await self.async_refresh_token()
+                await self.async_login()
 
             payload["access_token"] = self._access_token
 
