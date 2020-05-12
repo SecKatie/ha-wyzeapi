@@ -4,7 +4,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 class WyzeBulb():
-    def __init__(self, api, device_mac, friendly_name, state, device_model):
+    def __init__(self, api, device_mac, friendly_name, state, ssid, ip, rssi, device_model):
         _LOGGER.debug("Light " + friendly_name + " initializing.")
 
         self._api = api
@@ -15,6 +15,9 @@ class WyzeBulb():
         self._just_changed_state = False
         self._device_model = device_model
         self._brightness = self._colortemp = None
+        self._ssid = ssid
+        self._ip = ip
+        self._rssi = rssi
 
     async def async_turn_on(self):
         _LOGGER.debug("Light " + self._friendly_name + " turning on.")
