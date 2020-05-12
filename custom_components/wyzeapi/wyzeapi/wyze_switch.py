@@ -4,7 +4,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 class WyzeSwitch():
-    def __init__(self, api, device_mac, friendly_name, state, device_model):
+    def __init__(self, api, device_mac, friendly_name, state, ssid, ip, rssi, device_model):
         _LOGGER.debug("Switch " + friendly_name + " initializing.")
 
         self._api = api
@@ -13,6 +13,9 @@ class WyzeSwitch():
         self._state = state
         self._avaliable = True
         self._just_changed_state = False
+        self._ssid = ssid
+        self._ip = ip
+        self._rssi = rssi
         self._device_model = device_model
 
     async def async_turn_on(self):
@@ -91,5 +94,7 @@ class WyzeSwitch():
             for item in data['data']['property_list']:
                 if item['pid'] == "P3":
                     self._state = True if int(item['value']) == 1 else False
+                elif item['pid'] == "P1612":
+                    self._rssi = item['value']
                 elif item['pid'] == "P5":
                     self._avaliable = False if int(item['value']) == 0 else True
