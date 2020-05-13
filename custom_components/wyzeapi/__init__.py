@@ -63,9 +63,6 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
         "wyzeapi_account": wyzeapi_account
     }
 
-#for component in ["binary_sensor", "sensor", "switch", "light", "cover", "lock"]:
-##    for component in ["binary_sensor"]:
-#        await discovery.async_load_platform(hass, component, DOMAIN, {}, config)
     # Start up lights and switch components
     if wyzeapi_devices:
         _LOGGER.debug("Starting WyzeApi components")

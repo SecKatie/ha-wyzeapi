@@ -149,7 +149,7 @@ class WyzeApi():
 
         return switches
     async def async_list_sensor(self):
-        _LOGGER.debug("""Farmer: Wyze Api listing Contact sensors and Motion Sensors.""")
+        _LOGGER.debug("Wyze Api listing sensors.")
         sensor = []
 
         for device in await self.async_get_devices():

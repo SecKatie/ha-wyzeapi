@@ -2,7 +2,8 @@
 
 """Platform for binary_sensor integration."""
 import logging
-import datetime
+from datetime import timedelta
+
 from .wyzeapi.wyzeapi import WyzeApi
 from . import DOMAIN
 
@@ -17,9 +18,10 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_MOTION,
     DEVICE_CLASS_DOOR
     )
-from datetime import timedelta
 
-SCAN_INTERVAL = timedelta(seconds=10)
+#Add to support quicker update time. Is this to Fast?
+SCAN_INTERVAL = timedelta(seconds=5)
+
 ATTRIBUTION = "Data provided by Wyze"
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +31,6 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.debug("""FARMER: Creating new WyzeApi binary_sensor component""")
 
     # Add devices
-    _LOGGER.debug("Farmer: binary_sensor.py Add entities for")
     add_entities([WyzeSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_sensor()], True)
 
 class WyzeSensor(BinarySensorDevice):
@@ -44,13 +45,12 @@ class WyzeSensor(BinarySensorDevice):
         self._voltage = sensor._voltage
         self._rssi = sensor._rssi
         self._device_mac = sensor._device_mac
-        #self._open_close_state_ts = sensor._open_close_state_ts
+        self._open_close_state_ts = sensor._open_close_state_ts
         self._device_model = sensor._device_model
 
     @property
     def name(self):
         """Return the display name of this sensor."""
-        #self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
         return self._name
 
     @property
@@ -81,21 +81,24 @@ class WyzeSensor(BinarySensorDevice):
             "available": self._avaliable,
             "mac": self._device_mac,
             ATTR_BATTERY_LEVEL: self._voltage,
-            #"""Convert epoch millisecond expressed in integer"""
-            #DEVICE_CLASS_TIMESTAMP: datetime.datetime.fromtimestamp(self._open_close_state_ts),
             "rssi": self._rssi,
-            "device model": self._device_model
+            "device model": self._device_model,
+            #"""Need to Convert epoch millisecond expressed in integer"""
+            "timestamp" : self._open_close_state_ts
         }
+
     @property
     def should_poll(self):
         """No need to poll. Coordinator notifies entity of updates."""
         return True
+
     async def async_update(self):
         """Fetch new state data for this sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
-        _LOGGER.debug("""FARMER: Binary Sesnors doing a update.""")
+        _LOGGER.debug("""Binary Sesnors doing a update.""")
         await self._sensor.async_update()
         self._state = self._sensor._state
         self._rssi = self._sensor._rssi
         self._voltage = self._sensor._voltage
+        self._open_close_state_ts = self._sensor._open_close_state_ts
