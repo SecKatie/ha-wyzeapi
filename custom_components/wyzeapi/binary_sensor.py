@@ -17,17 +17,20 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_MOTION,
     DEVICE_CLASS_DOOR
     )
+from datetime import timedelta
 
+SCAN_INTERVAL = timedelta(seconds=10)
 ATTRIBUTION = "Data provided by Wyze"
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Wyze binary_sensor platform."""
-    _LOGGER.debug("""Creating new WyzeApi binary_sensor component""")
+    _LOGGER.debug("""FARMER: Creating new WyzeApi binary_sensor component""")
 
     # Add devices
-    add_entities(WyzeSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_sensor())
+    _LOGGER.debug("Farmer: binary_sensor.py Add entities for")
+    add_entities([WyzeSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_sensor()], True)
 
 class WyzeSensor(BinarySensorDevice):
     """Representation of a Wyze binary_sensor."""
@@ -83,11 +86,15 @@ class WyzeSensor(BinarySensorDevice):
             "rssi": self._rssi,
             "device model": self._device_model
         }
-
+    @property
+    def should_poll(self):
+        """No need to poll. Coordinator notifies entity of updates."""
+        return True
     async def async_update(self):
         """Fetch new state data for this sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
+        _LOGGER.debug("""FARMER: Binary Sesnors doing a update.""")
         await self._sensor.async_update()
         self._state = self._sensor._state
         self._rssi = self._sensor._rssi

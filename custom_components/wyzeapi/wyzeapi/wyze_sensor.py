@@ -6,7 +6,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class WyzeSensor():
     def __init__(self, api, device_mac, friendly_name, state, open_close_state_ts, voltage, rssi, device_model):
-        _LOGGER.debug("Sensor " + device_mac + " " +friendly_name + " " + device_model + " " +voltage + " "+ rssi + " " +str(open_close_state_ts) +" " + "initializing.")
+        _LOGGER.debug("Farmer: Sensor " + device_mac + " " +friendly_name + " " + device_model + " " +voltage + " "+ rssi + " " +str(open_close_state_ts) +" " + "initializing.")
 
         self._api = api
         self._device_mac = device_mac
@@ -25,7 +25,7 @@ class WyzeSensor():
         return self._state
 
     async def async_update(self):
-        _LOGGER.debug("Sensor " + self._friendly_name + " updating.")
+        _LOGGER.debug("Farmer: Sensor " + self._friendly_name + " updating.")
         if self._just_changed_state == True:
             self._just_changed_state == False
         else:

@@ -17,11 +17,12 @@ DOMAIN = 'wyzeapi'
 CONF_SENSORS = "sensors"
 CONF_LIGHT = "light"
 CONF_SWITCH = "switch"
+
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_USERNAME): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_SENSORS, default=False): cv.boolean,
+        vol.Optional(CONF_SENSORS, default=True): cv.boolean,
         vol.Optional(CONF_LIGHT, default=True): cv.boolean,
         vol.Optional(CONF_SWITCH, default=True): cv.boolean
 
@@ -62,6 +63,9 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
         "wyzeapi_account": wyzeapi_account
     }
 
+#for component in ["binary_sensor", "sensor", "switch", "light", "cover", "lock"]:
+##    for component in ["binary_sensor"]:
+#        await discovery.async_load_platform(hass, component, DOMAIN, {}, config)
     # Start up lights and switch components
     if wyzeapi_devices:
         _LOGGER.debug("Starting WyzeApi components")
