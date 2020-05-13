@@ -53,6 +53,7 @@ class WyzeSensor():
                 if self._device_model =="PIR3U":
                     if item['pid'] == "P1302":
                         self._state = True if int(item['value']) == 1 else False
+                        self._open_close_state_ts = item['ts']
                     if item['pid'] == "P1304":
                        self._rssi = item['value']
                     if item['pid'] == "P1303":
@@ -60,6 +61,7 @@ class WyzeSensor():
                 if self._device_model == "DWS3U":
                     if item['pid'] == "P1301":
                         self._state = True if int(item['value']) == 1 else False
+                        self._open_close_state_ts = item['ts']
                     if item['pid'] == "P1304":
                        self._rssi = item['value']
                     if item['pid'] == "P1303":
