@@ -6,7 +6,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class WyzeSensor():
     def __init__(self, api, device_mac, friendly_name, state, open_close_state_ts, voltage, rssi, device_model):
-        _LOGGER.debug("Sensor " + device_mac + " " +friendly_name + " " + "initializing.")
+        _LOGGER.debug("Sensor " + device_mac + " " +friendly_name + " " + "initializing..")
 
         self._api = api
         self._device_mac = device_mac
