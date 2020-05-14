@@ -103,7 +103,6 @@ class WyzeSensor(BinarySensorDevice):
             ATTR_RSSI: self._rssi,
             ATTR_DEVICE_MODEL : self._device_model,
             ATTR_LAST_ACTION : self.epoch_to_UTC()
-
         }
 
     @property

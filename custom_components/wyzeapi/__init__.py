@@ -25,7 +25,6 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_SENSORS, default=True): cv.boolean,
         vol.Optional(CONF_LIGHT, default=True): cv.boolean,
         vol.Optional(CONF_SWITCH, default=True): cv.boolean
-
     })
 }, extra=vol.ALLOW_EXTRA)
 
