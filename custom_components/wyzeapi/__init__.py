@@ -50,7 +50,6 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     light_support = config[DOMAIN].get(CONF_LIGHT)
     switch_support = config[DOMAIN].get(CONF_SWITCH)
 
-
     if not wyzeapi_account.is_valid_login():
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
         return False

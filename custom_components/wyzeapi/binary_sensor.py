@@ -9,7 +9,6 @@ from .wyzeapi.wyzeapi import WyzeApi
 from . import DOMAIN
 
 import voluptuous as vol
-
 import homeassistant.util.dt as dt_util
 
 import homeassistant.helpers.config_validation as cv
