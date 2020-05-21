@@ -1,5 +1,5 @@
 {
-	"name": "Wyze Bulb and Switch Integration",
-	"domains": ["switch", "light"],
+	"name": "Wyze Bulb, Switch and Sensor Integration",
+	"domains": ["switch", "light", "binary_sensor"],
 	"iot_class": "cloud_poll"
 }
