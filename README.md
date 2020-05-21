@@ -8,7 +8,7 @@ This is a custom component to allow control of Wyze Bulbs and Switches in Homeas
 * Control Wyze Switches as switches through HA
 * View Wyze Sensors as binary_sensor through HA
 * View Wyze Lock Status and Door Status as lock through HA
-	*Note: Currently you can only view the lock status or door status. Lock and Unlock does not work!
+	* Note: Currently you can only view the lock status or door status. Lock and Unlock does not work!
 
 ### Potential Downsides
 
