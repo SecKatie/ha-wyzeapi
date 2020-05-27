@@ -1,4 +1,4 @@
-# Home Assistant - Wyze Bulb, Switch and Sensor Integration
+# Home Assistant - Wyze Bulb, Switch, Sensor and Lock Integration
 
 This is a custom component to allow control of Wyze Bulbs and Switches in Homeassistant using the unofficial Wyze API. Please note this mimics the Wyze app and therefore Wyze may cut off access at anytime.
 
@@ -6,7 +6,9 @@ This is a custom component to allow control of Wyze Bulbs and Switches in Homeas
 
 * Control Wyze Bulbs as lights through HA
 * Control Wyze Switches as switches through HA
-* View Wyze Sensors as binary_sensor throught HA
+* View Wyze Sensors as binary_sensor through HA
+* View Wyze Lock Status and Door Status as lock through HA
+	* Note: Currently you can only view the lock status or door status. Lock and Unlock does not work!
 
 ### Potential Downsides
 
@@ -47,12 +49,13 @@ wyzeapi:
   sensors: false
   light: false
   switch: false
+  lock: false
 ```
 ## Usage
 
 * Restart HA
 
-* Entities will show up as `light.<friendly name>`, `switch.<friendly name>` or `binary_sensor.<friendly name>` for example (`light.livingroom_lamp`).
+* Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>` or `lock.<friendly name>` for example (`light.livingroom_lamp`).
 
 ## Reporting an Issue
 

@@ -10,7 +10,9 @@ from .wyzeapi_exceptions import WyzeApiError, AccessTokenError
 from .wyze_request import WyzeRequest
 from .wyze_bulb import WyzeBulb
 from .wyze_switch import WyzeSwitch
-from .wyze_sensor import WyzeSensor
+from .wyze_lock import WyzeLock
+from .sensors.wyze_contact import WyzeContactSensor
+from .sensors.wyze_motion import WyzeMotionSensor
 
 class WyzeApi():
     def __init__(self, user_name, password):
@@ -148,13 +150,13 @@ class WyzeApi():
                     ))
 
         return switches
-    async def async_list_sensor(self):
+    async def async_list_contact_sensor(self):
         _LOGGER.debug("Wyze Api listing sensors.")
-        sensor = []
+        contactsensor = []
 
         for device in await self.async_get_devices():
             if (device['product_type'] == "ContactSensor"):
-                sensor.append(WyzeSensor(
+                contactsensor.append(WyzeContactSensor(
                 self,
                 device['mac'],
                 device['nickname'],
@@ -164,8 +166,13 @@ class WyzeApi():
                 device['device_params']['rssi'],
                 device['product_model']))
 
+        return contactsensor
+    async def async_list_motion_sensor(self):
+        _LOGGER.debug("Wyze Api listing Motion Sensors.")
+        motionsensor = []
+        for device in await self.async_get_devices():
             if (device['product_type'] == "MotionSensor"): #MotionSensor
-                sensor.append(WyzeSensor(
+                motionsensor.append(WyzeMotionSensor(
                 self,
                 device['mac'],
                 device['nickname'],
@@ -175,8 +182,21 @@ class WyzeApi():
                 device['device_params']['rssi'],
                 device['product_model']))
                 
-        return sensor
+        return motionsensor
 
+    async def async_list_lock(self):
+        _LOGGER.debug("Wyze Api listing Lock.")
+        lock = []
+        for device in await self.async_get_devices():
+            if (device['product_type'] == "Lock"):
+                lock.append(WyzeLock(
+                self,
+                device['mac'],
+                device['nickname'],
+                ("on" if device['device_params']['switch_state'] == 0 else "off"),
+                ("on" if device['device_params']['open_close_state'] == 1 else "off"),
+                device['product_model']))
+        return lock
 
     async def async_do_request(self, url, payload):
         _LOGGER.debug("Wyze Api doing request.")
