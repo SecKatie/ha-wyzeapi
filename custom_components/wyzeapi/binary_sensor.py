@@ -16,7 +16,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, ATTR_BATTERY_LEVEL, DEVICE_CLA
 # Import the device class from the component that you want to support
 from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
-    BinarySensorDevice,
+    BinarySensorEntity,
     DEVICE_CLASS_MOTION,
     DEVICE_CLASS_DOOR
     )
@@ -41,14 +41,15 @@ NO_MOTION = "no_motion"
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Wyze binary_sensor platform."""
-    _LOGGER.debug("""FARMER: Creating new WyzeApi binary_sensor component""")
+    _LOGGER.debug("""Creating new WyzeApi binary_sensor component""")
 
     # Add devices
-    add_entities([WyzeSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_sensor()], True)
+    async_add_entities([WyzeContactSensor(sensor) for sensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_contact_sensor()], True)
+    async_add_entities([WyzeMotionSensor(motionsensor) for motionsensor in await hass.data[DOMAIN]["wyzeapi_account"].async_list_motion_sensor()], True)
 
-class WyzeSensor(BinarySensorDevice):
+class WyzeContactSensor(BinarySensorEntity):
     """Representation of a Wyze binary_sensor."""
 
     def __init__(self, sensor):
@@ -85,15 +86,13 @@ class WyzeSensor(BinarySensorDevice):
     @property
     def device_class(self):
         """Return device class."""
-        return DEVICE_CLASS_DOOR if self._device_model =="DWS3U" else DEVICE_CLASS_MOTION
+        return DEVICE_CLASS_DOOR
 
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
             #TODO: Show only if contact
             #ATTR_OPEN_SINCE : "Open since"
-            #TODO: Show only if Motion
-            #ATTR_NO_MOTION_SINCE : "No motion since"
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             ATTR_STATE : self._state,
@@ -142,3 +141,68 @@ class WyzeSensor(BinarySensorDevice):
         self._rssi = self._sensor._rssi
         self._voltage = self._sensor._voltage
         self._open_close_state_ts = self._sensor._open_close_state_ts
+class WyzeMotionSensor(BinarySensorEntity):
+    """Representation of a Wyze binary_sensor."""
+    def __init__(self, motionsensor):
+        """Initialize a Wyze binary_sensor."""
+        self._motionsensor = motionsensor
+        self._name = motionsensor._friendly_name
+        self._state = motionsensor._state
+        self._avaliable = True
+        self._voltage = motionsensor._voltage
+        self._rssi = motionsensor._rssi
+        self._device_mac = motionsensor._device_mac
+        self._open_close_state_ts = motionsensor._open_close_state_ts
+        self._device_model = motionsensor._device_model
+    @property
+    def name(self):
+        """Return the display name of this motionsensor."""
+        return self._name
+    @property
+    def available(self):
+        """Return the connection status of this motionsensor"""
+        return self._avaliable
+    @property
+    def is_on(self):
+        """Return true if motionsensor is on."""
+        return self._state
+    @property
+    def unique_id(self):
+        return self._device_mac
+    @property
+    def device_class(self):
+        """Return device class."""
+        return DEVICE_CLASS_MOTION
+    @property
+    def device_state_attributes(self):
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            ATTR_STATE : self._state,
+            ATTR_AVAILABLE : self._avaliable,
+            ATTR_MAC : self._device_mac,
+            ATTR_BATTERY_LEVEL: self._voltage,
+            ATTR_RSSI: self._rssi,
+            ATTR_DEVICE_MODEL : self._device_model,
+            ATTR_LAST_ACTION : self.epoch_to_UTC()
+        }
+    @property
+    def should_poll(self):
+        """We always want to poll for motionsensor."""
+        return True
+    def epoch_to_UTC(self):
+        lastupdatetime1 = str(self._open_close_state_ts)
+        lastupdatetime2 = lastupdatetime1[:-3]
+        lastupdatetime3 = int(lastupdatetime2)
+        lastupdatetime4 = dt_util.utc_from_timestamp(float(lastupdatetime3))
+        return lastupdatetime4
+    async def async_update(self):
+        """Fetch new state data for this sensor.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        _LOGGER.debug("""Binary Sesnors doing a update.""")
+        await self._motionsensor.async_update()
+        self._state = self._motionsensor._state
+        self._rssi = self._motionsensor._rssi
+        self._voltage = self._motionsensor._voltage
+        self._open_close_state_ts = self._motionsensor._open_close_state_ts

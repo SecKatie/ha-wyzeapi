@@ -1,13 +1,11 @@
 import asyncio
 import logging
-#from .wyze_device import *
 
 _LOGGER = logging.getLogger(__name__)
 
-class WyzeSensor():
+class WyzeMotionSensor():
     def __init__(self, api, device_mac, friendly_name, state, open_close_state_ts, voltage, rssi, device_model):
-        _LOGGER.debug("Sensor " + device_mac + " " +friendly_name + " " + "initializing..")
-
+        _LOGGER.debug("Motion Sensor " + device_mac + " " +friendly_name + " " + "initializing.")
         self._api = api
         self._device_mac = device_mac
         self._friendly_name = friendly_name
@@ -18,19 +16,14 @@ class WyzeSensor():
         self._rssi = rssi
         self._voltage = voltage
         self._open_close_state_ts = open_close_state_ts
-
-
-
     def is_on(self):
         return self._state
-
     async def async_update(self):
-        _LOGGER.debug("Sensor " + self._friendly_name + " updating.")
+        _LOGGER.debug("Motion Sensor " + self._friendly_name + " updating.")
         if self._just_changed_state == True:
             self._just_changed_state == False
         else:
             url = "https://api.wyzecam.com/app/v2/device/get_property_list"
-
             payload = {
                 "target_pid_list":[],
                 "phone_id": self._api._device_id,
@@ -46,9 +39,7 @@ class WyzeSensor():
                 "access_token": self._api._access_token,
                 "refresh_token": self._api._refresh_token
             }
-
             data = await self._api.async_do_request(url, payload)
-
             for item in data['data']['property_list']:
                 if self._device_model =="PIR3U":
                     if item['pid'] == "P1302":
