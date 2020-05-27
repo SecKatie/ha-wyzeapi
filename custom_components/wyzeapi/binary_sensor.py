@@ -110,8 +110,8 @@ class WyzeContactSensor(BinarySensorEntity):
         return True
 
     def epoch_to_UTC(self):
-        #The code below is slicing, works but not on integers.
-        #If you want to use it you can convert the number to str for slicing then convert it back to int.
+        #The code below is slicing, works but not on integers. 
+        #If you want to use it you can convert the number to str for slicing then convert it back to int. 
         #It is not the best practice but it can be done as the following:
         lastupdatetime1 = str(self._open_close_state_ts)
         lastupdatetime2 = lastupdatetime1[:-3]

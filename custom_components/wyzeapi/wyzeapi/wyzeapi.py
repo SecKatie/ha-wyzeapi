@@ -10,9 +10,9 @@ from .wyzeapi_exceptions import WyzeApiError, AccessTokenError
 from .wyze_request import WyzeRequest
 from .wyze_bulb import WyzeBulb
 from .wyze_switch import WyzeSwitch
-from .wyze_sensor import WyzeContactSensor, WyzeMotionSensor
 from .wyze_lock import WyzeLock
-
+from .sensors.wyze_contact import WyzeContactSensor
+from .sensors.wyze_motion import WyzeMotionSensor
 
 class WyzeApi():
     def __init__(self, user_name, password):
@@ -24,7 +24,7 @@ class WyzeApi():
         self._invalid_access_tokens = []
 
         self._access_token = self._refresh_token = None
-
+        
         # Create device array
         self._all_devices = []
 
@@ -62,7 +62,7 @@ class WyzeApi():
             self._refresh_token = data['data']['refresh_token']
         except:
             _LOGGER.error("Failure to login")
-
+    
     async def async_refresh_token(self):
         _LOGGER.debug("Wyze Api refreshing token.")
         url = "https://api.wyzecam.com/app/user/refresh_token"
@@ -111,7 +111,7 @@ class WyzeApi():
             self._all_devices = data['data']['device_list']
 
         return self._all_devices
-
+    
     async def async_list_bulbs(self):
         _LOGGER.debug("Wyze Api listing bulbs.")
         bulbs = []
@@ -181,7 +181,7 @@ class WyzeApi():
                 device['device_params']['voltage'],
                 device['device_params']['rssi'],
                 device['product_model']))
-
+                
         return motionsensor
 
     async def async_list_lock(self):
