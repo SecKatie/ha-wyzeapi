@@ -10,7 +10,9 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import ATTR_ATTRIBUTION
 # Import the device class from the component that you want to support
-from homeassistant.components.switch import (PLATFORM_SCHEMA,SwitchDevice)
+from homeassistant.components.switch import (
+    PLATFORM_SCHEMA,
+    SwitchEntity)
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -22,7 +24,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     # Add devices
     add_entities(WyzeSwitch(switch) for switch in await hass.data[DOMAIN]["wyzeapi_account"].async_list_switches())
 
-class WyzeSwitch(SwitchDevice):
+class WyzeSwitch(SwitchEntity):
     """Representation of a Wyze Switch."""
 
     def __init__(self, switch):
