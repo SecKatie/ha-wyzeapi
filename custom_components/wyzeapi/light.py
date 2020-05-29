@@ -16,7 +16,7 @@ from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR_TEMP,
-    Light
+    LightEntity
     )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     # Add devices
     add_entities(WyzeBulb(light) for light in await hass.data[DOMAIN]["wyzeapi_account"].async_list_bulbs())
 
-class WyzeBulb(Light):
+class WyzeBulb(LightEntity):
     """Representation of a Wyze Bulb."""
 
     def __init__(self, light):
