@@ -57,6 +57,10 @@ wyzeapi:
 
 * Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>` or `lock.<friendly name>` for example (`light.livingroom_lamp`).
 
+## More information and Help
+
+If you would like more information then please look at the [wiki](https://github.com/JoshuaMulliken/ha-wyzeapi/wiki)!
+
 ## Reporting an Issue
 
 1. Setup your logger to print debug messages for this component by adding this to your `configuration.yaml`:
