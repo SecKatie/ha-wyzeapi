@@ -1,6 +1,6 @@
 # Home Assistant - Wyze Bulb, Switch, Sensor and Lock Integration
 
-This is a custom component to allow control of Wyze Bulbs and Switches in Homeassistant using the unofficial Wyze API. Please note this mimics the Wyze app and therefore Wyze may cut off access at anytime.
+This is a custom component to allow control of Wyze Bulbs, Switches, Sensors, and Locks in Homeassistant using the unofficial Wyze API. Please note this mimics the Wyze app and therefore Wyze may cut off access at anytime.
 
 ### Highlights of what **WyzeApi** can do
 
