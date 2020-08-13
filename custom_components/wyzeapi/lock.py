@@ -21,7 +21,7 @@ from homeassistant.core import callback
 SCAN_INTERVAL = timedelta(seconds=5)
 
 ATTRIBUTION = "Data provided by Wyze"
-ATTR_STATE ="state"
+ATTR_STATE = "state"
 ATTR_AVAILABLE = "available"
 ATTR_DEVICE_MODEL = "device model"
 ATTR_OPEN_CLOSE_STATE = "door"
@@ -31,8 +31,13 @@ ATTR_DOOR_STATE_CLOSE = "closed"
 
 _LOGGER = logging.getLogger(__name__)
 
+HASS = None
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Wyze binary_sensor platform."""
+    
+    global HASS
+    HASS = hass
 
     _LOGGER.debug("""Creating new WyzeApi Lock component""")
     async_add_entities([WyzeLock(lock) for lock in await hass.data[DOMAIN]["wyzeapi_account"].async_list_lock()], True)
@@ -90,12 +95,18 @@ class WyzeLock(LockEntity):
 #This is not working.
     async def async_lock(self, **kwargs):
         """Lock all or specified locks. A code to lock the lock with may optionally be specified."""
-        await self._lock.async_lock()
+        #await self._lock.async_lock()
+        notification = "Locking and unlocking is not supported in this integration."
+        HASS.components.persistent_notification.create(notification, DOMAIN)
+        _LOGGER.debug(notification)
 
 #This is not working>
     async def async_unlock(self, **kwargs):
         """Unlock all or specified locks. A code to unlock the lock with may optionally be specified."""
-        await self._lock.async_unlock()
+        #await self._lock.async_unlock()
+        notification = "Locking and unlocking is not supported in this integration."
+        HASS.components.persistent_notification.create(notification, DOMAIN)
+        _LOGGER.debug(notification)
 
     async def async_update(self):
         """Fetch new state data for this sensor.
