@@ -2,14 +2,13 @@
 
 import logging
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from homeassistant.const import (
+    CONF_PASSWORD, CONF_USERNAME)
+from homeassistant.helpers import discovery
 
 from .wyzeapi.wyzeapi import WyzeApi
-
-from homeassistant.const import (
-    CONF_DEVICES, CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME)
-from homeassistant.helpers import discovery
-import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_LOCK, default=True): cv.boolean
     })
 }, extra=vol.ALLOW_EXTRA)
+
 
 async def async_setup(hass, config):
     """Set up the WyzeApi parent component."""
@@ -66,19 +66,18 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     # Start up lights and switch components
     if wyzeapi_devices:
         _LOGGER.debug("Starting WyzeApi components")
-    if light_support == True:
+    if light_support:
         await discovery.async_load_platform(hass, "light", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi Lights")
-    if switch_support == True:
+    if switch_support:
         await discovery.async_load_platform(hass, "switch", DOMAIN, {}, config)
-        _LOGGER.debug("Starting WyzeApi switchs")
-    if sensor_support == True:
+        _LOGGER.debug("Starting WyzeApi switches")
+    if sensor_support:
         await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi Sensors")
-    if lock_support == True:
+    if lock_support:
         await discovery.async_load_platform(hass, "lock", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi lock")
-
     else:
         _LOGGER.error("WyzeApi authenticated but could not find any devices.")
 
