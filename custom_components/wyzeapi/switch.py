@@ -2,53 +2,56 @@
 
 """Platform for switch integration."""
 import logging
-from .wyzeapi.wyzeapi import WyzeApi
-from . import DOMAIN
+from abc import ABC
 
-import voluptuous as vol
-
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import ATTR_ATTRIBUTION
 # Import the device class from the component that you want to support
 from homeassistant.components.switch import (
-    PLATFORM_SCHEMA,
     SwitchEntity)
+from homeassistant.const import ATTR_ATTRIBUTION
+
+from . import DOMAIN
+from .wyzeapi.wyze_switch import WyzeSwitch
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Wyze Switch platform."""
     _LOGGER.debug("""Creating new WyzeApi switch component""")
 
-    # Add devices
-    add_entities(WyzeSwitch(switch) for switch in await hass.data[DOMAIN]["wyzeapi_account"].async_list_switches())
+    _ = config
+    _ = discovery_info
 
-class WyzeSwitch(SwitchEntity):
+    # Add devices
+    add_entities(HAWyzeSwitch(switch) for switch in await hass.data[DOMAIN]["wyzeapi_account"].async_list_switches())
+
+
+class HAWyzeSwitch(SwitchEntity, ABC):
     """Representation of a Wyze Switch."""
 
-    def __init__(self, switch):
+    def __init__(self, switch: WyzeSwitch):
         """Initialize a Wyze Switch."""
         self._switch = switch
-        self._name = switch._friendly_name
-        self._state = switch._state
-        self._avaliable = True
-        self._ssid = switch._ssid
-        self._ip = switch._ip
-        self._rssi = switch._rssi
-        self._device_mac = switch._device_mac
-        self._device_model = switch._device_model
+        self._name = switch.friendly_name
+        self._state = switch.state
+        self._available = True
+        self._ssid = switch.ssid
+        self._ip = switch.ip
+        self._rssi = switch.rssi
+        self._device_mac = switch.device_mac
+        self._device_model = switch.device_model
 
     @property
     def name(self):
         """Return the display name of this switch."""
-        #self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
+        # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
         return self._name
 
     @property
     def available(self):
         """Return the connection status of this switch"""
-        return self._avaliable
+        return self._available
 
     @property
     def is_on(self):
@@ -65,7 +68,7 @@ class WyzeSwitch(SwitchEntity):
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self._state,
-            "available": self._avaliable,
+            "available": self._available,
             "device model": self._device_model,
             "ssid": self._ssid,
             "ip": self._ip,
@@ -86,5 +89,5 @@ class WyzeSwitch(SwitchEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         await self._switch.async_update()
-        self._state = self._switch._state
-        self._rssi = self._switch._rssi
+        self._state = self._switch.state
+        self._rssi = self._switch.rssi

@@ -2,22 +2,17 @@
 
 """Platform for binary_sensor integration."""
 import logging
+from abc import ABC
 from datetime import timedelta
-from .wyzeapi.wyzeapi import WyzeApi
-from . import DOMAIN
 
-import voluptuous as vol
-
-import homeassistant.util.dt as dt_util
-from homeassistant.helpers.entity import Entity
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import STATE_LOCKED, STATE_UNLOCKED, ATTR_ATTRIBUTION
 # Import the device class from the component that you want to support
 from homeassistant.components.lock import LockEntity
-#import homeassistant.components.lock.LockEntity
-from homeassistant.core import callback
+from homeassistant.const import ATTR_ATTRIBUTION
 
-#Add to support quicker update time. Is this to Fast?
+from . import DOMAIN
+from .wyzeapi.wyze_lock import WyzeLock
+
+# Add to support quicker update time. Is this to Fast?
 SCAN_INTERVAL = timedelta(seconds=5)
 
 ATTRIBUTION = "Data provided by Wyze"
@@ -31,81 +26,84 @@ ATTR_DOOR_STATE_CLOSE = "closed"
 
 _LOGGER = logging.getLogger(__name__)
 
-HASS = None
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Wyze binary_sensor platform."""
-    
-    global HASS
-    HASS = hass
+
+    _ = config
+    _ = discovery_info
 
     _LOGGER.debug("""Creating new WyzeApi Lock component""")
-    async_add_entities([WyzeLock(lock) for lock in await hass.data[DOMAIN]["wyzeapi_account"].async_list_lock()], True)
+    async_add_entities(
+        [HAWyzeLock(lock, hass) for lock in await hass.data[DOMAIN]["wyzeapi_account"].async_list_lock()], True)
 
-class WyzeLock(LockEntity):
+
+class HAWyzeLock(LockEntity, ABC):
     """Representation of a Wyze binary_sensor."""
 
-    def __init__(self, lock):
+    def __init__(self, lock: WyzeLock, hass):
         """Initialize a Wyze binary_sensor."""
-        self._lock = lock
-        self._name = lock._friendly_name
-        self._state = lock._state
-        self._avaliable = True
-        self._device_mac = lock._device_mac
-        self._device_model = lock._device_model
-        self._open_close_state = lock._open_close_state
+        self.__hass = hass
+        self.__lock = lock
+        self.__name = lock.friendly_name
+        self.__state = lock.state
+        self.__available = True
+        self.__device_mac = lock.device_mac
+        self.__device_model = lock.device_model
+        self.__open_close_state = lock.open_close_state
 
     @property
     def name(self):
         """Return the display name of this sensor."""
-        return self._name
+        return self.__name
 
     @property
     def available(self):
         """Return the connection status of this sensor"""
-        return self._avaliable
+        return self.__available
 
     @property
     def is_locked(self):
         """Return true if sensor is on."""
-        return self._state
+        return self.__state
 
     @property
     def unique_id(self):
-        return self._device_mac
+        return self.__device_mac
 
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            ATTR_STATE : self._state,
-            ATTR_AVAILABLE : self._avaliable,
-            ATTR_DEVICE_MODEL : self._device_model,
-            ATTR_OPEN_CLOSE_STATE : self.get_door_state()
+            ATTR_STATE: self.__state,
+            ATTR_AVAILABLE: self.__available,
+            ATTR_DEVICE_MODEL: self.__device_model,
+            ATTR_OPEN_CLOSE_STATE: self.get_door_state()
         }
+
     def get_door_state(self):
-        return ATTR_DOOR_STATE_OPEN if self._open_close_state == True else ATTR_DOOR_STATE_CLOSE
+        return ATTR_DOOR_STATE_OPEN if self.__open_close_state is True else ATTR_DOOR_STATE_CLOSE
 
     @property
     def should_poll(self):
         """We always want to poll for sensors."""
         return True
 
-#This is not working.
+    # This is not working.
     async def async_lock(self, **kwargs):
         """Lock all or specified locks. A code to lock the lock with may optionally be specified."""
-        #await self._lock.async_lock()
+        # await self._lock.async_lock()
         notification = "Locking and unlocking is not supported in this integration."
-        HASS.components.persistent_notification.create(notification, DOMAIN)
+        self.__hass.components.persistent_notification.create(notification, DOMAIN)
         _LOGGER.debug(notification)
 
-#This is not working>
+    # This is not working>
     async def async_unlock(self, **kwargs):
         """Unlock all or specified locks. A code to unlock the lock with may optionally be specified."""
-        #await self._lock.async_unlock()
+        # await self._lock.async_unlock()
         notification = "Locking and unlocking is not supported in this integration."
-        HASS.components.persistent_notification.create(notification, DOMAIN)
+        self.__hass.components.persistent_notification.create(notification, DOMAIN)
         _LOGGER.debug(notification)
 
     async def async_update(self):
@@ -113,6 +111,6 @@ class WyzeLock(LockEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Locks doing a update.""")
-        await self._lock.async_update()
-        self._state = self._lock._state
-        self._open_close_state = self._lock._open_close_state
+        await self.__lock.async_update()
+        self.__state = self.__lock.state
+        self.__open_close_state = self.__lock.open_close_state
