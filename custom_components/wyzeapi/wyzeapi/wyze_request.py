@@ -19,7 +19,7 @@ class WyzeRequest:
         self.__no_return = no_return
         self.__response = None
 
-        self._header = {
+        self.__header = {
             'Host': 'api.wyzecam.com:443',
             'User-Agent': 'Wyze/2.6.62 (iPhone; iOS 13.2.3; Scale/2.00)',
             'Content-Type': 'application/json'
@@ -27,7 +27,7 @@ class WyzeRequest:
 
     def get_response(self):
         _LOGGER.debug("Wyze Request getting response.")
-        r = requests.post(self.__url, headers=self._header, data=self.__payload)
+        r = requests.post(self.__url, headers=self.__header, data=self.__payload)
 
         data = r.json()
 
@@ -43,7 +43,7 @@ class WyzeRequest:
         _LOGGER.debug("Wyze Request getting response async.")
         async with aiohttp.ClientSession() as session:
             ssl_context = ssl.create_default_context(cafile=certifi.where())
-            async with session.post(self.__url, headers=self._header, data=self.__payload, ssl=ssl_context) as resp:
+            async with session.post(self.__url, headers=self.__header, data=self.__payload, ssl=ssl_context) as resp:
                 data = await resp.json()
 
                 if data['code'] != '1':

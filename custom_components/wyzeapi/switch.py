@@ -32,62 +32,62 @@ class HAWyzeSwitch(SwitchEntity, ABC):
 
     def __init__(self, switch: WyzeSwitch):
         """Initialize a Wyze Switch."""
-        self._switch = switch
-        self._name = switch.friendly_name
-        self._state = switch.state
-        self._available = True
-        self._ssid = switch.ssid
-        self._ip = switch.ip
-        self._rssi = switch.rssi
-        self._device_mac = switch.device_mac
-        self._device_model = switch.device_model
+        self.__switch = switch
+        self.__name = switch.friendly_name
+        self.__state = switch.state
+        self.__available = True
+        self.__ssid = switch.ssid
+        self.__ip = switch.ip
+        self.__rssi = switch.rssi
+        self.__device_mac = switch.device_mac
+        self.__device_model = switch.device_model
 
     @property
     def name(self):
         """Return the display name of this switch."""
         # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
-        return self._name
+        return self.__name
 
     @property
     def available(self):
         """Return the connection status of this switch"""
-        return self._available
+        return self.__available
 
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self._state
+        return self.__state
 
     @property
     def unique_id(self):
-        return self._device_mac
+        return self.__device_mac
 
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self._state,
-            "available": self._available,
-            "device model": self._device_model,
-            "ssid": self._ssid,
-            "ip": self._ip,
-            "rssi": self._rssi,
-            "mac": self._device_mac
+            "state": self.__state,
+            "available": self.__available,
+            "device model": self.__device_model,
+            "ssid": self.__ssid,
+            "ip": self.__ip,
+            "rssi": self.__rssi,
+            "mac": self.__device_mac
         }
 
     async def async_turn_on(self, **kwargs):
         """Instruct the switch to turn on."""
-        await self._switch.async_turn_on()
+        await self.__switch.async_turn_on()
 
     async def async_turn_off(self, **kwargs):
         """Instruct the switch to turn off."""
-        await self._switch.async_turn_off()
+        await self.__switch.async_turn_off()
 
     async def async_update(self):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
-        await self._switch.async_update()
-        self._state = self._switch.state
-        self._rssi = self._switch.rssi
+        await self.__switch.async_update()
+        self.__state = self.__switch.state
+        self.__rssi = self.__switch.rssi
