@@ -2,9 +2,11 @@
 
 """Platform for light integration."""
 import logging
-from abc import ABC
+import asyncio
 
 # Import the device class from the component that you want to support
+from typing import Any
+
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
@@ -32,8 +34,14 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(HAWyzeBulb(light) for light in await hass.data[DOMAIN]["wyzeapi_account"].async_list_bulbs())
 
 
-class HAWyzeBulb(LightEntity, ABC):
+class HAWyzeBulb(LightEntity):
     """Representation of a Wyze Bulb."""
+
+    def turn_on(self, **kwargs: Any) -> None:
+        asyncio.get_event_loop().run_until_complete(self.async_turn_on())
+
+    def turn_off(self, **kwargs: Any) -> None:
+        asyncio.get_event_loop().run_until_complete(self.async_turn_off())
 
     def __init__(self, light: WyzeBulb):
         """Initialize a Wyze Bulb."""

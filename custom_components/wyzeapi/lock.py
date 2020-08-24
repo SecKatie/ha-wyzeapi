@@ -2,7 +2,6 @@
 
 """Platform for binary_sensor integration."""
 import logging
-from abc import ABC
 from datetime import timedelta
 
 # Import the device class from the component that you want to support
@@ -38,8 +37,20 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         [HAWyzeLock(lock, hass) for lock in await hass.data[DOMAIN]["wyzeapi_account"].async_list_lock()], True)
 
 
-class HAWyzeLock(LockEntity, ABC):
+class HAWyzeLock(LockEntity):
     """Representation of a Wyze binary_sensor."""
+
+    def lock(self, **kwargs):
+        # TODO implement
+        pass
+
+    def unlock(self, **kwargs):
+        # TODO implement
+        pass
+
+    def open(self, **kwargs):
+        # TODO implement
+        pass
 
     def __init__(self, lock: WyzeLock, hass):
         """Initialize a Wyze binary_sensor."""

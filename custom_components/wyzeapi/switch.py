@@ -2,9 +2,9 @@
 
 """Platform for switch integration."""
 import logging
-from abc import ABC
-
 # Import the device class from the component that you want to support
+from typing import Any
+
 from homeassistant.components.switch import (
     SwitchEntity)
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -27,8 +27,16 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(HAWyzeSwitch(switch) for switch in await hass.data[DOMAIN]["wyzeapi_account"].async_list_switches())
 
 
-class HAWyzeSwitch(SwitchEntity, ABC):
+class HAWyzeSwitch(SwitchEntity):
     """Representation of a Wyze Switch."""
+
+    def turn_on(self, **kwargs: Any) -> None:
+        # TODO implement
+        pass
+
+    def turn_off(self, **kwargs: Any) -> None:
+        # TODO implement
+        pass
 
     def __init__(self, switch: WyzeSwitch):
         """Initialize a Wyze Switch."""

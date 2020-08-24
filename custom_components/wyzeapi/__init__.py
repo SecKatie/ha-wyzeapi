@@ -43,8 +43,8 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
 -------------------------------------------------------------------""")
     _LOGGER.debug("""Creating new WyzeApi component""")
 
-    wyzeapi_account = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
-                              config[DOMAIN].get(CONF_PASSWORD))
+    wyzeapi_account: WyzeApi = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
+                                       config[DOMAIN].get(CONF_PASSWORD))
     await wyzeapi_account.async_init()
 
     sensor_support = config[DOMAIN].get(CONF_SENSORS)
