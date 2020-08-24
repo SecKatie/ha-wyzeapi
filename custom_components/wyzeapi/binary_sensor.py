@@ -56,34 +56,34 @@ class HAWyzeContactSensor(BinarySensorEntity):
 
     def __init__(self, sensor: WyzeContactSensor):
         """Initialize a Wyze binary_sensor."""
-        self._sensor = sensor
-        self._name = sensor.friendly_name
-        self._state = sensor.state
-        self._available = True
-        self._voltage = sensor.voltage
-        self._rssi = sensor.rssi
-        self._device_mac = sensor.device_mac
-        self._open_close_state_ts = sensor.open_close_state_ts
-        self._device_model = sensor.device_model
+        self.__sensor = sensor
+        self.__name = sensor.friendly_name
+        self.__state = sensor.state
+        self.__available = True
+        self.__voltage = sensor.voltage
+        self.__rssi = sensor.rssi
+        self.__device_mac = sensor.device_mac
+        self.__open_close_state_ts = sensor.open_close_state_ts
+        self.__device_model = sensor.device_model
 
     @property
     def name(self):
         """Return the display name of this sensor."""
-        return self._name
+        return self.__name
 
     @property
     def available(self):
         """Return the connection status of this sensor"""
-        return self._available
+        return self.__available
 
     @property
     def is_on(self):
         """Return true if sensor is on."""
-        return self._state
+        return self.__state
 
     @property
     def unique_id(self):
-        return self._device_mac
+        return self.__device_mac
 
     @property
     def device_class(self):
@@ -95,12 +95,12 @@ class HAWyzeContactSensor(BinarySensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            ATTR_STATE: self._state,
-            ATTR_AVAILABLE: self._available,
-            ATTR_MAC: self._device_mac,
-            ATTR_BATTERY_LEVEL: self._voltage,
-            ATTR_RSSI: self._rssi,
-            ATTR_DEVICE_MODEL: self._device_model,
+            ATTR_STATE: self.__state,
+            ATTR_AVAILABLE: self.__available,
+            ATTR_MAC: self.__device_mac,
+            ATTR_BATTERY_LEVEL: self.__voltage,
+            ATTR_RSSI: self.__rssi,
+            ATTR_DEVICE_MODEL: self.__device_model,
             ATTR_LAST_ACTION: self.epoch_to_utc()
         }
 
@@ -113,7 +113,7 @@ class HAWyzeContactSensor(BinarySensorEntity):
         # The code below is slicing, works but not on integers.
         # If you want to use it you can convert the number to str for slicing then convert it back to int.
         # It is not the best practice but it can be done as the following:
-        last_update_time_1 = str(self._open_close_state_ts)
+        last_update_time_1 = str(self.__open_close_state_ts)
         last_update_time_2 = last_update_time_1[:-3]
         last_update_time_3 = int(last_update_time_2)
         return dt_util.utc_from_timestamp(float(last_update_time_3))
@@ -138,11 +138,11 @@ class HAWyzeContactSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self._sensor.async_update()
-        self._state = self._sensor.state
-        self._rssi = self._sensor.rssi
-        self._voltage = self._sensor.voltage
-        self._open_close_state_ts = self._sensor.open_close_state_ts
+        await self.__sensor.async_update()
+        self.__state = self.__sensor.state
+        self.__rssi = self.__sensor.rssi
+        self.__voltage = self.__sensor.voltage
+        self.__open_close_state_ts = self.__sensor.open_close_state_ts
 
 
 class HAWyzeMotionSensor(BinarySensorEntity):

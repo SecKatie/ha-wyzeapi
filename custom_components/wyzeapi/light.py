@@ -37,45 +37,45 @@ class HAWyzeBulb(LightEntity, ABC):
 
     def __init__(self, light: WyzeBulb):
         """Initialize a Wyze Bulb."""
-        self._light = light
-        self._name = light.friendly_name
-        self._state = light.state
-        self._brightness = light.brightness
-        self._color_temp = light.color_temp
-        self._available = True
-        self._ssid = light.ssid
-        self._ip = light.ip
-        self._rssi = light.rssi
-        self._device_mac = light.device_mac
-        self._device_model = light.device_model
+        self.__light = light
+        self.__name = light.friendly_name
+        self.__state = light.state
+        self.__brightness = light.brightness
+        self.__color_temp = light.color_temp
+        self.__available = True
+        self.__ssid = light.ssid
+        self.__ip = light.ip
+        self.__rssi = light.rssi
+        self.__device_mac = light.device_mac
+        self.__device_model = light.device_model
 
     @property
     def name(self):
         """Return the display name of this light."""
         # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
-        return self._name
+        return self.__name
 
     @property
     def unique_id(self):
-        return self._device_mac
+        return self.__device_mac
 
     @property
     def available(self):
         """Return the connection status of this light"""
-        return self._available
+        return self.__available
 
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self._state,
-            "available": self._available,
-            "device model": self._device_model,
-            "ssid": self._ssid,
-            "ip": self._ip,
-            "rssi": self._rssi,
-            "mac": self._device_mac
+            "state": self.__state,
+            "available": self.__available,
+            "device model": self.__device_model,
+            "ssid": self.__ssid,
+            "ip": self.__ip,
+            "rssi": self.__rssi,
+            "mac": self.__device_mac
         }
 
     @property
@@ -85,17 +85,17 @@ class HAWyzeBulb(LightEntity, ABC):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return self._brightness
+        return self.__brightness
 
     @property
     def color_temp(self):
         """Return the CT color value in mired."""
-        return self._color_temp
+        return self.__color_temp
 
     @property
     def is_on(self):
         """Return true if light is on."""
-        return self._state
+        return self.__state
 
     @property
     def supported_features(self):
@@ -107,20 +107,20 @@ class HAWyzeBulb(LightEntity, ABC):
         You can skip the brightness part if your light does not support
         brightness control.
         """
-        self._light.brightness = kwargs.get(ATTR_BRIGHTNESS)
-        self._light.color_temp = kwargs.get(ATTR_COLOR_TEMP)
-        await self._light.async_turn_on()
+        self.__light.brightness = kwargs.get(ATTR_BRIGHTNESS)
+        self.__light.color_temp = kwargs.get(ATTR_COLOR_TEMP)
+        await self.__light.async_turn_on()
 
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
-        await self._light.async_turn_off()
+        await self.__light.async_turn_off()
 
     async def async_update(self):
         """Fetch new state data for this light.
         This is the only method that should fetch new data for Home Assistant.
         """
-        await self._light.async_update()
-        self._state = self._light.is_on()
-        self._available = self._light.available
-        self._brightness = self._light.brightness
-        self._color_temp = self._light.color_temp
+        await self.__light.async_update()
+        self.__state = self.__light.is_on()
+        self.__available = self.__light.available
+        self.__brightness = self.__light.brightness
+        self.__color_temp = self.__light.color_temp
