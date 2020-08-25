@@ -35,11 +35,13 @@ class WyzeApiClient:
 
     @staticmethod
     async def __post_to_server(url: str, payload: dict):
+        _LOGGER.debug("Running __post_to_server")
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 return await response.json()
 
     async def __post_and_recover(self, url: str, payload: dict):
+        _LOGGER.debug("Running __post_and_recover")
         response_json = await self.__post_to_server(url, payload)
 
         if response_json['code'] != 1 and response_json['msg'] == 'AccessTokenError':
@@ -56,6 +58,7 @@ class WyzeApiClient:
 
     @staticmethod
     async def __create_payload(extras: dict = None) -> dict:
+        _LOGGER.debug("Running __create_payload")
         updated_payload = WyzeApiConstants.base_payload.copy()
         updated_payload['ts'] = str(int(time.time()))
         if extras:
@@ -63,6 +66,7 @@ class WyzeApiClient:
         return updated_payload
 
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
+        _LOGGER.debug("Running __create_authenticated_payload")
         updated_payload = await self.__create_payload()
         self.__logged_in_event.wait()
         updated_payload['access_token'] = self.__access_token
@@ -76,12 +80,13 @@ class WyzeApiClient:
 
     @staticmethod
     def create_md5_md5(password):
+        _LOGGER.debug("Running __create_md5_md5")
         digest1 = md5(password.encode('utf-8')).hexdigest()
         digest2 = md5(digest1.encode('utf-8')).hexdigest()
         return digest2
 
     async def login(self, user_name: str, password: str):
-        _LOGGER.debug("WyzeApiClient logging in")
+        _LOGGER.debug("Running login")
         self.__user_name = user_name
         self.__password = self.create_md5_md5(password)
 
@@ -116,7 +121,7 @@ class WyzeApiClient:
             raise ConnectionError("Failed to login with response: {0}".format(response_json))
 
     async def refresh_tokens(self):
-        _LOGGER.debug("WyzeApiClient refreshing tokens")
+        _LOGGER.debug("Running refresh_tokens")
         payload = await self.__create_payload({
             "access_token": "",
             "refresh_token": self.__refresh_token
@@ -136,6 +141,7 @@ class WyzeApiClient:
             await self.login(self.__user_name, self.__password)
 
     async def logout(self):
+        _LOGGER.debug("Running logout")
         self.__access_token = ""
         self.__refresh_token = ""
         self.__logged_in = False
@@ -145,11 +151,13 @@ class WyzeApiClient:
 
     # region Getting Devices
     async def refresh_devices(self) -> None:
+        _LOGGER.debug("Running refresh_devices")
         self.__devices = None
         await self.get_devices()
 
     async def get_devices(self) -> list:
-        if not self.__devices:
+        _LOGGER.debug("Running get_devices")
+        if self.__devices is not None:
             payload = await self.__create_authenticated_payload()
 
             response_json = await self.__post_to_server(WyzeApiConstants.get_devices_url, payload)
@@ -191,22 +199,27 @@ class WyzeApiClient:
         return self.__devices
 
     async def list_bulbs(self):
+        _LOGGER.debug("Running list_bulbs")
         await self.get_devices()
         return self.__bulbs
 
     async def list_switches(self):
+        _LOGGER.debug("Running list_switches")
         await self.get_devices()
         return self.__switches
 
     async def list_locks(self):
+        _LOGGER.debug("Running list_locks")
         await self.get_devices()
         return self.__locks
 
     async def list_contact_sensors(self):
+        _LOGGER.debug("Running list_contact_sensors")
         await self.get_devices()
         return self.__contact_sensors
 
     async def list_motion_sensors(self):
+        _LOGGER.debug("Running list_motion_sensors")
         await self.get_devices()
         return self.__contact_sensors
 
