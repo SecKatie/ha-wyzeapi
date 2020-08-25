@@ -9,7 +9,7 @@ from hashlib import md5
 
 import aiohttp
 
-from .constants import WyzeApiConstants
+from .constants import WyzeApiConstants, WyzeDevices
 from .devices import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -167,21 +167,21 @@ class WyzeApiClient:
             self.__devices = response_json['data']['device_list']
 
             for device in self.__devices:
-                if device['product_type'] == WyzeApiConstants.Device.Light:
+                if device['product_type'] == WyzeDevices.Light:
                     self.__bulbs.append(WyzeBulb(device['nickname'], device['product_model'], device['mac'],
                                                  device['device_params']['switch_state'],
                                                  device['device_params']['rssi'], device['device_params']['ssid'],
                                                  device['device_params']['ip']))
-                elif device['product_type'] == WyzeApiConstants.Device.Plug:
+                elif device['product_type'] == WyzeDevices.Plug:
                     self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
                                                       device['device_params']['switch_state'],
                                                       device['device_params']['rssi'], device['device_params']['ssid'],
                                                       device['device_params']['ip']))
-                elif device['product_type'] == WyzeApiConstants.Device.Lock:
+                elif device['product_type'] == WyzeDevices.Lock:
                     self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
                                                  device['device_params']['switch_state'],
                                                  device['device_params']['open_close_state']))
-                elif device['product_type'] == WyzeApiConstants.Device.ContactSensor:
+                elif device['product_type'] == WyzeDevices.ContactSensor:
                     self.__contact_sensors.append(WyzeContactSensor(
                         device['nickname'], device['product_model'], device['mac'],
                         device['device_params']['open_close_state'],
@@ -189,7 +189,7 @@ class WyzeApiClient:
                         device['device_params']['voltage'],
                         device['device_params']['rssi'],
                     ))
-                elif device['product_type'] == WyzeApiConstants.Device.MotionSensor:
+                elif device['product_type'] == WyzeDevices.MotionSensor:
                     self.__motion_sensors.append(WyzeMotionSensor(
                         device['nickname'], device['product_model'], device['mac'],
                         device['device_params']['motion_state'],
