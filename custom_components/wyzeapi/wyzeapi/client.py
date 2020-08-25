@@ -279,7 +279,7 @@ class WyzeApiClient:
             })
 
             asyncio.get_running_loop().create_task(
-                self.__post_and_recover(WyzeApiConstants.set_device_property_list_url, payload))
+                self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
 
     async def turn_off_bulb(self, bulb: WyzeBulb):
         payload = await self.__create_authenticated_payload({
