@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 
-import logging
-import aiohttp
 import asyncio
+import logging
 import threading
 import time
+from typing import List
+
+import aiohttp
+
 from .constants import WyzeApiConstants
 from .devices import *
 
@@ -18,12 +21,11 @@ class WyzeApiClient:
     __user_name: str
     __password: str
 
-    __bulbs: list
-    __switches: list
-    __locks: list
-    __contact_sensors: list
-    __motion_sensors: list
-    __locks: list
+    __bulbs: List[WyzeBulb]
+    __switches: List[WyzeSwitch]
+    __contact_sensors: List[WyzeContactSensor]
+    __motion_sensors: List[WyzeMotionSensor]
+    __locks: List[WyzeLock]
 
     __logged_in_event = threading.Event()
 
@@ -66,6 +68,9 @@ class WyzeApiClient:
         return updated_payload
 
     # region Session Management
+    async def is_logged_in(self):
+        return self.__logged_in
+
     async def login(self, user_name: str, password: str):
         _LOGGER.debug("WyzeApiClient logging in")
         self.__user_name = user_name
@@ -185,10 +190,10 @@ class WyzeApiClient:
     async def list_motion_sensors(self):
         await self.get_devices()
         return self.__contact_sensors
+
     # endregion
 
     # region Bulb Operations
-    # TODO implement
     @staticmethod
     def translate(value, left_min, left_max, right_min, right_max):
         # Figure out how 'wide' each range is
@@ -270,12 +275,12 @@ class WyzeApiClient:
                 bulb.color_temp = 1000000 / int(item['value'])
             elif item['pid'] == "P1612":
                 switch.rssi = item['value']
+
     # endregion
 
     # region Switch Operations
-    # TODO implement
     async def turn_on_switch(self, switch: WyzeSwitch):
-        payload = self.__create_authenticated_payload({
+        payload = await self.__create_authenticated_payload({
             'device_model': switch.product_model,
             'device_mac': switch.mac,
             'pvalue': "1",
@@ -286,7 +291,7 @@ class WyzeApiClient:
             self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
 
     async def turn_off_switch(self, switch: WyzeSwitch):
-        payload = self.__create_authenticated_payload({
+        payload = await self.__create_authenticated_payload({
             'device_model': switch.product_model,
             'device_mac': switch.mac,
             'pvalue': "0",
@@ -312,29 +317,81 @@ class WyzeApiClient:
                 switch.avaliable = int(item['value'])
             elif item['pid'] == "P1612":
                 switch.rssi = item['value']
+
     # endregion
 
     # region Lock Operations
-    # TODO implement
     async def update_lock(self, lock: WyzeLock):
-        payload = self.__create_authenticated_payload({
+        payload = await self.__create_authenticated_payload({
             "target_pid_list": [],
             "device_model": lock.product_model,
             "device_mac": lock.mac,
         })
 
-        asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload))
+        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
+
+        for item in response_json['data']['property_list']:
+            if lock.product_model == "YD.LO1":
+                if item['pid'] == "P3":  # I don't know if this is correct
+                    lock.switch_state = int(item['value'])
+                if item['pid'] == "P2001":
+                    lock.open_close_state = int(item['value'])
+            if item['pid'] == "P5":
+                lock.avaliable = int(item['value'])
+
     # endregion
 
     # region Contact Sensor Operations
-    # TODO implement
     async def update_contact_sensor(self, contact_sensor: WyzeContactSensor):
-        pass
+        payload = await self.__create_authenticated_payload({
+            "target_pid_list": [],
+            "device_model": contact_sensor.product_model,
+            "device_mac": contact_sensor.mac,
+        })
+
+        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
+
+        for item in response_json['data']['property_list']:
+            if contact_sensor.product_model == "PIR3U":
+                if item['pid'] == "P1302":
+                    contact_sensor.open_close_state = int(item['value'])
+                    contact_sensor.open_close_state_ts = item['ts']
+            if contact_sensor.product_model == "DWS3U":
+                if item['pid'] == "P1301":
+                    contact_sensor.open_close_state = int(item['value'])
+                    contact_sensor.open_close_state_ts = item['ts']
+            if item['pid'] == "P5":
+                contact_sensor.avaliable = int(item['value'])
+            if item['pid'] == "P1304":
+                contact_sensor.rssi = item['value']
+            if item['pid'] == "P1303":
+                contact_sensor.voltage = item['value']
+
     # endregion
 
     # region Motion Sensor Operations
-    # TODO implement
     async def update_motion_sensor(self, motion_sensor: WyzeMotionSensor):
-        pass
+        payload = await self.__create_authenticated_payload({
+            "target_pid_list": [],
+            "device_model": motion_sensor.product_model,
+            "device_mac": motion_sensor.mac,
+        })
+
+        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
+
+        for item in response_json['data']['property_list']:
+            if motion_sensor.product_model == "PIR3U":
+                if item['pid'] == "P1302":
+                    motion_sensor.motion_state = int(item['value'])
+                    motion_sensor.motion_state_ts = item['ts']
+            if motion_sensor.product_model == "PIR3U":
+                if item['pid'] == "P1301":
+                    motion_sensor.motion_state = int(item['value'])
+                    motion_sensor.motion_state_ts = item['ts']
+            if item['pid'] == "P5":
+                motion_sensor.avaliable = int(item['value'])
+            if item['pid'] == "P1304":
+                motion_sensor.rssi = item['value']
+            if item['pid'] == "P1303":
+                motion_sensor.voltage = item['value']
     # endregion

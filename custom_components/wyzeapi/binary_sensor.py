@@ -14,10 +14,10 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import ATTR_ATTRIBUTION, ATTR_BATTERY_LEVEL
 
 from . import DOMAIN
-from .wyzeapi.sensors.wyze_contact import WyzeContactSensor
-from .wyzeapi.sensors.wyze_motion import WyzeMotionSensor
+from .wyzeapi.client import WyzeApiClient, WyzeContactSensor, WyzeMotionSensor
 
 # Add to support quicker update time. Is this to Fast?
+
 SCAN_INTERVAL = timedelta(seconds=5)
 
 ATTRIBUTION = "Data provided by Wyze"
@@ -44,49 +44,46 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _ = config
     _ = discovery_info
 
+    wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
+
     # Add devices
-    async_add_entities([HAWyzeContactSensor(sensor) for sensor in
-                        await hass.data[DOMAIN]["wyzeapi_account"].async_list_contact_sensor()], True)
-    async_add_entities([HAWyzeMotionSensor(motion_sensor) for motion_sensor in
+    async_add_entities([HAWyzeContactSensor(wyzeapi_client, sensor) for sensor in
+                        await wyzeapi_client.list_contact_sensors()], True)
+    async_add_entities([HAWyzeMotionSensor(wyzeapi_client, motion_sensor) for motion_sensor in
                         await hass.data[DOMAIN]["wyzeapi_account"].async_list_motion_sensor()], True)
 
 
 class HAWyzeContactSensor(BinarySensorEntity):
     """Representation of a Wyze binary_sensor."""
+    __sensor: WyzeContactSensor
+    __client: WyzeApiClient
 
-    def __init__(self, sensor: WyzeContactSensor):
+    def __init__(self, client: WyzeApiClient, sensor: WyzeContactSensor):
         """Initialize a Wyze binary_sensor."""
         self.__sensor = sensor
-        self.__name = sensor.friendly_name
-        self.__state = sensor.state
-        self.__available = True
-        self.__voltage = sensor.voltage
-        self.__rssi = sensor.rssi
-        self.__device_mac = sensor.device_mac
-        self.__open_close_state_ts = sensor.open_close_state_ts
-        self.__device_model = sensor.device_model
+        self.__client = client
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the display name of this sensor."""
-        return self.__name
+        return self.__sensor.nick_name
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return the connection status of this sensor"""
-        return self.__available
+        return self.__sensor.avaliable == 1
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return true if sensor is on."""
-        return self.__state
+        return self.__sensor.open_close_state == 1
 
     @property
-    def unique_id(self):
-        return self.__device_mac
+    def unique_id(self) -> str:
+        return self.__sensor.mac
 
     @property
-    def device_class(self):
+    def device_class(self) -> str:
         """Return device class."""
         return DEVICE_CLASS_DOOR
 
@@ -95,12 +92,12 @@ class HAWyzeContactSensor(BinarySensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            ATTR_STATE: self.__state,
-            ATTR_AVAILABLE: self.__available,
-            ATTR_MAC: self.__device_mac,
-            ATTR_BATTERY_LEVEL: self.__voltage,
-            ATTR_RSSI: self.__rssi,
-            ATTR_DEVICE_MODEL: self.__device_model,
+            ATTR_STATE: self.is_on,
+            ATTR_AVAILABLE: self.available,
+            ATTR_MAC: self.unique_id,
+            ATTR_BATTERY_LEVEL: self.__sensor.voltage,
+            ATTR_RSSI: self.__sensor.rssi,
+            ATTR_DEVICE_MODEL: self.__sensor.product_model,
             ATTR_LAST_ACTION: self.epoch_to_utc()
         }
 
@@ -113,7 +110,7 @@ class HAWyzeContactSensor(BinarySensorEntity):
         # The code below is slicing, works but not on integers.
         # If you want to use it you can convert the number to str for slicing then convert it back to int.
         # It is not the best practice but it can be done as the following:
-        last_update_time_1 = str(self.__open_close_state_ts)
+        last_update_time_1 = str(self.__sensor.open_close_state_ts)
         last_update_time_2 = last_update_time_1[:-3]
         last_update_time_3 = int(last_update_time_2)
         return dt_util.utc_from_timestamp(float(last_update_time_3))
@@ -138,46 +135,37 @@ class HAWyzeContactSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__sensor.async_update()
-        self.__state = self.__sensor.state
-        self.__rssi = self.__sensor.rssi
-        self.__voltage = self.__sensor.voltage
-        self.__open_close_state_ts = self.__sensor.open_close_state_ts
+        await self.__client.update_contact_sensor(self.__sensor)
 
 
 class HAWyzeMotionSensor(BinarySensorEntity):
     """Representation of a Wyze binary_sensor."""
+    __sensor: WyzeMotionSensor
+    __client: WyzeApiClient
 
-    def __init__(self, motion_sensor: WyzeMotionSensor):
+    def __init__(self, client: WyzeApiClient, motion_sensor: WyzeMotionSensor):
         """Initialize a Wyze binary_sensor."""
-        self.__motion_sensor = motion_sensor
-        self._name = motion_sensor.friendly_name
-        self._state = motion_sensor.state
-        self._available = True
-        self._voltage = motion_sensor.voltage
-        self._rssi = motion_sensor.rssi
-        self._device_mac = motion_sensor.device_mac
-        self._open_close_state_ts = motion_sensor.open_close_state_ts
-        self._device_model = motion_sensor.device_model
+        self.__sensor = motion_sensor
+        self.__client = client
 
     @property
-    def name(self):
-        """Return the display name of this motion_sensor."""
-        return self._name
+    def name(self) -> str:
+        """Return the display name of this sensor."""
+        return self.__sensor.nick_name
 
     @property
-    def available(self):
-        """Return the connection status of this motion_sensor"""
-        return self._available
+    def available(self) -> bool:
+        """Return the connection status of this sensor"""
+        return self.__sensor.avaliable == 1
 
     @property
-    def is_on(self):
-        """Return true if motion_sensor is on."""
-        return self._state
+    def is_on(self) -> bool:
+        """Return true if sensor is on."""
+        return self.__sensor.motion_state == 1
 
     @property
-    def unique_id(self):
-        return self._device_mac
+    def unique_id(self) -> str:
+        return self.__sensor.mac
 
     @property
     def device_class(self):
@@ -189,12 +177,12 @@ class HAWyzeMotionSensor(BinarySensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            ATTR_STATE: self._state,
-            ATTR_AVAILABLE: self._available,
-            ATTR_MAC: self._device_mac,
-            ATTR_BATTERY_LEVEL: self._voltage,
-            ATTR_RSSI: self._rssi,
-            ATTR_DEVICE_MODEL: self._device_model,
+            ATTR_STATE: self.is_on,
+            ATTR_AVAILABLE: self.available,
+            ATTR_MAC: self.unique_id,
+            ATTR_BATTERY_LEVEL: self.__sensor.voltage,
+            ATTR_RSSI: self.__sensor.rssi,
+            ATTR_DEVICE_MODEL: self.__sensor.product_model,
             ATTR_LAST_ACTION: self.epoch_to_utc()
         }
 
@@ -204,7 +192,7 @@ class HAWyzeMotionSensor(BinarySensorEntity):
         return True
 
     def epoch_to_utc(self):
-        last_update_time_1 = str(self._open_close_state_ts)
+        last_update_time_1 = str(self.__sensor.motion_state_ts)
         last_update_time_2 = last_update_time_1[:-3]
         last_update_time_3 = int(last_update_time_2)
         return dt_util.utc_from_timestamp(float(last_update_time_3))
@@ -214,8 +202,4 @@ class HAWyzeMotionSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__motion_sensor.async_update()
-        self._state = self.__motion_sensor.state
-        self._rssi = self.__motion_sensor.rssi
-        self._voltage = self.__motion_sensor.voltage
-        self._open_close_state_ts = self.__motion_sensor.open_close_state_ts
+        await self.__client.update_motion_sensor(self.__sensor)

@@ -8,7 +8,7 @@ from homeassistant.const import (
     CONF_PASSWORD, CONF_USERNAME)
 from homeassistant.helpers import discovery
 
-from .wyzeapi.wyzeapi import WyzeApi
+from .wyzeapi.client import WyzeApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,20 +43,18 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
 -------------------------------------------------------------------""")
     _LOGGER.debug("""Creating new WyzeApi component""")
 
-    wyzeapi_account: WyzeApi = WyzeApi(config[DOMAIN].get(CONF_USERNAME),
-                                       config[DOMAIN].get(CONF_PASSWORD))
-    await wyzeapi_account.async_init()
+    wyzeapi_account: WyzeApiClient = WyzeApiClient()
+    await wyzeapi_account.login(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
 
     sensor_support = config[DOMAIN].get(CONF_SENSORS)
     light_support = config[DOMAIN].get(CONF_LIGHT)
     switch_support = config[DOMAIN].get(CONF_SWITCH)
     lock_support = config[DOMAIN].get(CONF_LOCK)
-    if not wyzeapi_account.is_valid_login():
+    if not wyzeapi_account.is_logged_in():
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
         return False
 
     _LOGGER.debug("Connected to Wyze account")
-    wyzeapi_devices = await wyzeapi_account.async_get_devices()
 
     # Store the logged in account object for the platforms to use.
     hass.data[DOMAIN] = {
@@ -64,8 +62,7 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     }
 
     # Start up lights and switch components
-    if wyzeapi_devices:
-        _LOGGER.debug("Starting WyzeApi components")
+    _LOGGER.debug("Starting WyzeApi components")
     if light_support:
         await discovery.async_load_platform(hass, "light", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi Lights")
