@@ -58,13 +58,15 @@ class WyzeApiClient:
     async def __create_payload(extras: dict = None) -> dict:
         updated_payload = WyzeApiConstants.base_payload.copy()
         updated_payload['ts'] = int(time.time())
-        updated_payload.update(extras)
+        if extras:
+            updated_payload.update(extras)
         return updated_payload
 
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
         updated_payload = await self.__create_payload()
         updated_payload['access_token'] = self.__access_token
-        updated_payload.update(extras)
+        if extras:
+            updated_payload.update(extras)
         return updated_payload
 
     # region Session Management
