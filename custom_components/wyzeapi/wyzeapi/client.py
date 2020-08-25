@@ -33,7 +33,7 @@ class WyzeApiClient:
         self.__devices = None
 
     @staticmethod
-    async def __post_to_server(url: str, payload: dict) -> Any:
+    async def __post_to_server(url: str, payload: dict):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 return await response.json()
