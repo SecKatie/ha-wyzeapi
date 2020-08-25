@@ -87,6 +87,10 @@ class WyzeApiClient:
 
         response_json = await self.__post_to_server(WyzeApiConstants.login_url, payload)
 
+        if response_json['msg'] == "UserIsLocked":
+            _LOGGER.error("The user account is locked")
+            raise ConnectionError("Failed to login with response: {0}".format(response_json))
+
         try:
             self.__access_token = response_json['data']['access_token']
             self.__refresh_token = response_json['data']['refresh_token']
@@ -99,8 +103,7 @@ class WyzeApiClient:
             self.__logged_in_event.clear()
 
             _LOGGER.error(response_json)
-
-            raise ConnectionError("Not logged in.")
+            raise ConnectionError("Failed to login with response: {0}".format(response_json))
 
     async def refresh_tokens(self):
         _LOGGER.debug("WyzeApiClient refreshing tokens")
