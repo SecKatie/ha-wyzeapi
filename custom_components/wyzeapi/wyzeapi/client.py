@@ -56,7 +56,7 @@ class WyzeApiClient:
     @staticmethod
     async def __create_payload(extras: dict = None) -> dict:
         updated_payload = WyzeApiConstants.base_payload.copy()
-        updated_payload['ts'] = int(time.time())
+        updated_payload['ts'] = str(int(time.time()))
         if extras:
             updated_payload.update(extras)
         return updated_payload
@@ -97,6 +97,9 @@ class WyzeApiClient:
             _LOGGER.error("Failure to login with supplied credentials")
             self.__logged_in = False
             self.__logged_in_event.clear()
+
+            _LOGGER.error(response_json)
+
             raise ConnectionError("Not logged in.")
 
     async def refresh_tokens(self):
