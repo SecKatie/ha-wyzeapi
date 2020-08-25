@@ -9,7 +9,7 @@ from hashlib import md5
 
 import aiohttp
 
-from .constants import WyzeApiConstants, WyzeDevices
+from .constants import WyzeApiConstants
 from .devices import *
 
 _LOGGER = logging.getLogger(__name__)
