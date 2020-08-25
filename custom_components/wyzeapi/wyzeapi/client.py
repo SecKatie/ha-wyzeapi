@@ -38,7 +38,9 @@ class WyzeApiClient:
         _LOGGER.debug("Running __post_to_server")
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
-                return await response.json()
+                response_json = await response.json()
+                _LOGGER.debug("Response recieved from server: {0}".format(response_json))
+                return response_json
 
     async def __post_and_recover(self, url: str, payload: dict):
         _LOGGER.debug("Running __post_and_recover")
@@ -157,7 +159,7 @@ class WyzeApiClient:
 
     async def get_devices(self) -> list:
         _LOGGER.debug("Running get_devices")
-        if self.__devices is not None:
+        if self.__devices is None:
             payload = await self.__create_authenticated_payload()
 
             response_json = await self.__post_to_server(WyzeApiConstants.get_devices_url, payload)
