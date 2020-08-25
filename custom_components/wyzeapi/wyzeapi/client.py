@@ -46,15 +46,17 @@ class WyzeApiClient:
         _LOGGER.debug("Running __post_and_recover")
         response_json = await self.__post_to_server(url, payload)
 
-        if response_json['code'] != '1' and response_json['msg'] == 'AccessTokenError':
+        response_code = response_json['code']
+
+        if response_code != '1' and response_json['msg'] == 'AccessTokenError':
             self.__logged_in_event.clear()
             await self.refresh_tokens()
 
             payload = await self.__create_authenticated_payload(payload)
 
             return await self.__post_and_recover(url, payload)
-        if response_json['code'] != '1':
-            _LOGGER.debug(response_json)
+        if response_code is not '1' and response_code is not '1001':
+            _LOGGER.debug("Request to: {} failed with payload: {} with result of {}".format(url, payload, response_json))
             raise ConnectionError("Failed to connect to the Wyze Service")
 
         return response_json
