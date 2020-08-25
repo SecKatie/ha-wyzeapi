@@ -27,9 +27,10 @@ class WyzeApiConstants:
         'app_ver': app_ver
     }
 
-    class Device(Enum):
-        Light = "Light"
-        Plug = "Plug"
-        ContactSensor = "ContactSensor"
-        MotionSensor = "MotionSensor"
-        Lock = "Lock"
+
+class WyzeDevices(Enum):
+    Light = "Light"
+    Plug = "Plug"
+    ContactSensor = "ContactSensor"
+    MotionSensor = "MotionSensor"
+    Lock = "Lock"
