@@ -73,14 +73,20 @@ class WyzeApiClient:
     async def is_logged_in(self):
         return self.__logged_in
 
+    @staticmethod
+    def create_md5_md5(password):
+        digest1 = md5(password.encode('utf-8')).hexdigest()
+        digest2 = md5(digest1.encode('utf-8')).hexdigest()
+        return digest2
+
     async def login(self, user_name: str, password: str):
         _LOGGER.debug("WyzeApiClient logging in")
         self.__user_name = user_name
-        self.__password = password
+        self.__password = self.create_md5_md5(password)
 
         payload = await self.__create_payload({
-            "password": password,
-            "user_name": user_name,
+            "password": self.__password,
+            "user_name": self.__user_name,
             "two_factor_auth": "",
             "access_token": ""
         })
@@ -89,6 +95,9 @@ class WyzeApiClient:
 
         if response_json['msg'] == "UserIsLocked":
             _LOGGER.error("The user account is locked")
+            raise ConnectionError("Failed to login with response: {0}".format(response_json))
+        elif response_json['msg'] == "UserNameOrPasswordError":
+            _LOGGER.error("The username or password is incorrect")
             raise ConnectionError("Failed to login with response: {0}".format(response_json))
 
         try:
