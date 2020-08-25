@@ -9,9 +9,8 @@ from homeassistant.components.lock import LockEntity
 from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
-
-from .wyzeapi.devices import WyzeLock
 from .wyzeapi.client import WyzeApiClient
+from .wyzeapi.devices import WyzeLock
 
 # Add to support quicker update time. Is this too Fast?
 SCAN_INTERVAL = timedelta(seconds=5)
@@ -43,6 +42,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 class HAWyzeLock(LockEntity):
     """Representation of a Wyze binary_sensor."""
+
     def __init__(self, client: WyzeApiClient, lock: WyzeLock, hass):
         """Initialize a Wyze binary_sensor."""
         self.__hass = hass

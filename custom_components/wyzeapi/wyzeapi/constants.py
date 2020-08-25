@@ -17,7 +17,15 @@ class WyzeApiConstants:
     sv: str = "41267de22d1847c8b99bfba2658f88d7"
     phone_system_type: str = "1"
     app_ver: str = "com.hualai.WyzeCam___2.6.62"
-    base_payload: dict
+    base_payload: dict = {
+        'phone_id': device_id,
+        'app_name': app_name,
+        'app_version': app_version,
+        'sc': sc,
+        'sv': sv,
+        'phone_system_type': phone_system_type,
+        'app_ver': app_ver
+    }
 
     class Device(Enum):
         Light = "Light"
@@ -25,14 +33,3 @@ class WyzeApiConstants:
         ContactSensor = "ContactSensor"
         MotionSensor = "MotionSensor"
         Lock = "Lock"
-
-    def __init__(self):
-        base_paylod: dict = {
-            'phone_id': self.device_id,
-            'app_name': self.app_name,
-            'app_version': self.app_version,
-            'sc': self.sc,
-            'sv': self.sv,
-            'phone_system_type': self.phone_system_type,
-            'app_ver': self.app_ver
-        }

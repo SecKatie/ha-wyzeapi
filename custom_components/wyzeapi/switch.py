@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
-import logging
 import asyncio
+import logging
 # Import the device class from the component that you want to support
 from typing import Any
 
@@ -11,8 +11,8 @@ from homeassistant.components.switch import (
 from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
-from .wyzeapi.devices import WyzeSwitch
 from .wyzeapi.client import WyzeApiClient
+from .wyzeapi.devices import WyzeSwitch
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
