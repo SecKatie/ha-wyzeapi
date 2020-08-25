@@ -55,6 +55,10 @@ class WyzeApiClient:
             payload = await self.__create_authenticated_payload(payload)
 
             return await self.__post_and_recover(url, payload)
+        if response_code is '1001':
+            _LOGGER.debug("Request to: {} does not respond to parameters in payload {} and gave a result of {}".format(
+                url, payload, response_json))
+            raise AttributeError("Parameters passed to Wyze Service do not fit the endpoint")
         if response_code is not '1':
             _LOGGER.debug("Request to: {} failed with payload: {} with result of {}".format(url, payload, response_json))
             raise ConnectionError("Failed to connect to the Wyze Service")
