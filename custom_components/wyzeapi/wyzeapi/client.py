@@ -55,7 +55,7 @@ class WyzeApiClient:
             payload = await self.__create_authenticated_payload(payload)
 
             return await self.__post_and_recover(url, payload)
-        if response_code is not '1' and response_code is not '1001':
+        if response_code is not '1':
             _LOGGER.debug("Request to: {} failed with payload: {} with result of {}".format(url, payload, response_json))
             raise ConnectionError("Failed to connect to the Wyze Service")
 
