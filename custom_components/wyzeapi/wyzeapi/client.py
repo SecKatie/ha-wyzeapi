@@ -22,11 +22,11 @@ class WyzeApiClient:
     __user_name: str
     __password: str
 
-    __bulbs: List[WyzeBulb]
-    __switches: List[WyzeSwitch]
-    __contact_sensors: List[WyzeContactSensor]
-    __motion_sensors: List[WyzeMotionSensor]
-    __locks: List[WyzeLock]
+    __bulbs: List[WyzeBulb] = []
+    __switches: List[WyzeSwitch] = []
+    __contact_sensors: List[WyzeContactSensor] = []
+    __motion_sensors: List[WyzeMotionSensor] = []
+    __locks: List[WyzeLock] = []
 
     __logged_in_event = threading.Event()
 
@@ -203,42 +203,27 @@ class WyzeApiClient:
     async def list_bulbs(self):
         _LOGGER.debug("Running list_bulbs")
         await self.get_devices()
-        if hasattr(self, '__bulbs'):
-            return self.__bulbs
-        else:
-            return []
+        return self.__bulbs
 
     async def list_switches(self):
         _LOGGER.debug("Running list_switches")
         await self.get_devices()
-        if hasattr(self, '__switches'):
-            return self.__switches
-        else:
-            return []
+        return self.__switches
 
     async def list_locks(self):
         _LOGGER.debug("Running list_locks")
         await self.get_devices()
-        if hasattr(self, '__locks'):
-            return self.__locks
-        else:
-            return []
+        return self.__locks
 
     async def list_contact_sensors(self):
         _LOGGER.debug("Running list_contact_sensors")
         await self.get_devices()
-        if hasattr(self, '__contact_sensors'):
-            return self.__contact_sensors
-        else:
-            return []
+        return self.__contact_sensors
 
     async def list_motion_sensors(self):
         _LOGGER.debug("Running list_motion_sensors")
         await self.get_devices()
-        if hasattr(self, '__motion_sensors'):
-            return self.__motion_sensors
-        else:
-            return []
+        return self.__motion_sensors
 
     # endregion
 
