@@ -325,7 +325,7 @@ class WyzeApiClient:
         })
 
         asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_list_url, payload))
+            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
 
     async def turn_off_switch(self, switch: WyzeSwitch):
         payload = await self.__create_authenticated_payload({
@@ -336,7 +336,7 @@ class WyzeApiClient:
         })
 
         asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_list_url, payload))
+            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
 
     async def update_switch(self, switch: WyzeSwitch):
         payload = await self.__create_authenticated_payload({
