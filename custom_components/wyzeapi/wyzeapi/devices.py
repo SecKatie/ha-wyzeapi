@@ -32,6 +32,8 @@ class WyzeBulb(WifiEnabledWyzeDevice):
         super().__init__(nick_name, product_model, mac, ssid, rssi, ip)
 
         self.switch_state = switch_state
+        self.brightness = 0
+        self.color_temp = 0
 
 
 class WyzeSwitch(WifiEnabledWyzeDevice):
