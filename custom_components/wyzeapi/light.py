@@ -123,7 +123,7 @@ class HAWyzeBulb(LightEntity):
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
         await self.__client.turn_off_bulb(self.__light)
-        self.__light.switch_state = 1
+        self.__light.switch_state = 0
         self.__just_updated = True
 
     async def async_update(self):
