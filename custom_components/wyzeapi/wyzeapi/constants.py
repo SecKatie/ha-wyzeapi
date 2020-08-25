@@ -6,7 +6,8 @@ class WyzeApiConstants:
     login_url: str = "https://api.wyzecam.com/app/user/login"
     refresh_token_url: str = "https://api.wyzecam.com/app/user/refresh_token"
     get_devices_url: str = "https://api.wyzecam.com/app/v2/home_page/get_object_list"
-    set_device_property_url: str = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+    set_device_property_list_url: str = 'https://api.wyzecam.com/app/v2/device/set_property_list'
+    set_device_property_url: str = 'https://api.wyzecam.com/app/v2/device/set_property'
     get_device_property_url: str = "https://api.wyzecam.com/app/v2/device/get_property_list"
 
     # Payload constants
