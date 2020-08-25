@@ -203,27 +203,42 @@ class WyzeApiClient:
     async def list_bulbs(self):
         _LOGGER.debug("Running list_bulbs")
         await self.get_devices()
-        return self.__bulbs
+        if self.__bulbs:
+            return self.__bulbs
+        else:
+            return []
 
     async def list_switches(self):
         _LOGGER.debug("Running list_switches")
         await self.get_devices()
-        return self.__switches
+        if self.__switches:
+            return self.__switches
+        else:
+            return []
 
     async def list_locks(self):
         _LOGGER.debug("Running list_locks")
         await self.get_devices()
-        return self.__locks
+        if self.__locks:
+            return self.__locks
+        else:
+            return []
 
     async def list_contact_sensors(self):
         _LOGGER.debug("Running list_contact_sensors")
         await self.get_devices()
-        return self.__contact_sensors
+        if self.__contact_sensors:
+            return self.__contact_sensors
+        else:
+            return []
 
     async def list_motion_sensors(self):
         _LOGGER.debug("Running list_motion_sensors")
         await self.get_devices()
-        return self.__contact_sensors
+        if self.__motion_sensors:
+            return self.__motion_sensors
+        else:
+            return []
 
     # endregion
 
