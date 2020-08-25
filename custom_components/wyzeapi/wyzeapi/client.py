@@ -39,7 +39,6 @@ class WyzeApiClient:
                 return await response.json()
 
     async def __post_and_recover(self, url: str, payload: dict):
-        self.__logged_in_event.wait()
         response_json = await self.__post_to_server(url, payload)
 
         if response_json['code'] != 1 and response_json['msg'] == 'AccessTokenError':
@@ -64,6 +63,7 @@ class WyzeApiClient:
 
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
         updated_payload = await self.__create_payload()
+        self.__logged_in_event.wait()
         updated_payload['access_token'] = self.__access_token
         if extras:
             updated_payload.update(extras)
@@ -97,6 +97,7 @@ class WyzeApiClient:
             _LOGGER.error("Failure to login with supplied credentials")
             self.__logged_in = False
             self.__logged_in_event.clear()
+            raise ConnectionError("Not logged in.")
 
     async def refresh_tokens(self):
         _LOGGER.debug("WyzeApiClient refreshing tokens")
