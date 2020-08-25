@@ -39,7 +39,7 @@ class WyzeApiClient:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 response_json = await response.json()
-                _LOGGER.debug("Response recieved from server: {0}".format(response_json))
+                # _LOGGER.debug("Response recieved from server: {0}".format(response_json))
                 return response_json
 
     async def __post_and_recover(self, url: str, payload: dict):
@@ -167,21 +167,21 @@ class WyzeApiClient:
             self.__devices = response_json['data']['device_list']
 
             for device in self.__devices:
-                if device['product_type'] == WyzeDevices.Light:
+                if device['product_type'] == "Light":
                     self.__bulbs.append(WyzeBulb(device['nickname'], device['product_model'], device['mac'],
                                                  device['device_params']['switch_state'],
                                                  device['device_params']['rssi'], device['device_params']['ssid'],
                                                  device['device_params']['ip']))
-                elif device['product_type'] == WyzeDevices.Plug:
+                elif device['product_type'] == "Plug":
                     self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
                                                       device['device_params']['switch_state'],
                                                       device['device_params']['rssi'], device['device_params']['ssid'],
                                                       device['device_params']['ip']))
-                elif device['product_type'] == WyzeDevices.Lock:
+                elif device['product_type'] == "Lock":
                     self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
                                                  device['device_params']['switch_state'],
                                                  device['device_params']['open_close_state']))
-                elif device['product_type'] == WyzeDevices.ContactSensor:
+                elif device['product_type'] == "ContactSensor":
                     self.__contact_sensors.append(WyzeContactSensor(
                         device['nickname'], device['product_model'], device['mac'],
                         device['device_params']['open_close_state'],
@@ -189,7 +189,7 @@ class WyzeApiClient:
                         device['device_params']['voltage'],
                         device['device_params']['rssi'],
                     ))
-                elif device['product_type'] == WyzeDevices.MotionSensor:
+                elif device['product_type'] == "MotionSensor":
                     self.__motion_sensors.append(WyzeMotionSensor(
                         device['nickname'], device['product_model'], device['mac'],
                         device['device_params']['motion_state'],
@@ -203,7 +203,7 @@ class WyzeApiClient:
     async def list_bulbs(self):
         _LOGGER.debug("Running list_bulbs")
         await self.get_devices()
-        if self.__bulbs:
+        if hasattr(self, '__bulbs'):
             return self.__bulbs
         else:
             return []
@@ -211,7 +211,7 @@ class WyzeApiClient:
     async def list_switches(self):
         _LOGGER.debug("Running list_switches")
         await self.get_devices()
-        if self.__switches:
+        if hasattr(self, '__switches'):
             return self.__switches
         else:
             return []
@@ -219,7 +219,7 @@ class WyzeApiClient:
     async def list_locks(self):
         _LOGGER.debug("Running list_locks")
         await self.get_devices()
-        if self.__locks:
+        if hasattr(self, '__locks'):
             return self.__locks
         else:
             return []
@@ -227,7 +227,7 @@ class WyzeApiClient:
     async def list_contact_sensors(self):
         _LOGGER.debug("Running list_contact_sensors")
         await self.get_devices()
-        if self.__contact_sensors:
+        if hasattr(self, '__contact_sensors'):
             return self.__contact_sensors
         else:
             return []
@@ -235,7 +235,7 @@ class WyzeApiClient:
     async def list_motion_sensors(self):
         _LOGGER.debug("Running list_motion_sensors")
         await self.get_devices()
-        if self.__motion_sensors:
+        if hasattr(self, '__motion_sensors'):
             return self.__motion_sensors
         else:
             return []
