@@ -50,7 +50,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities([HAWyzeContactSensor(wyzeapi_client, sensor) for sensor in
                         await wyzeapi_client.list_contact_sensors()], True)
     async_add_entities([HAWyzeMotionSensor(wyzeapi_client, motion_sensor) for motion_sensor in
-                        await hass.data[DOMAIN]["wyzeapi_account"].async_list_motion_sensor()], True)
+                        await wyzeapi_client.list_contact_sensors()], True)
 
 
 class HAWyzeContactSensor(BinarySensorEntity):
