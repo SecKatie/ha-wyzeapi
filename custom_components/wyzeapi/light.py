@@ -16,7 +16,8 @@ from homeassistant.components.light import (
 from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
-from .wyzeapi.client import WyzeApiClient, WyzeBulb
+from .wyzeapi.client import WyzeApiClient
+from .wyzeapi.devices import WyzeBulb
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
