@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import threading
 import time
 from typing import List
 from hashlib import md5
@@ -16,8 +15,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class WyzeApiClient:
-    __access_token: str
-    __refresh_token: str
+    __access_token: str = ""
+    __refresh_token: str = ""
     __logged_in: bool = False
     __user_name: str
     __password: str
@@ -28,10 +27,14 @@ class WyzeApiClient:
     __motion_sensors: List[WyzeMotionSensor] = []
     __locks: List[WyzeLock] = []
 
-    __logged_in_event = threading.Event()
+    # Control flow on loading devices
+    __devices_have_loaded = False
+    __load_devices_lock = asyncio.Lock()
 
-    def __init__(self):
-        self.__devices = None
+    # Control flow on recovering logged in status
+    __logged_in_event = asyncio.Event()
+    __logging_in_token = 0
+    __logging_in_token_lock = asyncio.Lock()
 
     @staticmethod
     async def __post_to_server(url: str, payload: dict):
@@ -50,17 +53,26 @@ class WyzeApiClient:
 
         if response_code != '1' and response_json['msg'] == 'AccessTokenError':
             self.__logged_in_event.clear()
-            await self.refresh_tokens()
+            await self.__logging_in_token_lock.acquire()
+            if self.__logging_in_token == 0:
+                self.__logging_in_token = 1
+
+                self.__logging_in_token_lock.release()
+
+                await self.refresh_tokens()
+
+            await self.__logged_in_event.wait()
 
             payload = await self.__create_authenticated_payload(payload)
 
             return await self.__post_and_recover(url, payload)
-        if response_code is '1001':
+        if response_code == '1001':
             _LOGGER.debug("Request to: {} does not respond to parameters in payload {} and gave a result of {}".format(
                 url, payload, response_json))
             raise AttributeError("Parameters passed to Wyze Service do not fit the endpoint")
-        if response_code is not '1':
-            _LOGGER.debug("Request to: {} failed with payload: {} with result of {}".format(url, payload, response_json))
+        if response_code != '1':
+            _LOGGER.debug("Request to: {} failed with payload: {} with result of {}".format(
+                url, payload, response_json))
             raise ConnectionError("Failed to connect to the Wyze Service")
 
         return response_json
@@ -77,7 +89,7 @@ class WyzeApiClient:
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
         _LOGGER.debug("Running __create_authenticated_payload")
         updated_payload = await self.__create_payload()
-        self.__logged_in_event.wait()
+        await self.__logged_in_event.wait()
         updated_payload['access_token'] = self.__access_token
         if extras:
             updated_payload.update(extras)
@@ -111,7 +123,7 @@ class WyzeApiClient:
         if response_json['msg'] == "UserIsLocked":
             _LOGGER.error("The user account is locked")
             raise ConnectionError("Failed to login with response: {0}".format(response_json))
-        elif response_json['msg'] == "UserNameOrPasswordError":
+        if response_json['msg'] == "UserNameOrPasswordError":
             _LOGGER.error("The username or password is incorrect")
             raise ConnectionError("Failed to login with response: {0}".format(response_json))
 
@@ -124,7 +136,6 @@ class WyzeApiClient:
         except KeyError:
             _LOGGER.error("Failure to login with supplied credentials")
             self.__logged_in = False
-            self.__logged_in_event.clear()
 
             _LOGGER.error(response_json)
             raise ConnectionError("Failed to login with response: {0}".format(response_json))
@@ -145,8 +156,6 @@ class WyzeApiClient:
             self.__logged_in_event.set()
         except KeyError:
             _LOGGER.error("Failed to refresh access token. Must login again.")
-            self.__logged_in = False
-            self.__logged_in_event.clear()
             await self.login(self.__user_name, self.__password)
 
     async def logout(self):
@@ -154,58 +163,62 @@ class WyzeApiClient:
         self.__access_token = ""
         self.__refresh_token = ""
         self.__logged_in = False
-        self.__logged_in_event.clear()
 
     # endregion
 
     # region Getting Devices
     async def refresh_devices(self) -> None:
         _LOGGER.debug("Running refresh_devices")
-        self.__devices = None
+        self.__devices_have_loaded = False
+        self.__bulbs = []
+        self.__switches = []
+        self.__locks = []
+        self.__contact_sensors = []
+        self.__motion_sensors = []
         await self.get_devices()
 
-    async def get_devices(self) -> list:
+    async def get_devices(self):
         _LOGGER.debug("Running get_devices")
-        if self.__devices is None:
-            payload = await self.__create_authenticated_payload()
+        async with self.__load_devices_lock:
+            if not self.__devices_have_loaded:
+                payload = await self.__create_authenticated_payload()
 
-            response_json = await self.__post_to_server(WyzeApiConstants.get_devices_url, payload)
+                response_json = await self.__post_to_server(WyzeApiConstants.get_devices_url, payload)
 
-            self.__devices = response_json['data']['device_list']
+                devices = response_json['data']['device_list']
 
-            for device in self.__devices:
-                if device['product_type'] == "Light":
-                    self.__bulbs.append(WyzeBulb(device['nickname'], device['product_model'], device['mac'],
-                                                 device['device_params']['switch_state'],
-                                                 device['device_params']['rssi'], device['device_params']['ssid'],
-                                                 device['device_params']['ip']))
-                elif device['product_type'] == "Plug":
-                    self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
-                                                      device['device_params']['switch_state'],
-                                                      device['device_params']['rssi'], device['device_params']['ssid'],
-                                                      device['device_params']['ip']))
-                elif device['product_type'] == "Lock":
-                    self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
-                                                 device['device_params']['switch_state'],
-                                                 device['device_params']['open_close_state']))
-                elif device['product_type'] == "ContactSensor":
-                    self.__contact_sensors.append(WyzeContactSensor(
-                        device['nickname'], device['product_model'], device['mac'],
-                        device['device_params']['open_close_state'],
-                        device['device_params']['open_close_state_ts'],
-                        device['device_params']['voltage'],
-                        device['device_params']['rssi'],
-                    ))
-                elif device['product_type'] == "MotionSensor":
-                    self.__motion_sensors.append(WyzeMotionSensor(
-                        device['nickname'], device['product_model'], device['mac'],
-                        device['device_params']['motion_state'],
-                        device['device_params']['motion_state_ts'],
-                        device['device_params']['voltage'],
-                        device['device_params']['rssi'],
-                    ))
-
-        return self.__devices
+                for device in devices:
+                    if device['product_type'] == "Light":
+                        self.__bulbs.append(WyzeBulb(device['nickname'], device['product_model'], device['mac'],
+                                                     device['device_params']['switch_state'],
+                                                     device['device_params']['rssi'], device['device_params']['ssid'],
+                                                     device['device_params']['ip']))
+                    elif device['product_type'] == "Plug":
+                        self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
+                                                          device['device_params']['switch_state'],
+                                                          device['device_params']['rssi'], device['device_params']['ssid'],
+                                                          device['device_params']['ip']))
+                    elif device['product_type'] == "Lock":
+                        self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
+                                                     device['device_params']['switch_state'],
+                                                     device['device_params']['open_close_state']))
+                    elif device['product_type'] == "ContactSensor":
+                        self.__contact_sensors.append(WyzeContactSensor(
+                            device['nickname'], device['product_model'], device['mac'],
+                            device['device_params']['open_close_state'],
+                            device['device_params']['open_close_state_ts'],
+                            device['device_params']['voltage'],
+                            device['device_params']['rssi'],
+                        ))
+                    elif device['product_type'] == "MotionSensor":
+                        self.__motion_sensors.append(WyzeMotionSensor(
+                            device['nickname'], device['product_model'], device['mac'],
+                            device['device_params']['motion_state'],
+                            device['device_params']['motion_state_ts'],
+                            device['device_params']['voltage'],
+                            device['device_params']['rssi'],
+                        ))
+                self.__devices_have_loaded = True
 
     async def list_bulbs(self):
         _LOGGER.debug("Running list_bulbs")
@@ -294,7 +307,7 @@ class WyzeApiClient:
         })
 
         asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_list_url, payload))
+            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
 
     async def update_bulb(self, bulb: WyzeBulb):
         payload = await self.__create_authenticated_payload({

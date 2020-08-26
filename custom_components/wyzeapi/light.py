@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-async def async_setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Wyze Light platform."""
     _LOGGER.debug("""Creating new WyzeApi light component""")
 
@@ -32,7 +32,8 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
 
     # Add devices
-    add_entities(HAWyzeBulb(wyzeapi_client, light) for light in await wyzeapi_client.list_bulbs())
+    bulbs = await wyzeapi_client.list_bulbs()
+    async_add_entities([HAWyzeBulb(wyzeapi_client, bulb) for bulb in bulbs], True)
 
 
 class HAWyzeBulb(LightEntity):
