@@ -36,8 +36,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
 
     _LOGGER.debug("""Creating new WyzeApi Lock component""")
-    async_add_entities(
-        [HAWyzeLock(wyzeapi_client, lock, hass) for lock in await wyzeapi_client.list_locks()], True)
+    locks = await wyzeapi_client.list_locks()
+    async_add_entities([HAWyzeLock(wyzeapi_client, lock, hass) for lock in locks], True)
 
 
 class HAWyzeLock(LockEntity):

@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-async def async_setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Wyze Switch platform."""
     _LOGGER.debug("""Creating new WyzeApi switch component""")
 
@@ -28,7 +28,8 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
 
     # Add devices
-    add_entities(HAWyzeSwitch(wyzeapi_client, switch) for switch in await wyzeapi_client.list_switches())
+    switches = await wyzeapi_client.list_switches()
+    async_add_entities([HAWyzeSwitch(wyzeapi_client, switch) for switch in switches], True)
 
 
 class HAWyzeSwitch(SwitchEntity):
