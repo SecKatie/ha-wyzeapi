@@ -61,6 +61,10 @@ class WyzeApiClient:
 
                 await self.refresh_tokens()
 
+                await self.__logging_in_token_lock.acquire()
+                self.__logging_in_token = 0
+                self.__logging_in_token_lock.release()
+
             await self.__logged_in_event.wait()
 
             payload = await self.__create_authenticated_payload(payload)
@@ -196,7 +200,8 @@ class WyzeApiClient:
                     elif device['product_type'] == "Plug":
                         self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
                                                           device['device_params']['switch_state'],
-                                                          device['device_params']['rssi'], device['device_params']['ssid'],
+                                                          device['device_params']['rssi'],
+                                                          device['device_params']['ssid'],
                                                           device['device_params']['ip']))
                     elif device['product_type'] == "Lock":
                         self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
