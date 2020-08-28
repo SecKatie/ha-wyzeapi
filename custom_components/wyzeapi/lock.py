@@ -10,7 +10,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
 from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import WyzeLock
+from .wyzeapi.devices import Lock
 
 # Add to support quicker update time. Is this too Fast?
 SCAN_INTERVAL = timedelta(seconds=5)
@@ -43,7 +43,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class HAWyzeLock(LockEntity):
     """Representation of a Wyze binary_sensor."""
 
-    def __init__(self, client: WyzeApiClient, lock: WyzeLock, hass):
+    def __init__(self, client: WyzeApiClient, lock: Lock, hass):
         """Initialize a Wyze binary_sensor."""
         self.__hass = hass
         self.__lock = lock
@@ -124,4 +124,4 @@ class HAWyzeLock(LockEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Locks doing a update.""")
-        await self.__client.update_lock(self.__lock)
+        await self.__client.update(self.__lock)
