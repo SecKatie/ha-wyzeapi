@@ -1,4 +1,5 @@
 from typing import Dict
+
 from .base_networked_device import BaseNetworkedDevice
 from ..interfaces import ISwitchable
 from ..interfaces import IUpdatable

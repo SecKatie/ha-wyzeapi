@@ -1,6 +1,7 @@
+from typing import Dict
+
 from .base import BaseDevice
 from ..interfaces import IUpdatable
-from typing import Dict
 
 
 class BaseSensor(BaseDevice, IUpdatable):
