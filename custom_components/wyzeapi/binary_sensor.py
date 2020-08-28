@@ -15,7 +15,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, ATTR_BATTERY_LEVEL
 
 from . import DOMAIN
 from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import WyzeMotionSensor, WyzeContactSensor
+from .wyzeapi.devices import MotionSensor, ContactSensor
 
 # Add to support quicker update time. Is this to Fast?
 
@@ -56,10 +56,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 class HAWyzeContactSensor(BinarySensorEntity):
     """Representation of a Wyze binary_sensor."""
-    __sensor: WyzeContactSensor
+    __sensor: ContactSensor
     __client: WyzeApiClient
 
-    def __init__(self, client: WyzeApiClient, sensor: WyzeContactSensor):
+    def __init__(self, client: WyzeApiClient, sensor: ContactSensor):
         """Initialize a Wyze binary_sensor."""
         self.__sensor = sensor
         self.__client = client
@@ -136,15 +136,15 @@ class HAWyzeContactSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__client.update_contact_sensor(self.__sensor)
+        await self.__client.update(self.__sensor)
 
 
 class HAWyzeMotionSensor(BinarySensorEntity):
     """Representation of a Wyze binary_sensor."""
-    __sensor: WyzeMotionSensor
+    __sensor: MotionSensor
     __client: WyzeApiClient
 
-    def __init__(self, client: WyzeApiClient, motion_sensor: WyzeMotionSensor):
+    def __init__(self, client: WyzeApiClient, motion_sensor: MotionSensor):
         """Initialize a Wyze binary_sensor."""
         self.__sensor = motion_sensor
         self.__client = client
@@ -203,4 +203,4 @@ class HAWyzeMotionSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__client.update_motion_sensor(self.__sensor)
+        await self.__client.update(self.__sensor)

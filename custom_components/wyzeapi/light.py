@@ -17,7 +17,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
 from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import WyzeBulb
+from .wyzeapi.devices import Bulb
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -40,21 +40,36 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class HAWyzeBulb(LightEntity):
     """Representation of a Wyze Bulb."""
     __client: WyzeApiClient
-    __light: WyzeBulb
+    __light: Bulb
     __just_updated = False
 
-    def __init__(self, client: WyzeApiClient, light: WyzeBulb):
+    def __init__(self, client: WyzeApiClient, light: Bulb):
         """Initialize a Wyze Bulb."""
         self.__light = light
         self.__client = client
 
+    @staticmethod
+    def translate(value, left_min, left_max, right_min, right_max):
+        if value is None:
+            return None
+
+        # Figure out how 'wide' each range is
+        left_span = left_max - left_min
+        right_span = right_max - right_min
+
+        # Convert the left range into a 0-1 range (float)
+        value_scaled = float(value - left_min) / float(left_span)
+
+        # Convert the 0-1 range into a value in the right range.
+        return right_min + (value_scaled * right_span)
+
     def turn_on(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_on_bulb(self.__light))
+        asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__light))
         self.__light.switch_state = 1
         self.__just_updated = True
 
     def turn_off(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_off_bulb(self.__light))
+        asyncio.get_event_loop().run_until_complete(self.__client.turn_off(self.__light))
         self.__light.switch_state = 0
         self.__just_updated = True
 
@@ -94,12 +109,12 @@ class HAWyzeBulb(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return self.__light.brightness
+        return self.translate(self.__light.brightness, 1, 100, 1, 255)
 
     @property
     def color_temp(self):
         """Return the CT color value in mired."""
-        return self.__light.color_temp
+        return self.translate(self.__light.color_temp, 2700, 6500, 500, 140)
 
     @property
     def is_on(self):
@@ -116,15 +131,15 @@ class HAWyzeBulb(LightEntity):
         You can skip the brightness part if your light does not support
         brightness control.
         """
-        self.__light.brightness = kwargs.get(ATTR_BRIGHTNESS)
-        self.__light.color_temp = kwargs.get(ATTR_COLOR_TEMP)
-        await self.__client.turn_on_bulb(self.__light)
+        self.__light.brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
+        self.__light.color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
+        await self.__client.turn_on(self.__light)
         self.__light.switch_state = 1
         self.__just_updated = True
 
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
-        await self.__client.turn_off_bulb(self.__light)
+        await self.__client.turn_off(self.__light)
         self.__light.switch_state = 0
         self.__just_updated = True
 
@@ -136,4 +151,4 @@ class HAWyzeBulb(LightEntity):
             self.__just_updated = False
             return
 
-        await self.__client.update_bulb(self.__light)
+        await self.__client.update(self.__light)
