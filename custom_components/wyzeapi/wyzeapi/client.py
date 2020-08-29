@@ -3,13 +3,14 @@
 import asyncio
 import logging
 import time
-from typing import List
 from hashlib import md5
+from typing import List
 
 import aiohttp
 
 from .constants import WyzeApiConstants
 from .devices import *
+from .interfaces.ISwitchable import ISwitchable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,11 +22,11 @@ class WyzeApiClient:
     __user_name: str
     __password: str
 
-    __bulbs: List[WyzeBulb] = []
-    __switches: List[WyzeSwitch] = []
-    __contact_sensors: List[WyzeContactSensor] = []
-    __motion_sensors: List[WyzeMotionSensor] = []
-    __locks: List[WyzeLock] = []
+    __bulbs: List[Bulb] = []
+    __switches: List[Switch] = []
+    __contact_sensors: List[ContactSensor] = []
+    __motion_sensors: List[MotionSensor] = []
+    __locks: List[Lock] = []
 
     # Control flow on loading devices
     __devices_have_loaded = False
@@ -170,6 +171,82 @@ class WyzeApiClient:
 
     # endregion
 
+    # region Switch Operations
+    async def turn_on(self, switch_device: ISwitchable):
+        _LOGGER.debug("Turning on: " + switch_device.nick_name)
+        props = switch_device.switch_on_props()
+        url = ""
+        payload = {}
+
+        if len(props) > 1:
+            url = WyzeApiConstants.set_device_property_list_url
+            property_list = []
+            for prop in props:
+                property_list.append({"pid": prop, "pvalue": props[prop]})
+
+            payload = await self.__create_authenticated_payload({
+                "property_list": property_list,
+                "device_model": switch_device.product_model,
+                "device_mac": switch_device.mac
+            })
+
+        elif len(props) == 1:
+            url = WyzeApiConstants.set_device_property_url
+
+            prop = props.popitem()
+            payload = await self.__create_authenticated_payload({
+                'pid': prop[0],
+                'pvalue': prop[1],
+                "device_model": switch_device.product_model,
+                "device_mac": switch_device.mac
+            })
+        else:
+            raise ValueError("switch_on_props() must return at least on property.")
+
+        asyncio.get_running_loop().create_task(
+            self.__post_and_recover(url, payload))
+
+    async def turn_off(self, switch_device: ISwitchable):
+        _LOGGER.debug("Turning off: " + switch_device.nick_name)
+        props = switch_device.switch_off_props()
+        url = WyzeApiConstants.set_device_property_url
+
+        if len(props) == 1:
+            prop = props.popitem()
+            payload = await self.__create_authenticated_payload({
+                'pid': prop[0],
+                'pvalue': prop[1],
+                "device_model": switch_device.product_model,
+                "device_mac": switch_device.mac
+            })
+
+            asyncio.get_running_loop().create_task(
+                self.__post_and_recover(url, payload))
+        else:
+            raise ValueError("switch_off_props() must return at least one property.")
+
+    # endregion
+
+    # region Update Operations
+    async def update(self, device: IUpdatable):
+        payload = await self.__create_authenticated_payload({
+            "target_pid_list": [],
+            "device_model": device.product_model,
+            "device_mac": device.mac
+        })
+
+        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
+
+        prop_map = device.prop_map()
+
+        for item in response_json['data']['property_list']:
+            if item['pid'] in prop_map:
+                device[str(prop_map[item['pid']])] = type(prop_map[item['pid']])(item['value'])
+                if 'ts' in item:
+                    device[str(prop_map[item['pid']]) + "_ts"] = type(prop_map[item['pid']])(item['ts'])
+
+    # endregion
+
     # region Getting Devices
     async def refresh_devices(self) -> None:
         _LOGGER.debug("Running refresh_devices")
@@ -193,22 +270,22 @@ class WyzeApiClient:
 
                 for device in devices:
                     if device['product_type'] == "Light":
-                        self.__bulbs.append(WyzeBulb(device['nickname'], device['product_model'], device['mac'],
-                                                     device['device_params']['switch_state'],
-                                                     device['device_params']['rssi'], device['device_params']['ssid'],
-                                                     device['device_params']['ip']))
+                        self.__bulbs.append(Bulb(device['nickname'], device['product_model'], device['mac'],
+                                                 device['device_params']['switch_state'],
+                                                 device['device_params']['rssi'], device['device_params']['ssid'],
+                                                 device['device_params']['ip']))
                     elif device['product_type'] == "Plug":
-                        self.__switches.append(WyzeSwitch(device['nickname'], device['product_model'], device['mac'],
-                                                          device['device_params']['switch_state'],
-                                                          device['device_params']['rssi'],
-                                                          device['device_params']['ssid'],
-                                                          device['device_params']['ip']))
+                        self.__switches.append(Switch(device['nickname'], device['product_model'], device['mac'],
+                                                      device['device_params']['switch_state'],
+                                                      device['device_params']['rssi'],
+                                                      device['device_params']['ssid'],
+                                                      device['device_params']['ip']))
                     elif device['product_type'] == "Lock":
-                        self.__locks.append(WyzeLock(device['nickname'], device['product_model'], device['mac'],
-                                                     device['device_params']['switch_state'],
-                                                     device['device_params']['open_close_state']))
+                        self.__locks.append(Lock(device['nickname'], device['product_model'], device['mac'],
+                                                 device['device_params']['switch_state'],
+                                                 device['device_params']['open_close_state']))
                     elif device['product_type'] == "ContactSensor":
-                        self.__contact_sensors.append(WyzeContactSensor(
+                        self.__contact_sensors.append(ContactSensor(
                             device['nickname'], device['product_model'], device['mac'],
                             device['device_params']['open_close_state'],
                             device['device_params']['open_close_state_ts'],
@@ -216,7 +293,7 @@ class WyzeApiClient:
                             device['device_params']['rssi'],
                         ))
                     elif device['product_type'] == "MotionSensor":
-                        self.__motion_sensors.append(WyzeMotionSensor(
+                        self.__motion_sensors.append(MotionSensor(
                             device['nickname'], device['product_model'], device['mac'],
                             device['device_params']['motion_state'],
                             device['device_params']['motion_state_ts'],
@@ -250,207 +327,4 @@ class WyzeApiClient:
         await self.get_devices()
         return self.__motion_sensors
 
-    # endregion
-
-    # region Bulb Operations
-    @staticmethod
-    def translate(value, left_min, left_max, right_min, right_max):
-        # Figure out how 'wide' each range is
-        left_span = left_max - left_min
-        right_span = right_max - right_min
-
-        # Convert the left range into a 0-1 range (float)
-        value_scaled = float(value - left_min) / float(left_span)
-
-        # Convert the 0-1 range into a value in the right range.
-        return right_min + (value_scaled * right_span)
-
-    async def turn_on_bulb(self, bulb: WyzeBulb):
-        _LOGGER.debug("Turning on bulb: " + bulb.mac)
-        if bulb.color_temp is not None or bulb.brightness is not None:
-            property_list = [{"pid": "P3", "pvalue": "1"}]
-
-            if bulb.brightness:
-                brightness = self.translate(bulb.brightness, 1, 255, 1, 100)
-                property_list.append({"pid": "P1501", "pvalue": brightness})
-
-            if bulb.color_temp:
-                if bulb.color_temp >= 370:
-                    color_temp = 2700
-                elif bulb.color_temp <= 153:
-                    color_temp = 6500
-                else:
-                    color_temp = 1000000 / bulb.color_temp
-
-                property_list.append({"pid": "P1502", "pvalue": color_temp})
-
-            payload = await self.__create_authenticated_payload({
-                "property_list": property_list,
-                "device_model": bulb.product_model,
-                "device_mac": bulb.mac
-            })
-
-            asyncio.get_running_loop().create_task(
-                self.__post_and_recover(WyzeApiConstants.set_device_property_list_url, payload))
-        else:
-            payload = await self.__create_authenticated_payload({
-                "device_model": bulb.product_model,
-                "device_mac": bulb.mac,
-                'pvalue': "1",
-                'pid': 'P3',
-            })
-
-            asyncio.get_running_loop().create_task(
-                self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
-
-    async def turn_off_bulb(self, bulb: WyzeBulb):
-        payload = await self.__create_authenticated_payload({
-            "device_model": bulb.product_model,
-            "device_mac": bulb.mac,
-            'pvalue': "0",
-            'pid': 'P3',
-        })
-
-        asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
-
-    async def update_bulb(self, bulb: WyzeBulb):
-        payload = await self.__create_authenticated_payload({
-            "target_pid_list": [],
-            "device_model": bulb.product_model,
-            "device_mac": bulb.mac
-        })
-
-        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
-
-        for item in response_json['data']['property_list']:
-            if item['pid'] == "P3":
-                bulb.switch_state = int(item['value'])
-            elif item['pid'] == "P5":
-                bulb.available = int(item['value'])
-            elif item['pid'] == "P1501":
-                bulb.brightness = self.translate(int(item['value']), 0, 100, 0, 255)
-            elif item['pid'] == "P1502":
-                bulb.color_temp = 1000000 / int(item['value'])
-            elif item['pid'] == "P1612":
-                switch.rssi = item['value']
-
-    # endregion
-
-    # region Switch Operations
-    async def turn_on_switch(self, switch: WyzeSwitch):
-        payload = await self.__create_authenticated_payload({
-            'device_model': switch.product_model,
-            'device_mac': switch.mac,
-            'pvalue': "1",
-            'pid': 'P3',
-        })
-
-        asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
-
-    async def turn_off_switch(self, switch: WyzeSwitch):
-        payload = await self.__create_authenticated_payload({
-            'device_model': switch.product_model,
-            'device_mac': switch.mac,
-            'pvalue': "0",
-            'pid': 'P3',
-        })
-
-        asyncio.get_running_loop().create_task(
-            self.__post_and_recover(WyzeApiConstants.set_device_property_url, payload))
-
-    async def update_switch(self, switch: WyzeSwitch):
-        payload = await self.__create_authenticated_payload({
-            "target_pid_list": [],
-            "device_model": switch.product_model,
-            "device_mac": switch.mac
-        })
-
-        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
-
-        for item in response_json['data']['property_list']:
-            if item['pid'] == "P3":
-                switch.switch_state = int(item['value'])
-            elif item['pid'] == "P5":
-                switch.avaliable = int(item['value'])
-            elif item['pid'] == "P1612":
-                switch.rssi = item['value']
-
-    # endregion
-
-    # region Lock Operations
-    async def update_lock(self, lock: WyzeLock):
-        payload = await self.__create_authenticated_payload({
-            "target_pid_list": [],
-            "device_model": lock.product_model,
-            "device_mac": lock.mac,
-        })
-
-        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
-
-        for item in response_json['data']['property_list']:
-            if lock.product_model == "YD.LO1":
-                if item['pid'] == "P3":  # I don't know if this is correct
-                    lock.switch_state = int(item['value'])
-                if item['pid'] == "P2001":
-                    lock.open_close_state = int(item['value'])
-            if item['pid'] == "P5":
-                lock.avaliable = int(item['value'])
-
-    # endregion
-
-    # region Contact Sensor Operations
-    async def update_contact_sensor(self, contact_sensor: WyzeContactSensor):
-        payload = await self.__create_authenticated_payload({
-            "target_pid_list": [],
-            "device_model": contact_sensor.product_model,
-            "device_mac": contact_sensor.mac,
-        })
-
-        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
-
-        for item in response_json['data']['property_list']:
-            if contact_sensor.product_model == "PIR3U":
-                if item['pid'] == "P1302":
-                    contact_sensor.open_close_state = int(item['value'])
-                    contact_sensor.open_close_state_ts = item['ts']
-            if contact_sensor.product_model == "DWS3U":
-                if item['pid'] == "P1301":
-                    contact_sensor.open_close_state = int(item['value'])
-                    contact_sensor.open_close_state_ts = item['ts']
-            if item['pid'] == "P5":
-                contact_sensor.avaliable = int(item['value'])
-            if item['pid'] == "P1304":
-                contact_sensor.rssi = item['value']
-            if item['pid'] == "P1303":
-                contact_sensor.voltage = item['value']
-
-    # endregion
-
-    # region Motion Sensor Operations
-    async def update_motion_sensor(self, motion_sensor: WyzeMotionSensor):
-        payload = await self.__create_authenticated_payload({
-            "target_pid_list": [],
-            "device_model": motion_sensor.product_model,
-            "device_mac": motion_sensor.mac,
-        })
-
-        response_json = await self.__post_and_recover(WyzeApiConstants.get_device_property_url, payload)
-
-        for item in response_json['data']['property_list']:
-            if motion_sensor.product_model == "PIR3U":
-                if item['pid'] == "P1302":
-                    motion_sensor.motion_state = int(item['value'])
-                    motion_sensor.motion_state_ts = item['ts']
-            if motion_sensor.product_model == "PIR3U":
-                if item['pid'] == "P1301":
-                    motion_sensor.motion_state = int(item['value'])
-                    motion_sensor.motion_state_ts = item['ts']
-            if item['pid'] == "P5":
-                motion_sensor.avaliable = int(item['value'])
-            if item['pid'] == "P1304":
-                motion_sensor.rssi = item['value']
-            if item['pid'] == "P1303":
-                motion_sensor.voltage = item['value']
     # endregion

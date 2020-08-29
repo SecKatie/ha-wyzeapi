@@ -12,7 +12,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 
 from . import DOMAIN
 from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import WyzeSwitch
+from .wyzeapi.devices import Switch
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -36,21 +36,21 @@ class HAWyzeSwitch(SwitchEntity):
     """Representation of a Wyze Switch."""
 
     __client: WyzeApiClient
-    __switch: WyzeSwitch
+    __switch: Switch
     __just_updated = False
 
-    def __init__(self, client: WyzeApiClient, switch: WyzeSwitch):
+    def __init__(self, client: WyzeApiClient, switch: Switch):
         """Initialize a Wyze Bulb."""
         self.__switch = switch
         self.__client = client
 
     def turn_on(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_on_switch(self.__switch))
+        asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__switch))
         self.__switch.switch_state = 1
         self.__just_updated = True
 
     def turn_off(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_off_switch(self.__switch))
+        asyncio.get_event_loop().run_until_complete(self.__client.turn_off(self.__switch))
         self.__switch.switch_state = 0
         self.__just_updated = True
 
@@ -89,13 +89,13 @@ class HAWyzeSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Instruct the switch to turn on."""
-        await self.__client.turn_on_switch(self.__switch)
+        await self.__client.turn_on(self.__switch)
         self.__switch.switch_state = 1
         self.__just_updated = True
 
     async def async_turn_off(self, **kwargs):
         """Instruct the switch to turn off."""
-        await self.__client.turn_off_switch(self.__switch)
+        await self.__client.turn_off(self.__switch)
         self.__switch.switch_state = 0
         self.__just_updated = False
 
@@ -103,4 +103,4 @@ class HAWyzeSwitch(SwitchEntity):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
-        await self.__client.update_switch(self.__switch)
+        await self.__client.update(self.__switch)
