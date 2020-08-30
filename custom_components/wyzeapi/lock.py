@@ -80,7 +80,7 @@ class HAWyzeLock(LockEntity):
     @property
     def is_locked(self):
         """Return true if sensor is on."""
-        return self.__lock.switch_state == 1
+        return self.__lock.switch_state == 0
 
     @property
     def unique_id(self):
