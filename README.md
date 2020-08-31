@@ -16,6 +16,12 @@ This is a custom component to allow control of Wyze Bulbs, Switches, Sensors, an
 * I only have light bulbs and no switches so they are not tested directly by me. An update may break them without my knowledge. **Please use the betas as they become available if you have switches to help me find bugs prior to release**
 * It requires two factor authentication to be disabled on your account
 
+## Support
+If you like what I have done here and want to help I would recommend that you firstly look into supporting Home Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store) or paying for a Nabu Casa subscripion. None of this could happen without them.
+
+After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee.
+<a href="https://www.buymeacoffee.com/joshmulliken" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
+
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
@@ -74,5 +80,3 @@ If you would like more information then please look at the [wiki](https://github
 3. Verify you're still having the issue
 4. File an issue in this Github Repository
 
-## Support
-<a href="https://www.buymeacoffee.com/joshmulliken" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
