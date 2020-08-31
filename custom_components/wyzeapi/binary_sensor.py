@@ -72,7 +72,7 @@ class HAWyzeContactSensor(BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return the connection status of this sensor"""
-        return self.__sensor.avaliable == 1
+        return self.__sensor.available == 1
 
     @property
     def is_on(self) -> bool:
@@ -157,7 +157,7 @@ class HAWyzeMotionSensor(BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return the connection status of this sensor"""
-        return self.__sensor.avaliable == 1
+        return self.__sensor.available == 1
 
     @property
     def is_on(self) -> bool:

@@ -86,7 +86,7 @@ class HAWyzeBulb(LightEntity):
     @property
     def available(self):
         """Return the connection status of this light"""
-        return self.__light.avaliable
+        return self.__light.available
 
     @property
     def device_state_attributes(self):
