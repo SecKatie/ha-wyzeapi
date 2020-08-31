@@ -20,6 +20,7 @@ This is a custom component to allow control of Wyze Bulbs, Switches, Sensors, an
 If you like what I have done here and want to help I would recommend that you firstly look into supporting Home Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store) or paying for a Nabu Casa subscripion. None of this could happen without them.
 
 After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee.
+
 <a href="https://www.buymeacoffee.com/joshmulliken" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
 ## Installation (HACS) - Highly Recommended
