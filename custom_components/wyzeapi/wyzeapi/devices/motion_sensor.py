@@ -1,7 +1,10 @@
+from typing import Dict
+
 from .base_sensor import BaseSensor
+from ..interfaces import IUpdatable
 
 
-class MotionSensor(BaseSensor):
+class MotionSensor(BaseSensor, IUpdatable):
     motion_state: int
     motion_state_ts: str
 
@@ -10,3 +13,21 @@ class MotionSensor(BaseSensor):
 
         self.motion_state = motion_state
         self.motion_state_ts = motion_state_ts
+
+    def prop_map(self) -> Dict:
+        prop_map = {
+            "P5": self.available,
+            "P1304": self.rssi,
+            "P1303": self.voltage,
+        }
+
+        if self.product_model == "PIR3U":
+            prop_map.update({
+                "P1302": self.motion_state
+            })
+        if self.product_model == "DWS3U":
+            prop_map.update({
+                "P1301": self.motion_state
+            })
+
+        return prop_map

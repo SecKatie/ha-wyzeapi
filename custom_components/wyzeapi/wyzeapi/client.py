@@ -175,8 +175,6 @@ class WyzeApiClient:
     async def turn_on(self, switch_device: ISwitchable):
         _LOGGER.debug("Turning on: " + switch_device.nick_name)
         props = switch_device.switch_on_props()
-        url = ""
-        payload = {}
 
         if len(props) > 1:
             url = WyzeApiConstants.set_device_property_list_url
