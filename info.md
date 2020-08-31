@@ -9,11 +9,13 @@ This is a custom component to allow control of Wyze Bulbs, Switches, Sensors, an
 * View Wyze Sensors as binary_sensor through HA
 * View Wyze Lock Status and Door Status as lock through HA
 	* ***Note:* Currently you can only view the lock status or door status. Lock and Unlock does not work!**
+	
+## Support
+If you feel like my work has been valuable to you I welcome your support through BuyMeACoffee!
+
+<a href="https://www.buymeacoffee.com/joshmulliken" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
 
 ## Useful Links
 
 * [README](https://github.com/JoshuaMulliken/ha-wyzeapi/blob/master/README.md)
 * [Repository](https://github.com/JoshuaMulliken/ha-wyzeapi)
-
-## Support
-<a href="https://www.buymeacoffee.com/joshmulliken" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>
