@@ -6,7 +6,6 @@ from ..interfaces import ISwitchable, IUpdatable
 
 class Switch(BaseNetworkedDevice, ISwitchable, IUpdatable):
     switch_state: int
-    avaliable: int
 
     def __init__(self, nick_name, product_model, mac, switch_state, rssi, ssid, ip):
         super().__init__(nick_name, product_model, mac, ssid, rssi, ip)
@@ -27,6 +26,6 @@ class Switch(BaseNetworkedDevice, ISwitchable, IUpdatable):
     def prop_map(self) -> Dict:
         return {
             "P3": self.switch_state,
-            "P5": self.avaliable,
+            "P5": self.available,
             "P1612": self.rssi
         }
