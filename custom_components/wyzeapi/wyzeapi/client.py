@@ -43,7 +43,7 @@ class WyzeApiClient:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 response_json = await response.json()
-                # _LOGGER.debug("Response recieved from server: {0}".format(response_json))
+                # _LOGGER.debug("Response received from server: {0}".format(response_json))
                 return response_json
 
     async def __post_and_recover(self, url: str, payload: dict):

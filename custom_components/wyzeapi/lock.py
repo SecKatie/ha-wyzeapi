@@ -75,7 +75,7 @@ class HAWyzeLock(LockEntity):
     @property
     def available(self):
         """Return the connection status of this sensor"""
-        return self.__lock.avaliable
+        return self.__lock.available
 
     @property
     def is_locked(self):

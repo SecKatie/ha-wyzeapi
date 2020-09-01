@@ -1,10 +1,9 @@
 from typing import Dict
 
-from .base import BaseDevice
 from ..interfaces import IUpdatable
 
 
-class Lock(BaseDevice, IUpdatable):
+class Lock(IUpdatable):
     open_close_state: int
     switch_state: int
 
