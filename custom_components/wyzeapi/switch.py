@@ -62,7 +62,7 @@ class HAWyzeSwitch(SwitchEntity):
     @property
     def available(self):
         """Return the connection status of this switch"""
-        return self.__switch.avaliable
+        return self.__switch.available
 
     @property
     def is_on(self):
