@@ -1,8 +1,9 @@
 from abc import *
+from ..devices import BaseDevice
 from typing import Dict
 
 
-class ISwitchable(ABC):
+class ISwitchable(BaseDevice):
     @abstractmethod
     def switch_on_props(self) -> Dict:
         pass
