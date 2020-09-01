@@ -7,7 +7,6 @@ from ..interfaces import IUpdatable
 class Lock(BaseDevice, IUpdatable):
     open_close_state: int
     switch_state: int
-    avaliable: int
 
     def __init__(self, nick_name, product_model, mac, switch_state, open_close_state):
         super().__init__(nick_name, product_model, mac)
@@ -17,7 +16,7 @@ class Lock(BaseDevice, IUpdatable):
 
     def prop_map(self) -> Dict:
         prop_map = {
-            "P5": self.avaliable,
+            "P5": self.available,
         }
 
         if self.product_model == "YD.LO1":
