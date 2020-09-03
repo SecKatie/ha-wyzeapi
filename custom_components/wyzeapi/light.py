@@ -3,6 +3,7 @@
 """Platform for light integration."""
 import asyncio
 import logging
+from datetime import timedelta
 # Import the device class from the component that you want to support
 from typing import Any
 
@@ -21,6 +22,7 @@ from .wyzeapi.devices import Bulb
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -47,6 +49,10 @@ class HAWyzeBulb(LightEntity):
         """Initialize a Wyze Bulb."""
         self.__light = light
         self.__client = client
+
+    @property
+    def should_poll(self) -> bool:
+        return True
 
     @staticmethod
     def translate(value, left_min, left_max, right_min, right_max):
@@ -147,8 +153,9 @@ class HAWyzeBulb(LightEntity):
         """Fetch new state data for this light.
         This is the only method that should fetch new data for Home Assistant.
         """
+        _LOGGER.debug("Updating Light: {}".format(self.name))
         if self.__just_updated:
             self.__just_updated = False
             return
 
-        await self.__client.update(self.__light)
+        self.__light = await self.__client.update(self.__light)

@@ -44,6 +44,10 @@ class HAWyzeSwitch(SwitchEntity):
         self.__switch = switch
         self.__client = client
 
+    @property
+    def should_poll(self) -> bool:
+        return True
+
     def turn_on(self, **kwargs: Any) -> None:
         asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__switch))
         self.__switch.switch_state = 1
@@ -103,4 +107,4 @@ class HAWyzeSwitch(SwitchEntity):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
-        await self.__client.update(self.__switch)
+        self.__switch = await self.__client.update(self.__switch)

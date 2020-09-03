@@ -124,4 +124,4 @@ class HAWyzeLock(LockEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Locks doing a update.""")
-        await self.__client.update(self.__lock)
+        self.__lock = await self.__client.update(self.__lock)

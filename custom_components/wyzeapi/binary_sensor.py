@@ -136,7 +136,7 @@ class HAWyzeContactSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__client.update(self.__sensor)
+        self.__sensor = await self.__client.update(self.__sensor)
 
 
 class HAWyzeMotionSensor(BinarySensorEntity):
@@ -203,4 +203,4 @@ class HAWyzeMotionSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug("""Binary Sensors doing a update.""")
-        await self.__client.update(self.__sensor)
+        self.__sensor = await self.__client.update(self.__sensor)
