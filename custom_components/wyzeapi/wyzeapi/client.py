@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 from hashlib import md5
-from typing import List
+from typing import List, Any
 
 import aiohttp
 
@@ -39,15 +39,12 @@ class WyzeApiClient:
 
     @staticmethod
     async def __post_to_server(url: str, payload: dict):
-        _LOGGER.debug("Running __post_to_server")
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 response_json = await response.json()
-                # _LOGGER.debug("Response received from server: {0}".format(response_json))
                 return response_json
 
     async def __post_and_recover(self, url: str, payload: dict):
-        _LOGGER.debug("Running __post_and_recover")
         response_json = await self.__post_to_server(url, payload)
 
         response_code = response_json['code']
@@ -84,7 +81,6 @@ class WyzeApiClient:
 
     @staticmethod
     async def __create_payload(extras: dict = None) -> dict:
-        _LOGGER.debug("Running __create_payload")
         updated_payload = WyzeApiConstants.base_payload.copy()
         updated_payload['ts'] = str(int(time.time()))
         if extras:
@@ -92,7 +88,6 @@ class WyzeApiClient:
         return updated_payload
 
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
-        _LOGGER.debug("Running __create_authenticated_payload")
         updated_payload = await self.__create_payload()
         await self.__logged_in_event.wait()
         updated_payload['access_token'] = self.__access_token
@@ -172,7 +167,7 @@ class WyzeApiClient:
     # endregion
 
     # region Switch Operations
-    async def turn_on(self, switch_device: ISwitchable):
+    async def turn_on(self, switch_device: ISwitchable) -> ISwitchable:
         _LOGGER.debug("Turning on: " + switch_device.nick_name)
         props = switch_device.switch_on_props()
 
@@ -204,7 +199,9 @@ class WyzeApiClient:
         asyncio.get_running_loop().create_task(
             self.__post_and_recover(url, payload))
 
-    async def turn_off(self, switch_device: ISwitchable):
+        return switch_device
+
+    async def turn_off(self, switch_device: ISwitchable) -> ISwitchable:
         _LOGGER.debug("Turning off: " + switch_device.nick_name)
         props = switch_device.switch_off_props()
         url = WyzeApiConstants.set_device_property_url
@@ -223,10 +220,14 @@ class WyzeApiClient:
         else:
             raise ValueError("switch_off_props() must return at least one property.")
 
+        return switch_device
+
     # endregion
 
     # region Update Operations
-    async def update(self, device: IUpdatable):
+    async def update(self, device: IUpdatable) -> Any:
+        _LOGGER.debug("Updating: {}".format(device.nick_name))
+
         payload = await self.__create_authenticated_payload({
             "target_pid_list": [],
             "device_model": device.product_model,
@@ -238,10 +239,20 @@ class WyzeApiClient:
         prop_map = device.prop_map()
 
         for item in response_json['data']['property_list']:
-            if item['pid'] in prop_map:
-                device[str(prop_map[item['pid']])] = type(prop_map[item['pid']])(item['value'])
+            if item['pid'] in prop_map.keys():
+                value = item['value']
+                device_prop = prop_map[item['pid']][0]
+                prop_type = prop_map[item['pid']][1]
+
+                if prop_type == "str":
+                    vars(device)[device_prop] = str(value)
+                elif prop_type == "int":
+                    vars(device)[device_prop] = int(value)
+
                 if 'ts' in item:
-                    device[str(prop_map[item['pid']]) + "_ts"] = type(prop_map[item['pid']])(item['ts'])
+                    vars(device)[device_prop + "_ts"] = int(item['ts'])
+
+        return device
 
     # endregion
 

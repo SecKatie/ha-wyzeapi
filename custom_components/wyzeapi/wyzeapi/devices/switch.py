@@ -25,7 +25,7 @@ class Switch(BaseNetworkedDevice, ISwitchable, IUpdatable):
 
     def prop_map(self) -> Dict:
         return {
-            "P3": self.switch_state,
-            "P5": self.available,
-            "P1612": self.rssi
+            "P3": ("switch_state", "int"),
+            "P5": ("avaliable", "int"),
+            "P1612": ("rssi", "str"),
         }

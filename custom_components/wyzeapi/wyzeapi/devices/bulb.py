@@ -19,14 +19,12 @@ class Bulb(BaseNetworkedDevice, ISwitchable, IUpdatable):
 
     def prop_map(self) -> Dict:
         prop_map = {
-            "P3": self.switch_state,
-            "P5": self.available,
-            "P1612": self.rssi
+            "P3": ("switch_state", "int"),
+            "P5": ("avaliable", "int"),
+            "P1612": ("rssi", "str"),
+            "P1501": ("brightness", "int"),
+            "P1502": ("color_temp", "int")
         }
-        if self.brightness is not None:
-            prop_map["P1501"] = self.brightness
-        if self.color_temp is not None:
-            prop_map["P1502"] = self.color_temp
 
         return prop_map
 

@@ -16,18 +16,18 @@ class ContactSensor(BaseSensor, IUpdatable):
 
     def prop_map(self) -> Dict:
         prop_map = {
-            "P5": self.available,
-            "P1304": self.rssi,
-            "P1303": self.voltage,
+            "P5": ("avaliable", "int"),
+            "P1304": ("rssi", "str"),
+            "P1303": ("voltage", "str")
         }
 
         if self.product_model == "PIR3U":
             prop_map.update({
-                "P1302": self.open_close_state
+                "P1302": ("open_close_state", "int")
             })
         if self.product_model == "DWS3U":
             prop_map.update({
-                "P1301": self.open_close_state
+                "P1301": ("open_close_state", "int")
             })
 
         return prop_map

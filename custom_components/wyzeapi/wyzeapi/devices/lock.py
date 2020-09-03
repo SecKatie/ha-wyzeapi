@@ -15,13 +15,13 @@ class Lock(IUpdatable):
 
     def prop_map(self) -> Dict:
         prop_map = {
-            "P5": self.available,
+            "P5": ("avaliable", "int"),
         }
 
         if self.product_model == "YD.LO1":
             prop_map.update({
-                "P3": self.switch_state,
-                "P2001": self.open_close_state
+                "P3": ("switch_state", "int"),
+                "P2001": ("open_close_state", "int")
             })
 
         return prop_map
