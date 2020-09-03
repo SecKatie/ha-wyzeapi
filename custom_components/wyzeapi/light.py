@@ -22,7 +22,6 @@ from .wyzeapi.devices import Bulb
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
