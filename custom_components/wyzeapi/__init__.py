@@ -36,7 +36,7 @@ async def async_setup(hass, config):
 -------------------------------------------------------------------
 Wyze Bulb and Switch Home Assistant Integration
 
-Version: v0.5.7
+Version: v0.5.8
 This is a custom integration
 If you have any issues with this you need to open an issue here:
 https://github.com/JoshuaMulliken/ha-wyzeapi/issues
