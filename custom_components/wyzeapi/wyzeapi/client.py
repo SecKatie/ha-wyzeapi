@@ -50,6 +50,7 @@ class WyzeApiClient:
         response_code = response_json['code']
 
         if response_code != '1' and response_json['msg'] == 'AccessTokenError':
+            _LOGGER.error("AccessTokenError occurred. Will attempt to login again.")
             self.__logged_in_event.clear()
             await self.__logging_in_token_lock.acquire()
             if self.__logging_in_token == 0:
@@ -57,7 +58,7 @@ class WyzeApiClient:
 
                 self.__logging_in_token_lock.release()
 
-                await self.refresh_tokens()
+                await self.login(self.__user_name, self.__password)
 
                 await self.__logging_in_token_lock.acquire()
                 self.__logging_in_token = 0
