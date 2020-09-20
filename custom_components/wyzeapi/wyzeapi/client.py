@@ -33,9 +33,13 @@ class WyzeApiClient:
     __load_devices_lock = asyncio.Lock()
 
     # Control flow on recovering logged in status
-    __logged_in_event = asyncio.Event()
-    __logging_in_token = 0
-    __logging_in_token_lock = asyncio.Lock()
+    __logging_in_lock = asyncio.Lock()
+    __fixed_access_token = False
+
+    async def __reset_fixed_access_token(self):
+        await asyncio.sleep(300)
+        self.__fixed_access_token = False
+        _LOGGER.debug("Allowed the app to login again")
 
     @staticmethod
     async def __post_to_server(url: str, payload: dict):
@@ -51,20 +55,15 @@ class WyzeApiClient:
 
         if response_code != '1' and response_json['msg'] == 'AccessTokenError':
             _LOGGER.error("AccessTokenError occurred. Will attempt to login again.")
-            self.__logged_in_event.clear()
-            await self.__logging_in_token_lock.acquire()
-            if self.__logging_in_token == 0:
-                self.__logging_in_token = 1
 
-                self.__logging_in_token_lock.release()
+            async with self.__logging_in_lock:
+                if not self.__fixed_access_token:
+                    await self.login(self.__user_name, self.__password)
+                    _LOGGER.debug("Logged in again")
+                    self.__fixed_access_token = True
 
-                await self.login(self.__user_name, self.__password)
-
-                await self.__logging_in_token_lock.acquire()
-                self.__logging_in_token = 0
-                self.__logging_in_token_lock.release()
-
-            await self.__logged_in_event.wait()
+                    asyncio.get_running_loop().create_task(
+                        self.__reset_fixed_access_token())
 
             payload = await self.__create_authenticated_payload(payload)
 
@@ -90,7 +89,6 @@ class WyzeApiClient:
 
     async def __create_authenticated_payload(self, extras: dict = None) -> dict:
         updated_payload = await self.__create_payload()
-        await self.__logged_in_event.wait()
         updated_payload['access_token'] = self.__access_token
         if extras:
             updated_payload.update(extras)
@@ -133,7 +131,6 @@ class WyzeApiClient:
             self.__refresh_token = response_json['data']['refresh_token']
 
             self.__logged_in = True
-            self.__logged_in_event.set()
         except KeyError:
             _LOGGER.error("Failure to login with supplied credentials")
             self.__logged_in = False
@@ -154,7 +151,6 @@ class WyzeApiClient:
             self.__access_token = response_json['data']['access_token']
             self.__refresh_token = response_json['data']['refresh_token']
             self.__logged_in = True
-            self.__logged_in_event.set()
         except KeyError:
             _LOGGER.error("Failed to refresh access token. Must login again.")
             await self.login(self.__user_name, self.__password)
@@ -274,7 +270,7 @@ class WyzeApiClient:
             if not self.__devices_have_loaded:
                 payload = await self.__create_authenticated_payload()
 
-                response_json = await self.__post_to_server(WyzeApiConstants.get_devices_url, payload)
+                response_json = await self.__post_and_recover(WyzeApiConstants.get_devices_url, payload)
 
                 devices = response_json['data']['device_list']
 
