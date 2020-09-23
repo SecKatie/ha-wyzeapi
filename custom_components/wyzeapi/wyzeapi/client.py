@@ -21,6 +21,7 @@ class WyzeApiClient:
     __logged_in: bool = False
     __user_name: str
     __password: str
+    __hashed_password: str
 
     __bulbs: List[Bulb] = []
     __switches: List[Switch] = []
@@ -107,10 +108,11 @@ class WyzeApiClient:
     async def login(self, user_name: str, password: str):
         _LOGGER.debug("Running login")
         self.__user_name = user_name
-        self.__password = self.create_md5_md5(password)
+        self.__password = password
+        self.__hashed_password = self.create_md5_md5(password)
 
         payload = await self.__create_payload({
-            "password": self.__password,
+            "password": self.__hashed_password,
             "user_name": self.__user_name,
             "two_factor_auth": "",
             "access_token": ""
