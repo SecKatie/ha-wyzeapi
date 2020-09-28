@@ -24,4 +24,4 @@ I will attempt to get back to you as soon as possible and will attempt to work o
 | Critical   | 2 Days                  |
 | High       | 7 Days                  |
 | Medium     | 2 Weeks                 |
-| Low / Info | 1 Month / No Gaurentees |
+| Low / Info | 1 Month / No Guarantees |
