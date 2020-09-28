@@ -107,4 +107,9 @@ class HAWyzeSwitch(SwitchEntity):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
+        _LOGGER.debug("Updating Switch: {}".format(self.name))
+        if self.__just_updated:
+            self.__just_updated = False
+            return
+
         self.__switch = await self.__client.update(self.__switch)
