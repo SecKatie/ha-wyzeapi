@@ -98,7 +98,7 @@ class HAWyzeLock(LockEntity):
         }
 
     def get_door_state(self):
-        return ATTR_DOOR_STATE_OPEN if self.__lock.open_close_state is 1 else ATTR_DOOR_STATE_CLOSE
+        return ATTR_DOOR_STATE_OPEN if self.__lock.open_close_state == 1 else ATTR_DOOR_STATE_CLOSE
 
     @property
     def should_poll(self):
