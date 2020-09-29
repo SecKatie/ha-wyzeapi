@@ -101,7 +101,7 @@ class HAWyzeSwitch(SwitchEntity):
         """Instruct the switch to turn off."""
         await self.__client.turn_off(self.__switch)
         self.__switch.switch_state = 0
-        self.__just_updated = False
+        self.__just_updated = True
 
     async def async_update(self):
         """Fetch new state data for this switch.
