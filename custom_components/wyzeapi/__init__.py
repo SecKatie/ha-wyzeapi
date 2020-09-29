@@ -51,7 +51,7 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     switch_support = config[DOMAIN].get(CONF_SWITCH)
     lock_support = config[DOMAIN].get(CONF_LOCK)
 
-    if not wyzeapi_account.is_logged_in():
+    if not await wyzeapi_account.is_logged_in():
         _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
         return False
 
