@@ -14,7 +14,7 @@ This is a custom component to allow control of Wyze Bulbs, Switches, Sensors, an
 
 * This is an unofficial implementation of the api and therefore may be disabled or broken at anytime by WyzeLabs
 * I only have light bulbs and no switches so they are not tested directly by me. An update may break them without my knowledge. **Please use the betas as they become available if you have switches to help me find bugs prior to release**
-* It requires two factor authentication to be disabled on your account
+* ***It requires two factor authentication to be disabled on your account***
 
 ## Support
 If you like what I have done here and want to help I would recommend that you firstly look into supporting Home Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store) or paying for a Nabu Casa subscription. None of this could happen without them.
