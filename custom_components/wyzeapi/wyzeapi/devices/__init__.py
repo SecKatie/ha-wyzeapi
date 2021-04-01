@@ -6,3 +6,4 @@ from .contact_sensor import *
 from .lock import *
 from .motion_sensor import *
 from .switch import *
+from .color_bulb import *

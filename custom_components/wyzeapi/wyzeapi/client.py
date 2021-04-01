@@ -259,6 +259,7 @@ class WyzeApiClient:
         _LOGGER.debug("Running refresh_devices")
         self.__devices_have_loaded = False
         self.__bulbs = []
+        self.__color_bulbs = []
         self.__switches = []
         self.__locks = []
         self.__contact_sensors = []
@@ -281,7 +282,14 @@ class WyzeApiClient:
                                                  device['device_params']['switch_state'],
                                                  device['device_params']['rssi'], device['device_params']['ssid'],
                                                  device['device_params']['ip']))
-                    elif device['product_type'] == "Plug" or (device['product_type'] == "OutdoorPlug" and device['product_model'].endswith("-SUB")):
+                    elif device['product_type'] == "MeshLight":
+                        self.__color_bulbs.append(ColorBulb(device['nickname'], device['product_model'], device['mac'],
+                                                            device['device_params']['switch_state'],
+                                                            device['device_params']['rssi'],
+                                                            device['device_params']['ssid'],
+                                                            device['device_params']['ip']))
+                    elif device['product_type'] == "Plug" or (
+                            device['product_type'] == "OutdoorPlug" and device['product_model'].endswith("-SUB")):
                         self.__switches.append(Switch(device['nickname'], device['product_model'], device['mac'],
                                                       device['device_params']['switch_state'],
                                                       device['device_params']['rssi'],
@@ -313,6 +321,11 @@ class WyzeApiClient:
         _LOGGER.debug("Running list_bulbs")
         await self.get_devices()
         return self.__bulbs
+
+    async def list_color_bulbs(self):
+        _LOGGER.debug("Running list_color_bulbs")
+        await self.get_devices()
+        return self.__color_bulbs
 
     async def list_switches(self):
         _LOGGER.debug("Running list_switches")
