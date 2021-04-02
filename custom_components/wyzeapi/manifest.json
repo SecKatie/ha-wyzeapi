@@ -6,7 +6,9 @@
   "codeowners": [
     "@joshuamulliken"
   ],
-  "requirements": [],
+  "requirements": [
+    "wyzeapy==0.0.5"
+  ],
   "icons": [],
-  "version": "2021.3.1"
+  "version": "2021.4.2"
 }

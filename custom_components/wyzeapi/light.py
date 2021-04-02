@@ -1,101 +1,158 @@
 #!/usr/bin/python3
 
 """Platform for light integration."""
-import asyncio
 import logging
-from datetime import timedelta
 # Import the device class from the component that you want to support
 from typing import Any
 
+import homeassistant.util.color as color_util
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
+    ATTR_HS_COLOR,
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR_TEMP,
     SUPPORT_COLOR,
     LightEntity
 )
 from homeassistant.const import ATTR_ATTRIBUTION
-import homeassistant.util.color as color_util
 
 from . import DOMAIN
-from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import Bulb, ColorBulb
+from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
+from wyzeapy.client import Client
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Wyze Light platform."""
-    _LOGGER.debug("""Creating new WyzeApi light component""")
-
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Set up the sensor platform."""
     _ = config
-    _ = discovery_info
+    # We only want this platform to be set up via discovery.
+    if discovery_info is None:
+        return
 
-    wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
+    _LOGGER.debug("""Creating new WyzeApi light component""")
+    wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
 
-    # Add devices
-    bulbs = await wyzeapi_client.list_bulbs()
-    color_bulbs = await wyzeapi_client.list_color_bulbs()
-    async_add_entities([HAWyzeBulb(wyzeapi_client, bulb) for bulb in bulbs], True)
-    async_add_entities([HAWyzeColorBulb(wyzeapi_client, bulb) for bulb in color_bulbs], True)
+    try:
+        devices = wyzeapi_client.get_devices()
+    except AccessTokenError as e:
+        _LOGGER.warning(e)
+        wyzeapi_client.reauthenticate()
+        devices = wyzeapi_client.get_devices()
+
+    lights = []
+    color_lights = []
+    for device in devices:
+        if DeviceTypes(device.product_type) == DeviceTypes.LIGHT:
+            lights.append(WyzeLight(wyzeapi_client, device))
+        if DeviceTypes(device.product_type) == DeviceTypes.MESH_LIGHT:
+            color_lights.append(WyzeColorLight(wyzeapi_client, device))
+
+    add_entities(lights, True)
+    add_entities(color_lights, True)
 
 
-class HAWyzeBulb(LightEntity):
+class WyzeLight(LightEntity):
     """Representation of a Wyze Bulb."""
-    __client: WyzeApiClient
-    __light: Bulb
-    __just_updated = False
+    _brightness: int
+    _color_temp: int
+    _on: bool
+    _available: bool
 
-    def __init__(self, client: WyzeApiClient, light: Bulb):
+    _just_updated = False
+
+    def __init__(self, client: Client, device: Device):
         """Initialize a Wyze Bulb."""
-        self.__light = light
-        self.__client = client
+        self._device = device
+        if DeviceTypes(self._device.product_type) not in [
+            DeviceTypes.LIGHT
+        ]:
+            raise AttributeError("Device type not supported")
+
+        self._client = client
 
     @property
     def should_poll(self) -> bool:
         return True
 
     @staticmethod
-    def translate(value, left_min, left_max, right_min, right_max):
+    def translate(value, input_min, input_max, output_min, output_max):
         if value is None:
             return None
 
         # Figure out how 'wide' each range is
-        left_span = left_max - left_min
-        right_span = right_max - right_min
+        left_span = input_max - input_min
+        right_span = output_max - output_min
 
         # Convert the left range into a 0-1 range (float)
-        value_scaled = float(value - left_min) / float(left_span)
+        value_scaled = float(value - input_min) / float(left_span)
 
         # Convert the 0-1 range into a value in the right range.
-        return right_min + (value_scaled * right_span)
+        return output_min + (value_scaled * right_span)
 
     def turn_on(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__light))
-        self.__light.switch_state = 1
-        self.__just_updated = True
+        if kwargs.get(ATTR_BRIGHTNESS) is not None:
+            _LOGGER.debug("Setting brightness")
+            self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
+            try:
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
+                ])
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
+                ])
+
+        elif kwargs.get(ATTR_COLOR_TEMP) is not None:
+            _LOGGER.debug("Setting color temp")
+            self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
+            try:
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
+                ])
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
+                ])
+        else:
+            _LOGGER.debug("Turning on color")
+            try:
+                self._client.turn_on(self._device)
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device)
+
+        self._on = True
+        self._just_updated = True
 
     def turn_off(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_off(self.__light))
-        self.__light.switch_state = 0
-        self.__just_updated = True
+        try:
+            self._client.turn_off(self._device)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            self._client.turn_off(self._device)
+
+        self._on = False
+        self._just_updated = True
 
     @property
     def name(self):
         """Return the display name of this light."""
         # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
-        return self.__light.nick_name
+        return self._device.nickname
 
     @property
     def unique_id(self):
-        return self.__light.mac
+        return self._device.mac
 
     @property
     def available(self):
         """Return the connection status of this light"""
-        return self.__light.available
+        return self._available
 
     @property
     def device_state_attributes(self):
@@ -104,10 +161,7 @@ class HAWyzeBulb(LightEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self.__light.product_model,
-            "ssid": self.__light.ssid,
-            "ip": self.__light.ip,
-            "rssi": self.__light.rssi,
+            "device model": self._device.product_model,
             "mac": self.unique_id
         }
 
@@ -118,111 +172,164 @@ class HAWyzeBulb(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return self.translate(self.__light.brightness, 1, 100, 1, 255)
+        return self.translate(self._brightness, 1, 100, 1, 255)
 
     @property
     def color_temp(self):
         """Return the CT color value in mired."""
-        return self.translate(self.__light.color_temp, 2700, 6500, 500, 140)
+        return self.translate(self._color_temp, 2700, 6500, 500, 140)
 
     @property
     def is_on(self):
         """Return true if light is on."""
-        return self.__light.switch_state == 1
+        return self._on
 
     @property
     def supported_features(self):
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
-    async def async_turn_on(self, **kwargs):
-        """Instruct the light to turn on.
+    def update(self):
+        if not self._just_updated:
+            try:
+                device_info = self._client.get_info(self._device)
+            except AccessTokenError:
+                self._client.reauthenticate()
+                device_info = self._client.get_info(self._device)
 
-        You can skip the brightness part if your light does not support
-        brightness control.
-        """
-        self.__light.brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-        self.__light.color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-        await self.__client.turn_on(self.__light)
-        self.__light.switch_state = 1
-        self.__just_updated = True
+            for property_id, value in device_info:
+                if property_id == PropertyIDs.BRIGHTNESS:
+                    self._brightness = int(value)
+                elif property_id == PropertyIDs.COLOR_TEMP:
+                    self._color_temp = int(value)
+                elif property_id == PropertyIDs.ON:
+                    self._on = True if value == "1" else False
+                elif property_id == PropertyIDs.AVAILABLE:
+                    self._available = True if value == "1" else False
 
-    async def async_turn_off(self, **kwargs):
-        """Instruct the light to turn off."""
-        await self.__client.turn_off(self.__light)
-        self.__light.switch_state = 0
-        self.__just_updated = True
-
-    async def async_update(self):
-        """Fetch new state data for this light.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        _LOGGER.debug("Updating Light: {}".format(self.name))
-        if self.__just_updated:
-            self.__just_updated = False
-            return
-
-        self.__light = await self.__client.update(self.__light)
+            self._just_updated = True
+        else:
+            self._just_updated = False
 
 
-class HAWyzeColorBulb(LightEntity):
+class WyzeColorLight(LightEntity):
     """Representation of a Wyze Bulb."""
-    __client: WyzeApiClient
-    __light: ColorBulb
-    __just_updated = False
+    _brightness: int
+    _color_temp: int
+    _color: str
+    _on: bool
+    _available: bool
 
-    def __init__(self, client: WyzeApiClient, light: ColorBulb):
+    _just_updated = False
+
+    def __init__(self, client: Client, device: Device):
         """Initialize a Wyze Bulb."""
-        self.__light = light
-        self.__client = client
+        self._device = device
+        if DeviceTypes(self._device.product_type) not in [
+            DeviceTypes.MESH_LIGHT
+        ]:
+            raise AttributeError("Device type not supported")
+
+        self._client = client
 
     @property
     def should_poll(self) -> bool:
         return True
 
     @staticmethod
-    def translate(value, left_min, left_max, right_min, right_max):
+    def translate(value, input_min, input_max, output_min, output_max):
         if value is None:
             return None
 
         # Figure out how 'wide' each range is
-        left_span = left_max - left_min
-        right_span = right_max - right_min
+        left_span = input_max - input_min
+        right_span = output_max - output_min
 
         # Convert the left range into a 0-1 range (float)
-        value_scaled = float(value - left_min) / float(left_span)
+        value_scaled = float(value - input_min) / float(left_span)
 
         # Convert the 0-1 range into a value in the right range.
-        return right_min + (value_scaled * right_span)
+        return output_min + (value_scaled * right_span)
 
     def turn_on(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__light))
-        self.__light.switch_state = 1
-        self.__just_updated = True
+        _LOGGER.debug(kwargs)
+
+        if kwargs.get(ATTR_BRIGHTNESS) is not None:
+            _LOGGER.debug("Setting brightness")
+            self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
+            try:
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
+                ])
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
+                ])
+
+        elif kwargs.get(ATTR_COLOR_TEMP) is not None:
+            _LOGGER.debug("Setting color temp")
+            self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
+            try:
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
+                ])
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
+                ])
+
+        elif kwargs.get(ATTR_HS_COLOR) is not None:
+            _LOGGER.debug("Setting color")
+            self._color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
+            try:
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR, self._color)
+                ])
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device, [
+                    self._client.create_pid_pair(PropertyIDs.COLOR, self._color)
+                ])
+        else:
+            _LOGGER.debug("Turning on color")
+            try:
+                self._client.turn_on(self._device)
+            except AccessTokenError:
+                self._client.reauthenticate()
+                self._client.turn_on(self._device)
+
+        self._on = True
+        self._just_updated = True
 
     def turn_off(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_off(self.__light))
-        self.__light.switch_state = 0
-        self.__just_updated = True
+        try:
+            self._client.turn_off(self._device)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            self._client.turn_off(self._device)
+
+        self._on = False
+        self._just_updated = True
 
     @property
     def name(self):
         """Return the display name of this light."""
         # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
-        return self.__light.nick_name
-
-    @property
-    def hs_color(self):
-        rgb_list = color_util.rgb_hex_to_rgb_list(self.__light.rgb_color)
-        return color_util.color_RGB_to_hs(*rgb_list)
+        return self._device.nickname
 
     @property
     def unique_id(self):
-        return self.__light.mac
+        return self._device.mac
 
     @property
     def available(self):
         """Return the connection status of this light"""
-        return self.__light.available
+        return self._available
+
+    @property
+    def hs_color(self):
+        return color_util.color_RGB_to_hs(*color_util.rgb_hex_to_rgb_list(self._color))
 
     @property
     def device_state_attributes(self):
@@ -231,10 +338,7 @@ class HAWyzeColorBulb(LightEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self.__light.product_model,
-            "ssid": self.__light.ssid,
-            "ip": self.__light.ip,
-            "rssi": self.__light.rssi,
+            "device model": self._device.product_model,
             "mac": self.unique_id
         }
 
@@ -245,48 +349,42 @@ class HAWyzeColorBulb(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return self.translate(self.__light.brightness, 1, 100, 1, 255)
+        return self.translate(self._brightness, 1, 100, 1, 255)
 
     @property
     def color_temp(self):
         """Return the CT color value in mired."""
-        return self.translate(self.__light.color_temp, 2700, 6500, 500, 140)
+        return self.translate(self._color_temp, 2700, 6500, 500, 140)
 
     @property
     def is_on(self):
         """Return true if light is on."""
-        return self.__light.switch_state == 1
+        return self._on
 
     @property
     def supported_features(self):
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
 
-    async def async_turn_on(self, **kwargs):
-        """Instruct the light to turn on.
+    def update(self):
+        if not self._just_updated:
+            try:
+                device_info = self._client.get_info(self._device)
+            except AccessTokenError:
+                self._client.reauthenticate()
+                device_info = self._client.get_info(self._device)
 
-        You can skip the brightness part if your light does not support
-        brightness control.
-        """
-        self.__light.brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-        self.__light.color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-        self.__light.rgb_color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*self.hs_color))
-        await self.__client.turn_on(self.__light)
-        self.__light.switch_state = 1
-        self.__just_updated = True
+            for property_id, value in device_info:
+                if property_id == PropertyIDs.BRIGHTNESS:
+                    self._brightness = int(value)
+                elif property_id == PropertyIDs.COLOR_TEMP:
+                    self._color_temp = int(value)
+                elif property_id == PropertyIDs.ON:
+                    self._on = True if value == "1" else False
+                elif property_id == PropertyIDs.AVAILABLE:
+                    self._available = True if value == "1" else False
+                elif property_id == PropertyIDs.COLOR:
+                    self._color = value
 
-    async def async_turn_off(self, **kwargs):
-        """Instruct the light to turn off."""
-        await self.__client.turn_off(self.__light)
-        self.__light.switch_state = 0
-        self.__just_updated = True
-
-    async def async_update(self):
-        """Fetch new state data for this light.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        _LOGGER.debug("Updating Light: {}".format(self.name))
-        if self.__just_updated:
-            self.__just_updated = False
-            return
-
-        self.__light = await self.__client.update(self.__light)
+            self._just_updated = True
+        else:
+            self._just_updated = False
