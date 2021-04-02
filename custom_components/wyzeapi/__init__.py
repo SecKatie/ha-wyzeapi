@@ -12,7 +12,7 @@ from wyzeapy.client import Client
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'wyzeapi'
-VERSION = '2021.4.2'
+VERSION = '2021.4.2-beta.2'
 CONF_SENSORS = "sensors"
 CONF_LIGHT = "light"
 CONF_SWITCH = "switch"
