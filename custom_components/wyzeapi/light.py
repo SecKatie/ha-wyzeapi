@@ -200,7 +200,10 @@ class WyzeLight(LightEntity):
                 if property_id == PropertyIDs.BRIGHTNESS:
                     self._brightness = int(value)
                 elif property_id == PropertyIDs.COLOR_TEMP:
-                    self._color_temp = int(value)
+                    try:
+                        self._color_temp = int(value)
+                    except ValueError:
+                        self._color_temp = 2700
                 elif property_id == PropertyIDs.ON:
                     self._on = True if value == "1" else False
                 elif property_id == PropertyIDs.AVAILABLE:
@@ -377,7 +380,10 @@ class WyzeColorLight(LightEntity):
                 if property_id == PropertyIDs.BRIGHTNESS:
                     self._brightness = int(value)
                 elif property_id == PropertyIDs.COLOR_TEMP:
-                    self._color_temp = int(value)
+                    try:
+                        self._color_temp = int(value)
+                    except ValueError:
+                        self._color_temp = 2700
                 elif property_id == PropertyIDs.ON:
                     self._on = True if value == "1" else False
                 elif property_id == PropertyIDs.AVAILABLE:

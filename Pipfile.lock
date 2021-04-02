@@ -503,11 +503,11 @@
         },
         "wyzeapy": {
             "hashes": [
-                "sha256:51f854fc0833189e62dde74121559118bc85cfa09851bed9f60b14a0497a7ea2",
-                "sha256:5f5b5e58127b4c22e288f77f0310ba4b8a7755da702ae221f1f5b0ae205e9bfa"
+                "sha256:5a31a3ea449db63079fb39b8790ae12b0088274a295db54553242d5f8d91d716",
+                "sha256:6e00af8d14467b86bd28ec42e639e6d267ebccd9fb8f5b3d092653855a836d8d"
             ],
             "index": "pypi",
-            "version": "==0.0.5"
+            "version": "==0.0.6"
         },
         "yarl": {
             "hashes": [
