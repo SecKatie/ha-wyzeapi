@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 homeassistant = "*"
 requests = "*"
-wyzeapy = "*"
+wyzeapy = ">=0.0"
 
 [dev-packages]
 

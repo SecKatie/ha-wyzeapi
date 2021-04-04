@@ -7,7 +7,7 @@
     "@joshuamulliken"
   ],
   "requirements": [
-    "wyzeapy==0.0.6"
+    "wyzeapy>=0.0"
   ],
   "icons": [],
   "version": "2021.4.2-beta.2"
