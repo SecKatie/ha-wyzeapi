@@ -258,7 +258,7 @@ class WyzeColorLight(LightEntity):
         pairs = []
         
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
-            _LOGGER.debug("Setting brigh3tness")
+            _LOGGER.debug("Setting brightness")
             self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
             pairs.append(
                 self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
