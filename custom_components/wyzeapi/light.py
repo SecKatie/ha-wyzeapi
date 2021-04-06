@@ -255,52 +255,32 @@ class WyzeColorLight(LightEntity):
 
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(kwargs)
-
+        pairs = []
+        
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
-            _LOGGER.debug("Setting brightness")
+            _LOGGER.debug("Setting brigh3tness")
             self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-            try:
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
-                ])
-            except AccessTokenError:
-                self._client.reauthenticate()
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
-                ])
-
-        elif kwargs.get(ATTR_COLOR_TEMP) is not None:
+            pairs.append(
+                self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness)))
+            )
+        if kwargs.get(ATTR_COLOR_TEMP) is not None: 
             _LOGGER.debug("Setting color temp")
             self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-            try:
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
-                ])
-            except AccessTokenError:
-                self._client.reauthenticate()
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
-                ])
-
-        elif kwargs.get(ATTR_HS_COLOR) is not None:
+            pairs.append(
+                self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp)))
+            )
+        if kwargs.get(ATTR_HS_COLOR) is not None:
             _LOGGER.debug("Setting color")
             self._color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
-            try:
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.COLOR, self._color)
-                ])
-            except AccessTokenError:
-                self._client.reauthenticate()
-                self._client.turn_on(self._device, [
-                    self._client.create_pid_pair(PropertyIDs.COLOR, self._color)
-                ])
-        else:
-            _LOGGER.debug("Turning on color")
-            try:
-                self._client.turn_on(self._device)
-            except AccessTokenError:
-                self._client.reauthenticate()
-                self._client.turn_on(self._device)
+            pairs.append(
+                self._client.create_pid_pair(PropertyIDs.COLOR, self._color)
+            )
+        
+        try:
+            self._client.turn_on(self._device, pairs)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            self._client.turn_on(self._device, pairs)
 
         self._on = True
         self._just_updated = True
