@@ -39,7 +39,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for device in devices:
         if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
             plugs.append(WyzeSwitch(wyzeapi_client, device))
-        if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG and device.product_model.endswith("-SUB"):
+        if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
             plugs.append(WyzeSwitch(wyzeapi_client, device))
 
     add_entities(plugs, True)
