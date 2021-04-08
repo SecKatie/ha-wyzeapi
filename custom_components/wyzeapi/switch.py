@@ -8,10 +8,10 @@ from typing import Any
 from homeassistant.components.switch import (
     SwitchEntity)
 from homeassistant.const import ATTR_ATTRIBUTION
-
-from . import DOMAIN
 from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device, PropertyIDs
 from wyzeapy.client import Client
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -20,20 +20,13 @@ ATTRIBUTION = "Data provided by Wyze"
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     _ = config
-
     # We only want this platform to be set up via discovery.
     if discovery_info is None:
         return
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
     wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
-
-    try:
-        devices = wyzeapi_client.get_devices()
-    except AccessTokenError as e:
-        _LOGGER.warning(e)
-        wyzeapi_client.reauthenticate()
-        devices = wyzeapi_client.get_devices()
+    devices = hass.data[DOMAIN]['devices']
 
     plugs = []
     for device in devices:

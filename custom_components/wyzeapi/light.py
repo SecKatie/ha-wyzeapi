@@ -16,10 +16,10 @@ from homeassistant.components.light import (
     LightEntity
 )
 from homeassistant.const import ATTR_ATTRIBUTION
-
-from . import DOMAIN
 from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
 from wyzeapy.client import Client
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -34,13 +34,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
     wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
-
-    try:
-        devices = wyzeapi_client.get_devices()
-    except AccessTokenError as e:
-        _LOGGER.warning(e)
-        wyzeapi_client.reauthenticate()
-        devices = wyzeapi_client.get_devices()
+    devices = hass.data[DOMAIN]['devices']
 
     lights = []
     color_lights = []
@@ -97,14 +91,14 @@ class WyzeLight(LightEntity):
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
             self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-            
+
             pids.append(self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness))))
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
             self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-            
+
             pids.append(self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp))))
-        
+
         _LOGGER.debug("Turning on light")
         try:
             self._client.turn_on(self._device, pids)
@@ -239,19 +233,18 @@ class WyzeColorLight(LightEntity):
         # Convert the 0-1 range into a value in the right range.
         return output_min + (value_scaled * right_span)
 
-    
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(kwargs)
         pids = []
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
             self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-            
+
             pids.append(self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness))))
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
             self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-            
+
             pids.append(self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp))))
         if kwargs.get(ATTR_HS_COLOR) is not None:
             _LOGGER.debug("Setting color")

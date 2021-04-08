@@ -6,7 +6,7 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.const import (
     CONF_PASSWORD, CONF_USERNAME)
-
+from wyzeapy.base_client import AccessTokenError
 from wyzeapy.client import Client
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,9 +48,17 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     wyzeapi_client = Client(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
     _LOGGER.debug("Connected to Wyze account")
 
+    try:
+        devices = wyzeapi_client.get_devices()
+    except AccessTokenError as e:
+        _LOGGER.warning(e)
+        wyzeapi_client.reauthenticate()
+        devices = wyzeapi_client.get_devices()
+
     # Store the logged in account object for the platforms to use.
     hass.data[DOMAIN] = {
-        "wyzeapi_client": wyzeapi_client
+        "wyzeapi_client": wyzeapi_client,
+        "devices": devices
     }
 
     # Start up lights and switch components

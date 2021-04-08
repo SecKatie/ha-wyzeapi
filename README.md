@@ -1,6 +1,7 @@
 # Home Assistant - Wyze Bulb, Switch, Sensor and Lock Integration
 
-This is a custom component to allow control of various Wyze devices in Home Assistant using the unofficial API. Please note this mimics the Wyze app and therefore access may be cut off at anytime.
+This is a custom component to allow control of various Wyze devices in Home Assistant using the unofficial API. Please
+note this mimics the Wyze app and therefore access may be cut off at anytime.
 
 ### Highlights of what **WyzeApi** can do
 
@@ -13,7 +14,10 @@ This is a custom component to allow control of various Wyze devices in Home Assi
 * ***It requires two factor authentication to be disabled on your account***
 
 ## Support
-If you like what I have done here and want to help I would recommend that you firstly look into supporting Home Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store) or paying for a Nabu Casa subscription. None of this could happen without them.
+
+If you like what I have done here and want to help I would recommend that you firstly look into supporting Home
+Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store)
+or paying for a Nabu Casa subscription. None of this could happen without them.
 
 After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee.
 
@@ -22,7 +26,8 @@ After you have done that if you feel like my work has been valuable to you I wel
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
-2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzebulb) as a custom repository as Type: Integration
+2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzebulb) as a custom
+   repository as Type: Integration
 3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
 4. Restart HA
 
@@ -30,8 +35,8 @@ After you have done that if you feel like my work has been valuable to you I wel
 
 1. Download this repository as a ZIP (green button, top right) and unzip the archive
 2. Copy `/custom_components/wyzeapi` to your `<config_dir>/` directory
-   * On Hassio the final location will be `/config/custom_components/wyzeapi`
-   * On Hassbian the final location will be `/home/homeassistant/.homeassistant/custom_components/wyzeapi`
+    * On Hassio the final location will be `/config/custom_components/wyzeapi`
+    * On Hassbian the final location will be `/home/homeassistant/.homeassistant/custom_components/wyzeapi`
 3. Restart HA
 
 ## Configuration
@@ -43,6 +48,7 @@ wyzeapi:
   username: <email for wyze>
   password: <password for wyze>
 ```
+
 You can exclude any of the devices.
 
 ```yaml
@@ -54,13 +60,16 @@ wyzeapi:
   switch: false
   lock: false
 ```
+
 ## Usage
 
 * Restart HA
-* Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>` or `lock.<friendly name>` for example (`light.livingroom_lamp`).
+* Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>`
+  or `lock.<friendly name>` for example (`light.livingroom_lamp`).
 * Instructions for interacting with lights can be found here: https://www.home-assistant.io/integrations/light/
-	* Switches: https://www.home-assistant.io/integrations/switch/
-	* Locks: (These devices only work as sensors right now. There is a technical limitation preventing control via the cloud api)
+    * Switches: https://www.home-assistant.io/integrations/switch/
+    * Locks: (These devices only work as sensors right now. There is a technical limitation preventing control via the
+      cloud api)
 
 ## More information and Help
 
