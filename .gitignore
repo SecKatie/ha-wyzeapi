@@ -131,9 +131,6 @@ dmypy.json
 # Mac files
 .DS_Store
 
-# IDE files
-.vscode/
-
 # Secrets
 secrets.py
 wyzeconfig.ini

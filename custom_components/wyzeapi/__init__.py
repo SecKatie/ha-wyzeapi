@@ -6,13 +6,13 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.const import (
     CONF_PASSWORD, CONF_USERNAME)
-from homeassistant.helpers import discovery
-
-from .wyzeapi.client import WyzeApiClient
+from wyzeapy.base_client import AccessTokenError
+from wyzeapy.client import Client
 
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'wyzeapi'
+VERSION = '2021.4.7'
 CONF_SENSORS = "sensors"
 CONF_LIGHT = "light"
 CONF_SWITCH = "switch"
@@ -30,53 +30,44 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
-async def async_setup(hass, config):
+def setup(hass, config):
     """Set up the WyzeApi parent component."""
-    _LOGGER.debug("""
--------------------------------------------------------------------
-Wyze Bulb and Switch Home Assistant Integration
+    _LOGGER.debug("""-------------------------------------------------------------------
+Wyze Home Assistant Integration
 
-Version: v0.5.12
+Version: {}
 This is a custom integration
-If you have any issues with this you need to open an issue here:
+If you have any issues with this than please open an issue here:
 https://github.com/JoshuaMulliken/ha-wyzeapi/issues
--------------------------------------------------------------------""")
+-------------------------------------------------------------------""".format(VERSION))
     _LOGGER.debug("""Creating new WyzeApi component""")
 
-    wyzeapi_account: WyzeApiClient = WyzeApiClient()
-    await wyzeapi_account.login(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
-
-    sensor_support = config[DOMAIN].get(CONF_SENSORS)
     light_support = config[DOMAIN].get(CONF_LIGHT)
     switch_support = config[DOMAIN].get(CONF_SWITCH)
-    lock_support = config[DOMAIN].get(CONF_LOCK)
 
-    if not await wyzeapi_account.is_logged_in():
-        _LOGGER.error("Not connected to Wyze account. Unable to add devices. Check your configuration.")
-        return False
-
+    wyzeapi_client = Client(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
     _LOGGER.debug("Connected to Wyze account")
+
+    try:
+        devices = wyzeapi_client.get_devices()
+    except AccessTokenError as e:
+        _LOGGER.warning(e)
+        wyzeapi_client.reauthenticate()
+        devices = wyzeapi_client.get_devices()
 
     # Store the logged in account object for the platforms to use.
     hass.data[DOMAIN] = {
-        "wyzeapi_account": wyzeapi_account
+        "wyzeapi_client": wyzeapi_client,
+        "devices": devices
     }
 
     # Start up lights and switch components
     _LOGGER.debug("Starting WyzeApi components")
     if light_support:
-        await discovery.async_load_platform(hass, "light", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi Lights")
+        hass.helpers.discovery.load_platform("light", DOMAIN, {}, config)
     if switch_support:
-        await discovery.async_load_platform(hass, "switch", DOMAIN, {}, config)
         _LOGGER.debug("Starting WyzeApi switches")
-    if sensor_support:
-        await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, {}, config)
-        _LOGGER.debug("Starting WyzeApi Sensors")
-    if lock_support:
-        await discovery.async_load_platform(hass, "lock", DOMAIN, {}, config)
-        _LOGGER.debug("Starting WyzeApi lock")
-    else:
-        _LOGGER.error("WyzeApi authenticated but could not find any devices.")
+        hass.helpers.discovery.load_platform("switch", DOMAIN, {}, config)
 
     return True

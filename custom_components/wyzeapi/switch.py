@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
-import asyncio
 import logging
 # Import the device class from the component that you want to support
 from typing import Any
@@ -9,73 +8,92 @@ from typing import Any
 from homeassistant.components.switch import (
     SwitchEntity)
 from homeassistant.const import ATTR_ATTRIBUTION
+from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device, PropertyIDs
+from wyzeapy.client import Client
 
 from . import DOMAIN
-from .wyzeapi.client import WyzeApiClient
-from .wyzeapi.devices import Switch
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Wyze Switch platform."""
-    _LOGGER.debug("""Creating new WyzeApi switch component""")
-
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Set up the sensor platform."""
     _ = config
-    _ = discovery_info
+    # We only want this platform to be set up via discovery.
+    if discovery_info is None:
+        return
 
-    wyzeapi_client: WyzeApiClient = hass.data[DOMAIN]["wyzeapi_account"]
+    _LOGGER.debug("""Creating new WyzeApi light component""")
+    wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
+    devices = hass.data[DOMAIN]['devices']
 
-    # Add devices
-    switches = await wyzeapi_client.list_switches()
-    async_add_entities([HAWyzeSwitch(wyzeapi_client, switch) for switch in switches], True)
+    plugs = []
+    for device in devices:
+        if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
+            plugs.append(WyzeSwitch(wyzeapi_client, device))
+        if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
+            plugs.append(WyzeSwitch(wyzeapi_client, device))
+
+    add_entities(plugs, True)
 
 
-class HAWyzeSwitch(SwitchEntity):
+class WyzeSwitch(SwitchEntity):
     """Representation of a Wyze Switch."""
 
-    __client: WyzeApiClient
-    __switch: Switch
-    __just_updated = False
+    _client: Client
+    _device: Device
+    _on: bool
+    _available: bool
+    _just_updated = False
 
-    def __init__(self, client: WyzeApiClient, switch: Switch):
+    def __init__(self, client: Client, device: Device):
         """Initialize a Wyze Bulb."""
-        self.__switch = switch
-        self.__client = client
+        self._device = device
+        self._client = client
 
     @property
     def should_poll(self) -> bool:
         return True
 
     def turn_on(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_on(self.__switch))
-        self.__switch.switch_state = 1
-        self.__just_updated = True
+        try:
+            self._client.turn_on(self._device)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            self._client.turn_on(self._device)
+
+        self._on = True
+        self._just_updated = True
 
     def turn_off(self, **kwargs: Any) -> None:
-        asyncio.get_event_loop().run_until_complete(self.__client.turn_off(self.__switch))
-        self.__switch.switch_state = 0
-        self.__just_updated = True
+        try:
+            self._client.turn_off(self._device)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            self._client.turn_off(self._device)
+
+        self._on = True
+        self._just_updated = True
 
     @property
     def name(self):
         """Return the display name of this switch."""
-        return self.__switch.nick_name
+        return self._device.nickname
 
     @property
     def available(self):
         """Return the connection status of this switch"""
-        return self.__switch.available
+        return self._available
 
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self.__switch.switch_state == 1
+        return self._on
 
     @property
     def unique_id(self):
-        return self.__switch.mac
+        return self._device.mac
 
     @property
     def device_state_attributes(self):
@@ -84,32 +102,24 @@ class HAWyzeSwitch(SwitchEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self.__switch.product_model,
-            "ssid": self.__switch.ssid,
-            "ip": self.__switch.ip,
-            "rssi": self.__switch.rssi,
+            "device model": self._device.product_model,
             "mac": self.unique_id
         }
 
-    async def async_turn_on(self, **kwargs):
-        """Instruct the switch to turn on."""
-        await self.__client.turn_on(self.__switch)
-        self.__switch.switch_state = 1
-        self.__just_updated = True
+    def update(self):
+        if not self._just_updated:
+            try:
+                device_info = self._client.get_info(self._device)
+            except AccessTokenError:
+                self._client.reauthenticate()
+                device_info = self._client.get_info(self._device)
 
-    async def async_turn_off(self, **kwargs):
-        """Instruct the switch to turn off."""
-        await self.__client.turn_off(self.__switch)
-        self.__switch.switch_state = 0
-        self.__just_updated = True
+            for property_id, value in device_info:
+                if property_id == PropertyIDs.ON:
+                    self._on = True if value == "1" else False
+                elif property_id == PropertyIDs.AVAILABLE:
+                    self._available = True if value == "1" else False
 
-    async def async_update(self):
-        """Fetch new state data for this switch.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        _LOGGER.debug("Updating Switch: {}".format(self.name))
-        if self.__just_updated:
-            self.__just_updated = False
-            return
-
-        self.__switch = await self.__client.update(self.__switch)
+            self._just_updated = True
+        else:
+            self._just_updated = False

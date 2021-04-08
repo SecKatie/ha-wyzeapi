@@ -1,9 +1,6 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: "[Bug]"
-labels: bug
-assignees: JoshuaMulliken
+name: Bug report about: Create a report to help us improve title: "[Bug]"
+labels: bug assignees: JoshuaMulliken
 
 ---
 
@@ -12,6 +9,7 @@ assignees: JoshuaMulliken
 
 **To Reproduce**
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
@@ -23,10 +21,11 @@ Steps to reproduce the behavior:
 **System configuration**
 System: <!-- Docker, HASS.IO, Bare Metal -->
 HA Version: <!-- v0.103.0 -->
-WyzeApi Version: <!-- v0.4.0 --> 
+WyzeApi Version: <!-- v0.4.0 -->
 
 **configuration.yaml**
 <!-- The config you are using to enable wyzeapi -->
+
 ```yaml
 <YOUR CONFIG HERE>
 ```
@@ -41,6 +40,7 @@ logger:
 
 For additional information see the readme: https://github.com/JoshuaMulliken/ha-wyzeapi#reporting-an-issue
 -->
+
 ```
 <PUT YOUR LOG HERE>
 ```
