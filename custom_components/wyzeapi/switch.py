@@ -30,10 +30,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     plugs = []
     for device in devices:
-        if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
-            plugs.append(WyzeSwitch(wyzeapi_client, device))
-        if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
-            plugs.append(WyzeSwitch(wyzeapi_client, device))
+        try:
+            if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
+                plugs.append(WyzeSwitch(wyzeapi_client, device))
+            if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
+                plugs.append(WyzeSwitch(wyzeapi_client, device))
+        except ValueError as e:
+            _LOGGER.warn("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
     add_entities(plugs, True)
 
