@@ -12,7 +12,7 @@ from wyzeapy.client import Client
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'wyzeapi'
-VERSION = '2021.4.7'
+VERSION = '2021.4.10'
 CONF_SENSORS = "sensors"
 CONF_LIGHT = "light"
 CONF_SWITCH = "switch"
@@ -44,6 +44,7 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
 
     light_support = config[DOMAIN].get(CONF_LIGHT)
     switch_support = config[DOMAIN].get(CONF_SWITCH)
+    camera_motion_support = config[DOMAIN].get(CONF_SENSORS)
 
     wyzeapi_client = Client(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
     _LOGGER.debug("Connected to Wyze account")
@@ -62,12 +63,12 @@ https://github.com/JoshuaMulliken/ha-wyzeapi/issues
     }
 
     # Start up lights and switch components
-    _LOGGER.debug("Starting WyzeApi components")
+    _LOGGER.debug("Starting WyzeApi integrations")
     if light_support:
-        _LOGGER.debug("Starting WyzeApi Lights")
         hass.helpers.discovery.load_platform("light", DOMAIN, {}, config)
     if switch_support:
-        _LOGGER.debug("Starting WyzeApi switches")
         hass.helpers.discovery.load_platform("switch", DOMAIN, {}, config)
+    if camera_motion_support:
+        hass.helpers.discovery.load_platform("binary_sensor", DOMAIN, {}, config)
 
     return True

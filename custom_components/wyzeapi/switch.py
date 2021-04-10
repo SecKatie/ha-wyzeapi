@@ -24,7 +24,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     if discovery_info is None:
         return
 
-    _LOGGER.debug("""Creating new WyzeApi light component""")
+    _LOGGER.debug("""Creating new WyzeApi switch component""")
     wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
     devices = hass.data[DOMAIN]['devices']
 
@@ -36,7 +36,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
                 plugs.append(WyzeSwitch(wyzeapi_client, device))
         except ValueError as e:
-            _LOGGER.warn("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
     add_entities(plugs, True)
 
