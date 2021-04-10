@@ -58,7 +58,6 @@ wyzeapi:
   sensors: false
   light: false
   switch: false
-  lock: false
 ```
 
 ## Usage
