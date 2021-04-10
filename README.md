@@ -30,7 +30,7 @@ After you have done that if you feel like my work has been valuable to you I wel
    repository as Type: Integration
 3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
 4. Restart HA
-5. Navigate to _Integrations_ in the config interface. TK add image
+5. Navigate to _Integrations_ in the config interface.
 6. Click _ADD INTEGRATION_
 7. Search for _Wyze Home Assistant Integration_
 8. Put the email for wyze in the first box and your password in the second
