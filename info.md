@@ -7,6 +7,7 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 
 * Control all types of Wyze Bulbs as lights through HA
 * Control all types of Wyze Plugs as switches through HA
+* Use cameras as motion sensors
 
 ## Support
 

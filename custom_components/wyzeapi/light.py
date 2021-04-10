@@ -3,7 +3,7 @@
 """Platform for light integration."""
 import logging
 # Import the device class from the component that you want to support
-from typing import Any
+from typing import Any, List
 
 import homeassistant.util.color as color_util
 from homeassistant.components.light import (
@@ -19,36 +19,43 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
 from wyzeapy.client import Client
 
-from . import DOMAIN
+from .const import DOMAIN
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the sensor platform."""
-    _ = config
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
-
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
-    devices = hass.data[DOMAIN]['devices']
+    client = hass.data[DOMAIN][config_entry.entry_id]
+
+    def get_devices() -> List[Device]:
+        try:
+            devices = client.get_devices()
+        except AccessTokenError as e:
+            _LOGGER.warning(e)
+            client.reauthenticate()
+            devices = client.get_devices()
+
+        return devices
+
+    devices = await hass.async_add_executor_job(get_devices)
 
     lights = []
     color_lights = []
     for device in devices:
         try:
             if DeviceTypes(device.product_type) == DeviceTypes.LIGHT:
-                lights.append(WyzeLight(wyzeapi_client, device))
+                lights.append(WyzeLight(client, device))
             if DeviceTypes(device.product_type) == DeviceTypes.MESH_LIGHT:
-                color_lights.append(WyzeColorLight(wyzeapi_client, device))
+                color_lights.append(WyzeColorLight(client, device))
         except ValueError as e:
-            _LOGGER.warn("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
-    add_entities(lights, True)
-    add_entities(color_lights, True)
+    async_add_entities(lights, True)
+    async_add_entities(color_lights, True)
 
 
 class WyzeLight(LightEntity):

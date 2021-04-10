@@ -1,73 +1,95 @@
-"""Wyze Bulb/Switch integration."""
+"""The Wyze Home Assistant Integration integration."""
+from __future__ import annotations
 
+import asyncio
 import logging
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.const import (
-    CONF_PASSWORD, CONF_USERNAME)
-from wyzeapy.base_client import AccessTokenError
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy.client import Client
 
+from .const import DOMAIN
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
+
+PLATFORMS = ["light", "switch", "binary_sensor"]
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = 'wyzeapi'
-VERSION = '2021.4.7'
-CONF_SENSORS = "sensors"
-CONF_LIGHT = "light"
-CONF_SWITCH = "switch"
-CONF_LOCK = "lock"
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_SENSORS, default=True): cv.boolean,
-        vol.Optional(CONF_LIGHT, default=True): cv.boolean,
-        vol.Optional(CONF_SWITCH, default=True): cv.boolean,
-        vol.Optional(CONF_LOCK, default=True): cv.boolean
-    })
-}, extra=vol.ALLOW_EXTRA)
+async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None):
+    # pylint: disable=unused-argument
+    """Set up the Alexa domain."""
+    if DOMAIN not in config:
+        _LOGGER.debug(
+            "Nothing to import from configuration.yaml, loading from Integrations",
+        )
+        return True
+
+    domainconfig = config.get(DOMAIN)
+    entry_found = False
+    _LOGGER.debug(
+        "Importing config information for {} from configuration.yml".format(domainconfig[CONF_USERNAME])
+    )
+    if hass.config_entries.async_entries(DOMAIN):
+        _LOGGER.debug("Found existing config entries")
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if (
+                    entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
+                    and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
+            ):
+                _LOGGER.debug("Updating existing entry")
+                hass.config_entries.async_update_entry(
+                    entry,
+                    data={
+                        CONF_USERNAME: domainconfig[CONF_USERNAME],
+                        CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                    },
+                )
+                entry_found = True
+                break
+    if not entry_found:
+        _LOGGER.debug("Creating new config entry")
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": SOURCE_IMPORT},
+                data={
+                    CONF_USERNAME: domainconfig[CONF_USERNAME],
+                    CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                },
+            )
+        )
+    return True
 
 
-def setup(hass, config):
-    """Set up the WyzeApi parent component."""
-    _LOGGER.debug("""-------------------------------------------------------------------
-Wyze Home Assistant Integration
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Wyze Home Assistant Integration from a config entry."""
 
-Version: {}
-This is a custom integration
-If you have any issues with this than please open an issue here:
-https://github.com/JoshuaMulliken/ha-wyzeapi/issues
--------------------------------------------------------------------""".format(VERSION))
-    _LOGGER.debug("""Creating new WyzeApi component""")
+    def setup_hass_data():
+        hass.data[DOMAIN][entry.entry_id] = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
 
-    light_support = config[DOMAIN].get(CONF_LIGHT)
-    switch_support = config[DOMAIN].get(CONF_SWITCH)
+    hass.data.setdefault(DOMAIN, {})
+    await hass.async_add_executor_job(setup_hass_data)
 
-    wyzeapi_client = Client(config[DOMAIN].get(CONF_USERNAME), config[DOMAIN].get(CONF_PASSWORD))
-    _LOGGER.debug("Connected to Wyze account")
-
-    try:
-        devices = wyzeapi_client.get_devices()
-    except AccessTokenError as e:
-        _LOGGER.warning(e)
-        wyzeapi_client.reauthenticate()
-        devices = wyzeapi_client.get_devices()
-
-    # Store the logged in account object for the platforms to use.
-    hass.data[DOMAIN] = {
-        "wyzeapi_client": wyzeapi_client,
-        "devices": devices
-    }
-
-    # Start up lights and switch components
-    _LOGGER.debug("Starting WyzeApi components")
-    if light_support:
-        _LOGGER.debug("Starting WyzeApi Lights")
-        hass.helpers.discovery.load_platform("light", DOMAIN, {}, config)
-    if switch_support:
-        _LOGGER.debug("Starting WyzeApi switches")
-        hass.helpers.discovery.load_platform("switch", DOMAIN, {}, config)
+    for platform in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, platform)
+        )
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+            ]
+        )
+    )
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
