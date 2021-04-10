@@ -3,7 +3,7 @@
 """Platform for switch integration."""
 import logging
 # Import the device class from the component that you want to support
-from typing import Any
+from typing import Any, List
 
 from homeassistant.components.switch import (
     SwitchEntity)
@@ -12,33 +12,40 @@ from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device, PropertyI
 from wyzeapy.client import Client
 
 from . import DOMAIN
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the sensor platform."""
-    _ = config
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
-
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
-    devices = hass.data[DOMAIN]['devices']
+    client = hass.data[DOMAIN][config_entry.entry_id]
+
+    def get_devices() -> List[Device]:
+        try:
+            devices = client.get_devices()
+        except AccessTokenError as e:
+            _LOGGER.warning(e)
+            client.reauthenticate()
+            devices = client.get_devices()
+
+        return devices
+
+    devices = await hass.async_add_executor_job(get_devices)
 
     plugs = []
     for device in devices:
         try:
             if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
-                plugs.append(WyzeSwitch(wyzeapi_client, device))
+                plugs.append(WyzeSwitch(client, device))
             if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
-                plugs.append(WyzeSwitch(wyzeapi_client, device))
+                plugs.append(WyzeSwitch(client, device))
         except ValueError as e:
-            _LOGGER.warn("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
-    add_entities(plugs, True)
+    async_add_entities(plugs, True)
 
 
 class WyzeSwitch(SwitchEntity):

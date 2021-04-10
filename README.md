@@ -30,35 +30,11 @@ After you have done that if you feel like my work has been valuable to you I wel
    repository as Type: Integration
 3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
 4. Restart HA
-
-## Installation (Manual)
-
-1. Download this repository as a ZIP (green button, top right) and unzip the archive
-2. Copy `/custom_components/wyzeapi` to your `<config_dir>/` directory
-    * On Hassio the final location will be `/config/custom_components/wyzeapi`
-    * On Hassbian the final location will be `/home/homeassistant/.homeassistant/custom_components/wyzeapi`
-3. Restart HA
-
-## Configuration
-
-Add the following to your configuration file. ***Note: This has changed recently. Check your configuration!***
-
-```yaml
-wyzeapi:
-  username: <email for wyze>
-  password: <password for wyze>
-```
-
-You can exclude any of the devices.
-
-```yaml
-wyzeapi:
-  username: <email for wyze>
-  password: <password for wyze>
-  sensors: false
-  light: false
-  switch: false
-```
+5. Navigate to _Integrations_ in the config interface. TK add image
+6. Click _ADD INTEGRATION_
+7. Search for _Wyze Home Assistant Integration_
+8. Put the email for wyze in the first box and your password in the second
+9. Click _SUBMIT_ and profit!
 
 ## Usage
 
