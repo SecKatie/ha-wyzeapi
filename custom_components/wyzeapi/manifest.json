@@ -1,14 +1,13 @@
 {
   "domain": "wyzeapi",
-  "name": "Wyze Bulb and Switch Api Integration",
-  "documentation": "https://github.com/JoshuaMulliken/ha-wyzebulb/blob/master/README.md",
+  "version": "2021.4.10",
+  "name": "Wyze Home Assistant Integration",
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/wyze",
+  "requirements": ["wyzeapy==0.0.15"],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
   "dependencies": [],
-  "codeowners": [
-    "@joshuamulliken"
-  ],
-  "requirements": [
-    "wyzeapy==0.0.14"
-  ],
-  "icons": [],
-  "version": "2021.4.10"
+  "codeowners": ["@JoshuaMulliken"]
 }

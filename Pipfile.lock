@@ -504,11 +504,11 @@
         },
         "wyzeapy": {
             "hashes": [
-                "sha256:b0f2592e3f645666fc677573c5e6da14487a24972cc34f1bb4a8dc62b8f83094",
-                "sha256:dceda93db7d047cefe438d2cf6baf9105b4282b9fad3e57cea4c9119c6bc8a06"
+                "sha256:43c94bb26a05f08889461c52b3616d7b43ebc81ee9bd323f58326ae2fbfee564",
+                "sha256:e8f578927e1af11e43c48b3305b4f059523dd5331f6c8cd9b190e977540253ba"
             ],
             "index": "pypi",
-            "version": "==0.0.14"
+            "version": "==0.0.15"
         },
         "yarl": {
             "hashes": [

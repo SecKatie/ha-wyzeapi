@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import timedelta
+from typing import List
 
 from homeassistant.const import ATTR_ATTRIBUTION
 from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError, PropertyIDs
@@ -10,34 +11,41 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_MOTION
 )
 
-from . import DOMAIN
+from .const import DOMAIN
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=10)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the sensor platform."""
-    _ = config
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+    _LOGGER.debug("""Creating new WyzeApi binary sensor component""")
+    client = hass.data[DOMAIN][config_entry.entry_id]
 
-    _LOGGER.debug("""Creating new WyzeApi binary_sensor component""")
-    wyzeapi_client: Client = hass.data[DOMAIN]['wyzeapi_client']
-    devices = hass.data[DOMAIN]['devices']
+    def get_devices() -> List[Device]:
+        try:
+            devices = client.get_devices()
+        except AccessTokenError as e:
+            _LOGGER.warning(e)
+            client.reauthenticate()
+            devices = client.get_devices()
+
+        return devices
+
+    devices = await hass.async_add_executor_job(get_devices)
 
     cameras = []
     for device in devices:
         try:
             device_type = DeviceTypes(device.product_type)
             if device_type == DeviceTypes.CAMERA:
-                cameras.append(WyzeCameraMotion(wyzeapi_client, device))
+                cameras.append(WyzeCameraMotion(client, device))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
-    add_entities(cameras, True)
+    async_add_entities(cameras, True)
 
 
 class WyzeCameraMotion(BinarySensorEntity):
