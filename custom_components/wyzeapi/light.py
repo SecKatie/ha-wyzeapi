@@ -45,7 +45,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             if DeviceTypes(device.product_type) == DeviceTypes.MESH_LIGHT:
                 color_lights.append(WyzeColorLight(wyzeapi_client, device))
         except ValueError as e:
-            _LOGGER.warn("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
     add_entities(lights, True)
     add_entities(color_lights, True)
