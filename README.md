@@ -38,13 +38,11 @@ After you have done that if you feel like my work has been valuable to you I wel
 
 ## Usage
 
-* Restart HA
 * Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>`
   or `lock.<friendly name>` for example (`light.livingroom_lamp`).
 * Instructions for interacting with lights can be found here: https://www.home-assistant.io/integrations/light/
     * Switches: https://www.home-assistant.io/integrations/switch/
-    * Locks: (These devices only work as sensors right now. There is a technical limitation preventing control via the
-      cloud api)
+    * Camera motion sensors: https://www.home-assistant.io/integrations/binary_sensor/
 
 ## More information and Help
 
