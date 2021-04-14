@@ -3,6 +3,7 @@
 """Platform for light integration."""
 import logging
 # Import the device class from the component that you want to support
+from datetime import timedelta
 from typing import Any, List
 
 import homeassistant.util.color as color_util
@@ -25,6 +26,7 @@ from homeassistant.config_entries import ConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):

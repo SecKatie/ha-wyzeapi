@@ -3,6 +3,7 @@
 """Platform for switch integration."""
 import logging
 # Import the device class from the component that you want to support
+from datetime import timedelta
 from typing import Any, List
 
 from homeassistant.components.switch import (
@@ -17,6 +18,7 @@ from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
