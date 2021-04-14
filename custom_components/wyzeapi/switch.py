@@ -85,7 +85,7 @@ class WyzeSwitch(SwitchEntity):
             self._client.reauthenticate()
             self._client.turn_off(self._device)
 
-        self._on = True
+        self._on = False
         self._just_updated = True
 
     @property
