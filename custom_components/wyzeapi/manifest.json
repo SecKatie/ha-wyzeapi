@@ -4,7 +4,7 @@
   "name": "Wyze Home Assistant Integration",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/wyze",
-  "requirements": ["wyzeapy==0.0.15"],
+  "requirements": ["wyzeapy==0.0.16"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
