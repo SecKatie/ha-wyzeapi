@@ -1,6 +1,6 @@
 {
   "domain": "wyzeapi",
-  "version": "2021.4.10",
+  "version": "2021.4.27",
   "name": "Wyze Home Assistant Integration",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/wyze",
