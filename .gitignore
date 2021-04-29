@@ -134,4 +134,4 @@ dmypy.json
 # Secrets
 secrets.py
 wyzeconfig.ini
-/.idea/
+.idea/
