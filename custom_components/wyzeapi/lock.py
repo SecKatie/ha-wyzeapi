@@ -17,7 +17,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -51,6 +51,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
     """Representation of a Wyze Lock."""
     _unlocked: bool
     _available: bool
+    _door_open: bool
 
     _just_updated = False
 
@@ -118,7 +119,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self._unlocked,
             "available": self.available,
-            "device model": self._device.product_model,
+            "door_open": self._door_open,
+            "device_model": self._device.product_model,
             "mac": self.unique_id
         }
 
@@ -139,6 +141,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
                     self._unlocked = True if value == "1" else False
                 elif property_id == PropertyIDs.AVAILABLE:
                     self._available = True if value == "1" else False
+                elif property_id == PropertyIDs.DOOR_OPEN:
+                    self._door_open = True if value == "1" else False
 
             self._just_updated = True
         else:
