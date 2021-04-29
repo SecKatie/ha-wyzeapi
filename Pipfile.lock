@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1fb3622a82f4d4e7dd3650ade28d1ad42e47782178c14069b51643482e62a7f6"
+            "sha256": "1e1fd2a71c03f9c1111072f53f39fe8cbf9ddd9b82b1f01102eab8a0114e70df"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -207,11 +207,11 @@
         },
         "homeassistant": {
             "hashes": [
-                "sha256:2897f73c8e0d1431000fb229bac0aff083c64300d0dbc395828df876134cc7a6",
-                "sha256:d946ead2a7298b0659fc4cc70a50376b107447fe9de39c2cb3bc79aeff380b59"
+                "sha256:dfc79a8e1b069c1626e03f46e8e61616488b363019ce13f284ffb649c16f8ed3",
+                "sha256:eff0f7260967e872546591a82bd2a497d44ee38c0816882c93dd2d2af5b3d07c"
             ],
             "index": "pypi",
-            "version": "==2021.4.3"
+            "version": "==2021.4.6"
         },
         "httpcore": {
             "hashes": [
@@ -504,11 +504,11 @@
         },
         "wyzeapy": {
             "hashes": [
-                "sha256:43c94bb26a05f08889461c52b3616d7b43ebc81ee9bd323f58326ae2fbfee564",
-                "sha256:e8f578927e1af11e43c48b3305b4f059523dd5331f6c8cd9b190e977540253ba"
+                "sha256:72908f31ef773ef11b53a1c93139f0822f5e1c1b10cc149c47fc09dc1752eb36",
+                "sha256:cf961a4b4b84b8a6df9e8bb60f9f18ae3bf36dbf0ed9498e14d72adcbe08395c"
             ],
             "index": "pypi",
-            "version": "==0.0.15"
+            "version": "==0.0.18"
         },
         "yarl": {
             "hashes": [

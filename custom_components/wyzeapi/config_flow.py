@@ -25,11 +25,6 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
     base_client = BaseClient()
 
     if not await hass.async_add_executor_job(
