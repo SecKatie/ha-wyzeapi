@@ -44,6 +44,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 plugs.append(WyzeSwitch(client, device))
             if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
                 plugs.append(WyzeSwitch(client, device))
+            if DeviceTypes(device.product_type) == DeviceTypes.CAMERA:
+                plugs.append(WyzeSwitch(client, device))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
