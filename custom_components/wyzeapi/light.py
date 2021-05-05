@@ -49,10 +49,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     color_lights = []
     for device in devices:
         try:
-            if DeviceTypes(device.product_type) == DeviceTypes.LIGHT:
-                lights.append(WyzeLight(client, device))
-            if DeviceTypes(device.product_type) == DeviceTypes.MESH_LIGHT:
-                color_lights.append(WyzeColorLight(client, device))
+            device_type = DeviceTypes(device.product_type)
+            if device_type == DeviceTypes.LIGHT or device_type == DeviceTypes.MESH_LIGHT:
+                color_lights.append(WyzeLight(client, device))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
@@ -64,6 +63,7 @@ class WyzeLight(LightEntity):
     """Representation of a Wyze Bulb."""
     _brightness: int
     _color_temp: int
+    _color: str
     _on: bool
     _available: bool
 
@@ -72,8 +72,10 @@ class WyzeLight(LightEntity):
     def __init__(self, client: Client, device: Device):
         """Initialize a Wyze Bulb."""
         self._device = device
-        if DeviceTypes(self._device.product_type) not in [
-            DeviceTypes.LIGHT
+        self._device_type = DeviceTypes(self._device.product_type)
+        if self._device_type not in [
+            DeviceTypes.LIGHT,
+            DeviceTypes.MESH_LIGHT
         ]:
             raise AttributeError("Device type not supported")
 
@@ -121,155 +123,7 @@ class WyzeLight(LightEntity):
             self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
 
             pids.append(self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp))))
-
-        _LOGGER.debug("Turning on light")
-        try:
-            self._client.turn_on(self._device, pids)
-        except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_on(self._device, pids)
-
-        self._on = True
-        self._just_updated = True
-
-    def turn_off(self, **kwargs: Any) -> None:
-        try:
-            self._client.turn_off(self._device)
-        except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_off(self._device)
-
-        self._on = False
-        self._just_updated = True
-
-    @property
-    def name(self):
-        """Return the display name of this light."""
-        # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
-        return self._device.nickname
-
-    @property
-    def unique_id(self):
-        return self._device.mac
-
-    @property
-    def available(self):
-        """Return the connection status of this light"""
-        return self._available
-
-    @property
-    def device_state_attributes(self):
-        """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
-            "device model": self._device.product_model,
-            "mac": self.unique_id
-        }
-
-    @property
-    def brightness(self):
-        """Return the brightness of the light.
-
-        This method is optional. Removing it indicates to Home Assistant
-        that brightness is not supported for this light.
-        """
-        return self.translate(self._brightness, 1, 100, 1, 255)
-
-    @property
-    def color_temp(self):
-        """Return the CT color value in mired."""
-        return self.translate(self._color_temp, 2700, 6500, 500, 140)
-
-    @property
-    def is_on(self):
-        """Return true if light is on."""
-        return self._on
-
-    @property
-    def supported_features(self):
-        return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
-
-    def update(self):
-        if not self._just_updated:
-            try:
-                device_info = self._client.get_info(self._device)
-            except AccessTokenError:
-                self._client.reauthenticate()
-                device_info = self._client.get_info(self._device)
-
-            for property_id, value in device_info:
-                if property_id == PropertyIDs.BRIGHTNESS:
-                    self._brightness = int(value)
-                elif property_id == PropertyIDs.COLOR_TEMP:
-                    try:
-                        self._color_temp = int(value)
-                    except ValueError:
-                        self._color_temp = 2700
-                elif property_id == PropertyIDs.ON:
-                    self._on = True if value == "1" else False
-                elif property_id == PropertyIDs.AVAILABLE:
-                    self._available = True if value == "1" else False
-
-            self._just_updated = True
-        else:
-            self._just_updated = False
-
-
-class WyzeColorLight(LightEntity):
-    """Representation of a Wyze Bulb."""
-    _brightness: int
-    _color_temp: int
-    _color: str
-    _on: bool
-    _available: bool
-
-    _just_updated = False
-
-    def __init__(self, client: Client, device: Device):
-        """Initialize a Wyze Bulb."""
-        self._device = device
-        if DeviceTypes(self._device.product_type) not in [
-            DeviceTypes.MESH_LIGHT
-        ]:
-            raise AttributeError("Device type not supported")
-
-        self._client = client
-
-    @property
-    def should_poll(self) -> bool:
-        return True
-
-    @staticmethod
-    def translate(value, input_min, input_max, output_min, output_max):
-        if value is None:
-            return None
-
-        # Figure out how 'wide' each range is
-        left_span = input_max - input_min
-        right_span = output_max - output_min
-
-        # Convert the left range into a 0-1 range (float)
-        value_scaled = float(value - input_min) / float(left_span)
-
-        # Convert the 0-1 range into a value in the right range.
-        return output_min + (value_scaled * right_span)
-
-    def turn_on(self, **kwargs: Any) -> None:
-        _LOGGER.debug(kwargs)
-        pids = []
-        if kwargs.get(ATTR_BRIGHTNESS) is not None:
-            _LOGGER.debug("Setting brightness")
-            self._brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
-
-            pids.append(self._client.create_pid_pair(PropertyIDs.BRIGHTNESS, str(int(self._brightness))))
-        if kwargs.get(ATTR_COLOR_TEMP) is not None:
-            _LOGGER.debug("Setting color temp")
-            self._color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
-
-            pids.append(self._client.create_pid_pair(PropertyIDs.COLOR_TEMP, str(int(self._color_temp))))
-        if kwargs.get(ATTR_HS_COLOR) is not None:
+        if self._device_type is DeviceTypes.MESH_LIGHT and kwargs.get(ATTR_HS_COLOR) is not None:
             _LOGGER.debug("Setting color")
             self._color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
 
@@ -298,7 +152,6 @@ class WyzeColorLight(LightEntity):
     @property
     def name(self):
         """Return the display name of this light."""
-        # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
         return self._device.nickname
 
     @property
@@ -346,7 +199,9 @@ class WyzeColorLight(LightEntity):
 
     @property
     def supported_features(self):
-        return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
+        if self._device_type is DeviceTypes.MESH_LIGHT:
+            return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
+        return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
     def update(self):
         if not self._just_updated:
@@ -368,7 +223,7 @@ class WyzeColorLight(LightEntity):
                     self._on = True if value == "1" else False
                 elif property_id == PropertyIDs.AVAILABLE:
                     self._available = True if value == "1" else False
-                elif property_id == PropertyIDs.COLOR:
+                elif self._device_type is DeviceTypes.MESH_LIGHT and property_id == PropertyIDs.COLOR:
                     self._color = value
 
             self._just_updated = True
