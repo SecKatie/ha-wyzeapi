@@ -58,6 +58,17 @@ class WyzeCameraMotion(BinarySensorEntity):
         self._last_event = int(str(int(time.time())) + "000")
 
     @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model
+        }
+
+    @property
     def available(self) -> bool:
         return self._available
 
@@ -73,7 +84,7 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     @property
     def unique_id(self):
-        return self._device.mac
+        return "{}-motion".format(self._device.mac)
 
     @property
     def device_state_attributes(self):

@@ -80,6 +80,17 @@ class WyzeLight(LightEntity):
         self._client = client
 
     @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model
+        }
+
+    @property
     def should_poll(self) -> bool:
         return True
 
