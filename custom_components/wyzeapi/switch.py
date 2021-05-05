@@ -70,7 +70,7 @@ class WyzeSwitch(SwitchEntity):
     def device_info(self):
         return {
             "identifiers": {
-                (DOMAIN, self.unique_id)
+                (DOMAIN, self._device.mac)
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",
