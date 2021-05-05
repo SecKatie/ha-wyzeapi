@@ -5,9 +5,11 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 
 ### Highlights of what **WyzeApi** can do
 
-* Control all types of Wyze Bulbs as lights through HA
-* Control all types of Wyze Plugs as switches through HA
-* Use cameras as motion sensors
+* Control Wyze Bulbs as lights through HA
+* Control Wyze Plugs as switches through HA
+* Use Wyze Cameras as motion sensors
+* Turn on and off Wyze Cameras
+* Lock, unlock, and view status of lock and door for the Wyze Lock
 
 ## Support
 
