@@ -40,10 +40,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     plugs = []
     for device in devices:
         try:
-            if DeviceTypes(device.product_type) == DeviceTypes.PLUG:
+            device_type = DeviceTypes(device.product_type)
+            if device_type == DeviceTypes.PLUG or \
+                    device_type == DeviceTypes.OUTDOOR_PLUG or \
+                    device_type == DeviceTypes.CAMERA:
                 plugs.append(WyzeSwitch(client, device))
-            if DeviceTypes(device.product_type) == DeviceTypes.OUTDOOR_PLUG:
-                plugs.append(WyzeSwitch(client, device))
+
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
@@ -63,6 +65,17 @@ class WyzeSwitch(SwitchEntity):
         """Initialize a Wyze Bulb."""
         self._device = device
         self._client = client
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self._device.mac)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model
+        }
 
     @property
     def should_poll(self) -> bool:
@@ -105,7 +118,7 @@ class WyzeSwitch(SwitchEntity):
 
     @property
     def unique_id(self):
-        return self._device.mac
+        return "{}-switch".format(self._device.mac)
 
     @property
     def device_state_attributes(self):
