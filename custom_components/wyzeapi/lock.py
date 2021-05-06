@@ -66,6 +66,17 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         self._client = client
 
     @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self._device.mac)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model
+        }
+
+    @property
     def should_poll(self) -> bool:
         return True
 

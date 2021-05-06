@@ -8,7 +8,8 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 * Control Wyze Bulbs as lights through HA
 * Control Wyze Plugs as switches through HA
 * Use Wyze Cameras as motion sensors
-* Lock, unlock, and view status of lock and door for the Wyze Lock 
+* Turn on and off Wyze Cameras
+* Lock, unlock, and view status of lock and door for the Wyze Lock
 
 ### Potential Downsides
 
