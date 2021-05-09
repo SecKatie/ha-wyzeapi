@@ -1,4 +1,4 @@
-# [Wyze Integration for Home Assistant](https://github.com/JoshuaMulliken/ha-wyzeapi) for Home Assistant
+# [Wyze Integration for Home Assistant](https://github.com/JoshuaMulliken/ha-wyzeapi)
 
 This is a custom component to allow control of various Wyze devices in Home Assistant using the unofficial API. Please
 note this mimics the Wyze app and therefore access may be cut off at anytime.

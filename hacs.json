@@ -1,8 +1,10 @@
 {
-  "name": "Wyze Bulb, Switch and Sensor Integration",
+  "name": "Wyze Home Assistant Integration",
   "domains": [
     "switch",
-    "light"
+    "light",
+    "lock",
+    "binary_sensor"
   ],
   "iot_class": "cloud_poll"
 }
