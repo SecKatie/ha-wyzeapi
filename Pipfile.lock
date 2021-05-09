@@ -508,7 +508,7 @@
                 "sha256:cf961a4b4b84b8a6df9e8bb60f9f18ae3bf36dbf0ed9498e14d72adcbe08395c"
             ],
             "index": "pypi",
-            "version": "==0.0.18"
+            "version": "==0.0.22"
         },
         "yarl": {
             "hashes": [
