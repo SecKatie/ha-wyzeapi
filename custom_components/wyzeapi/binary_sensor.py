@@ -4,11 +4,12 @@ from datetime import timedelta
 from typing import List
 
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError, PropertyIDs
+from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError, PropertyIDs, EventTypes
 from wyzeapy.client import Client
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
-    DEVICE_CLASS_MOTION
+    DEVICE_CLASS_MOTION,
+    DEVICE_CLASS_SOUND
 )
 
 from .const import DOMAIN
@@ -36,25 +37,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     devices = await hass.async_add_executor_job(get_devices)
 
-    cameras = []
+    sensor = []
     for device in devices:
         try:
             device_type = DeviceTypes(device.product_type)
             if device_type == DeviceTypes.CAMERA:
-                cameras.append(WyzeCameraMotion(client, device))
+                sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
+                sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
-    async_add_entities(cameras, True)
+    async_add_entities(sensor, True)
 
 
-class WyzeCameraMotion(BinarySensorEntity):
+class WyzeCameraSensor(BinarySensorEntity):
     _on: bool
     _available: bool
 
-    def __init__(self, wyzeapi_client: Client, device: Device):
+    def __init__(self, wyzeapi_client: Client, device: Device, sensor_class: EventTypes = EventTypes.MOTION):
         self._client = wyzeapi_client
         self._device = device
+        self._sensor_class = sensor_class
         self._last_event = int(str(int(time.time())) + "000")
 
     @property
@@ -84,7 +87,7 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     @property
     def unique_id(self):
-        return "{}-motion".format(self._device.mac)
+        return "{}-sound".format(self._device.mac) if self._sensor_class == EventTypes.SOUND else "{}-motion".format(self._device.mac)
 
     @property
     def device_state_attributes(self):
@@ -99,7 +102,7 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     @property
     def device_class(self):
-        return DEVICE_CLASS_MOTION
+        return DEVICE_CLASS_SOUND if self._sensor_class == EventTypes.SOUND else DEVICE_CLASS_MOTION
 
     def update(self):
         try:
@@ -112,7 +115,7 @@ class WyzeCameraMotion(BinarySensorEntity):
             if property_id == PropertyIDs.AVAILABLE:
                 self._available = True if value == "1" else False
 
-        latest_event = self._client.get_latest_event(self._device)
+        latest_event = self._client.get_latest_event(self._device, self._sensor_class)
         if latest_event is not None:
             if latest_event.event_ts > self._last_event:
                 self._on = True
