@@ -10,7 +10,8 @@ import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
+from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
+from wyzeapy.types import PropertyIDs
 from wyzeapy.client import Client
 
 from .const import DOMAIN
@@ -121,7 +122,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
 
     @property
     def state(self):
-        return homeassistant.components.lock.STATE_UNLOCKED if self._unlocked else homeassistant.components.lock.STATE_LOCKED
+        return homeassistant.components.lock.STATE_UNLOCKED if self._unlocked else \
+            homeassistant.components.lock.STATE_LOCKED
 
     @property
     def device_state_attributes(self):

@@ -9,7 +9,8 @@ from typing import Any, List
 from homeassistant.components.switch import (
     SwitchEntity)
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device, PropertyIDs
+from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device
+from wyzeapy.types import PropertyIDs
 from wyzeapy.client import Client
 
 from . import DOMAIN

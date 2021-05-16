@@ -6,13 +6,13 @@ from datetime import timedelta
 from typing import Any, List
 
 from homeassistant.components.scene import (Scene)
-from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, Group, PropertyIDs
-from wyzeapy.client import Client
-
-from . import DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from wyzeapy.base_client import AccessTokenError
+from wyzeapy.client import Client
+from wyzeapy.types import Group
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"

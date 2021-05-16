@@ -4,7 +4,8 @@ from datetime import timedelta
 from typing import List
 
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError, PropertyIDs
+from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError
+from wyzeapy.types import PropertyIDs
 from wyzeapy.client import Client
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,

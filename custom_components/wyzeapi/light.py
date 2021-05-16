@@ -17,7 +17,8 @@ from homeassistant.components.light import (
     LightEntity
 )
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
+from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
+from wyzeapy.types import PropertyIDs
 from wyzeapy.client import Client
 
 from .const import DOMAIN
