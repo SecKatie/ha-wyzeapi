@@ -34,7 +34,7 @@ ATTRIBUTION = "Data provided by Wyze"
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
-    _LOGGER.debug("""Creating new WyzeApi lock component""")
+    _LOGGER.debug("""Creating new WyzeApi thermostat component""")
     client = hass.data[DOMAIN][config_entry.entry_id]
 
     def get_devices() -> List[Device]:
@@ -253,8 +253,10 @@ class WyzeThermostat(ClimateEntity):
         }
 
     def update(self):
+        _LOGGER.debug(f"Updating {self._device.nickname}")
         if not self._just_updated:
             thermostat_props = self._client.get_thermostat_info(self._device)
+            _LOGGER.debug(f"Got properties for {self._device.nickname}")
 
             for prop, value in thermostat_props:
                 if prop == ThermostatProps.TEMP_UNIT:
