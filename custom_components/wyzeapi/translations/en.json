@@ -13,7 +13,9 @@
                 "data": {
                     "host": "Host",
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "camera_motion_sensor": "Enable camera motion sensor",
+                    "camera_sound_sensor": "Enable camera sound sensor"
                 }
             }
         }

@@ -11,12 +11,19 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy.base_client import BaseClient
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): str, 
+        vol.Required(CONF_PASSWORD): str,
+        vol.Optional(CONF_CAM_MOTION, default=True): bool,
+        vol.Optional(CONF_CAM_SOUND, default=False): bool,
+    }
+)
 
 
 async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str, Any]:

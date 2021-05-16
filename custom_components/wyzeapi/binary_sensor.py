@@ -12,13 +12,13 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_SOUND
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=20)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -42,8 +42,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         try:
             device_type = DeviceTypes(device.product_type)
             if device_type == DeviceTypes.CAMERA:
-                sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
-                sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))
+                if config_entry.data.get(CONF_CAM_MOTION):
+                    sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
+                if config_entry.data.get(CONF_CAM_SOUND):
+                    sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 

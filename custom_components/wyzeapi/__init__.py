@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy.client import Client
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
 PLATFORMS = ["light", "switch", "binary_sensor", "lock"]
@@ -30,6 +30,23 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
     _LOGGER.debug(
         "Importing config information for {} from configuration.yml".format(domainconfig[CONF_USERNAME])
     )
+    
+    if CONF_USERNAME and CONF_PASSWORD in domainconfig:
+        _LOGGER.debug("Username = {} {}".format(domainconfig[CONF_USERNAME], domainconfig[CONF_PASSWORD]))
+    else:
+        _LOGGER.error("Missing username and/or passport")
+        return False
+
+    if CONF_CAM_MOTION in domainconfig:
+        cam_motion = domainconfig[CONF_CAM_MOTION]
+    else:
+        cam_motion = True # Default ON for backward compatibility
+
+    if CONF_CAM_SOUND in domainconfig:
+        cam_sound = domainconfig[CONF_CAM_SOUND]
+    else:
+        cam_sound = False # Default OFF for backward compatibility
+
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
@@ -43,6 +60,8 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
                     data={
                         CONF_USERNAME: domainconfig[CONF_USERNAME],
                         CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                        CONF_CAM_MOTION: cam_motion,
+                        CONF_CAM_SOUND: cam_sound
                     },
                 )
                 entry_found = True
@@ -56,7 +75,9 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
                 data={
                     CONF_USERNAME: domainconfig[CONF_USERNAME],
                     CONF_PASSWORD: domainconfig[CONF_PASSWORD],
-                },
+                    CONF_CAM_MOTION: cam_motion,
+                    CONF_CAM_SOUND: cam_sound
+            },
             )
         )
     return True
