@@ -1,0 +1,22 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Устройство уже сконфигурировано"
+        },
+        "error": {
+            "cannot_connect": "Не могу подключиться",
+            "invalid_auth": "Ошибка автризации",
+            "unknown": "Неизвестная ошибка"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "host": "Хост",
+                    "password": "Пароль",
+                    "username": "Логин"
+                }
+            }
+        }
+    },
+    "title": "Интеграция Wyze Home Assistant"
+}
