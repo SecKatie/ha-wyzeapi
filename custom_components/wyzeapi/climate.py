@@ -63,7 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 class WyzeThermostat(ClimateEntity):
     _just_updated = False
     _available = False
-    _temp_unit: str = "f"
+    _temp_unit: str = "F"
     _cool_sp: int
     _heat_sp: int
     _fan_mode: str
