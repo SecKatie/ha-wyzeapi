@@ -1,6 +1,9 @@
 ---
-name: Bug report about: Create a report to help us improve title: "[Bug]"
-labels: bug assignees: JoshuaMulliken
+name: Bug report
+about: Create a report to help us improve
+title: "[Bug] <short description of issue>"
+labels: bug
+assignees: JoshuaMulliken
 
 ---
 

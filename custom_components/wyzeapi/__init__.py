@@ -12,7 +12,7 @@ from wyzeapy.client import Client
 from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock"]
+PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene"]
 _LOGGER = logging.getLogger(__name__)
 
 
