@@ -23,7 +23,7 @@ SCAN_INTERVAL = timedelta(seconds=20)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi binary sensor component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client = hass.data[DOMAIN][config_entry.entry_id]["wyze_client"]
 
     def get_devices() -> List[Device]:
         try:
@@ -42,9 +42,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         try:
             device_type = DeviceTypes(device.product_type)
             if device_type == DeviceTypes.CAMERA:
-                if config_entry.data.get(CONF_CAM_MOTION):
+                if config_entry.options.get(CONF_CAM_MOTION):
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
-                if config_entry.data.get(CONF_CAM_SOUND):
+                if config_entry.options.get(CONF_CAM_SOUND):
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))

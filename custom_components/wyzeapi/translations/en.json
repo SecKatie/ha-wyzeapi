@@ -13,12 +13,21 @@
                 "data": {
                     "host": "Host",
                     "password": "Password",
-                    "username": "Username",
-                    "camera_motion_sensor": "Enable camera motion sensor",
-                    "camera_sound_sensor": "Enable camera sound sensor"
-                }
+                    "username": "Username"
+                },
+                "title": "Wyze Home Assistant"
             }
         }
     },
-    "title": "Wyze Home Assistant Integration"
+    "options": {
+        "step": {
+            "user": {
+                "data": {
+                    "camera_motion_sensor": "Enable camera motion sensor",
+                    "camera_sound_sensor": "Enable camera sound sensor"
+                },
+                "title": "Wyze Home Assistant Options"
+            }
+        }
+    }
 }

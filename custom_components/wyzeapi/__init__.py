@@ -87,7 +87,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wyze Home Assistant Integration from a config entry."""
 
     def setup_hass_data():
-        hass.data[DOMAIN][entry.entry_id] = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
+        hass_data = dict(entry.data)
+        # Registers update listener to update config entry when options are updated.
+        unsub_options_update_listener = entry.add_update_listener(options_update_listener)
+        # Store a reference to the unsubscribe function to cleanup if an entry is unloaded.
+        hass_data["unsub_options_update_listener"] = unsub_options_update_listener
+        hass_data["wyze_client"] = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
+        hass.data[DOMAIN][entry.entry_id] = hass_data
+        _LOGGER.debug(hass.data[DOMAIN])        
 
     hass.data.setdefault(DOMAIN, {})
     await hass.async_add_executor_job(setup_hass_data)
@@ -102,6 +109,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    _LOGGER.debug("Unloading")
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -110,7 +118,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ]
         )
     )
+
+    # Remove options_update_listener.
+    hass.data[DOMAIN][entry.entry_id]["unsub_options_update_listener"]()
+
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+async def options_update_listener(
+    hass: core.HomeAssistant, config_entry: config_entries.ConfigEntry
+):
+    """Handle options update."""
+    _LOGGER.debug("Managing an update")
+    await hass.config_entries.async_reload(config_entry.entry_id)
