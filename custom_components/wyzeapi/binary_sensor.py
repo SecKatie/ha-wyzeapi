@@ -42,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         try:
             device_type = DeviceTypes(device.product_type)
             if device_type == DeviceTypes.CAMERA:
-                if config_entry.options.get(CONF_CAM_MOTION):
+                if config_entry.options.get(CONF_CAM_MOTION) in (None, True):
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
                 if config_entry.options.get(CONF_CAM_SOUND):
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))

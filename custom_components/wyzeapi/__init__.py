@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy.client import Client
 
-from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
+from .const import DOMAIN
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
 PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene"]
@@ -37,16 +37,6 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
         _LOGGER.error("Missing username and/or passport")
         return False
 
-    if CONF_CAM_MOTION in domainconfig:
-        cam_motion = domainconfig[CONF_CAM_MOTION]
-    else:
-        cam_motion = True # Default ON for backward compatibility
-
-    if CONF_CAM_SOUND in domainconfig:
-        cam_sound = domainconfig[CONF_CAM_SOUND]
-    else:
-        cam_sound = False # Default OFF for backward compatibility
-
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
@@ -59,9 +49,7 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
                     entry,
                     data={
                         CONF_USERNAME: domainconfig[CONF_USERNAME],
-                        CONF_PASSWORD: domainconfig[CONF_PASSWORD],
-                        CONF_CAM_MOTION: cam_motion,
-                        CONF_CAM_SOUND: cam_sound
+                        CONF_PASSWORD: domainconfig[CONF_PASSWORD]
                     },
                 )
                 entry_found = True
@@ -74,10 +62,8 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
                 context={"source": SOURCE_IMPORT},
                 data={
                     CONF_USERNAME: domainconfig[CONF_USERNAME],
-                    CONF_PASSWORD: domainconfig[CONF_PASSWORD],
-                    CONF_CAM_MOTION: cam_motion,
-                    CONF_CAM_SOUND: cam_sound
-            },
+                    CONF_PASSWORD: domainconfig[CONF_PASSWORD]
+                },
             )
         )
     return True
@@ -94,7 +80,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass_data["unsub_options_update_listener"] = unsub_options_update_listener
         hass_data["wyze_client"] = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
         hass.data[DOMAIN][entry.entry_id] = hass_data
-        _LOGGER.debug(hass.data[DOMAIN])        
 
     hass.data.setdefault(DOMAIN, {})
     await hass.async_add_executor_job(setup_hass_data)
@@ -109,7 +94,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("Unloading")
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -131,5 +115,4 @@ async def options_update_listener(
     hass: core.HomeAssistant, config_entry: config_entries.ConfigEntry
 ):
     """Handle options update."""
-    _LOGGER.debug("Managing an update")
     await hass.config_entries.async_reload(config_entry.entry_id)
