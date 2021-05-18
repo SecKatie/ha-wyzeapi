@@ -9,10 +9,12 @@ from wyzeapy.client import Client
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     DEVICE_CLASS_MOTION,
-    DEVICE_CLASS_SOUND
+    DEVICE_CLASS_SOUND,
+    DEVICE_CLASS_GAS,
+    DEVICE_CLASS_SMOKE
 )
 
-from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND
+from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND, CONF_CAM_SMOKE, CONF_CAM_CO2
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -46,6 +48,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.MOTION))
                 if config_entry.options.get(CONF_CAM_SOUND):
                     sensor.append(WyzeCameraSensor(client, device, EventTypes.SOUND))
+                if config_entry.options.get(CONF_CAM_SMOKE):
+                    sensor.append(WyzeCameraSensor(client, device, EventTypes.SMOKE))
+                if config_entry.options.get(CONF_CAM_CO2):
+                    sensor.append(WyzeCameraSensor(client, device, EventTypes.CO2))
         except ValueError as e:
             _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
 
@@ -78,6 +84,18 @@ class WyzeCameraSensor(BinarySensorEntity):
         return self._available
 
     @property
+    def icon(self):
+        """Return the icon."""
+        if self._sensor_class == EventTypes.SOUND:
+            return "hass:music-note-off"
+        elif self._sensor_class == EventTypes.CO2:
+            return "mdi:molecule-co2"
+        elif self._sensor_class == EventTypes.SMOKE:
+            return "mdi:smoke-detector"
+        else:
+            return "hass:walk"
+
+    @property
     def name(self):
         """Return the display name of this switch."""
         return self._device.nickname
@@ -89,7 +107,14 @@ class WyzeCameraSensor(BinarySensorEntity):
 
     @property
     def unique_id(self):
-        return "{}-sound".format(self._device.mac) if self._sensor_class == EventTypes.SOUND else "{}-motion".format(self._device.mac)
+        if self._sensor_class == EventTypes.SOUND:
+            return "{}-sound".format(self._device.mac)
+        elif self._sensor_class == EventTypes.CO2:
+            return "{}-co2".format(self._device.mac)
+        elif self._sensor_class == EventTypes.SMOKE:
+            return "{}-smoke".format(self._device.mac)
+        else:
+            return "{}-motion".format(self._device.mac)
 
     @property
     def device_state_attributes(self):
@@ -104,7 +129,14 @@ class WyzeCameraSensor(BinarySensorEntity):
 
     @property
     def device_class(self):
-        return DEVICE_CLASS_SOUND if self._sensor_class == EventTypes.SOUND else DEVICE_CLASS_MOTION
+        if self._sensor_class == EventTypes.SOUND:
+            return DEVICE_CLASS_SOUND
+        elif self._sensor_class == EventTypes.CO2:
+            return DEVICE_CLASS_GAS 
+        elif self._sensor_class == EventTypes.SMOKE:
+            return DEVICE_CLASS_SMOKE
+        else:
+            return DEVICE_CLASS_MOTION
 
     def update(self):
         try:
