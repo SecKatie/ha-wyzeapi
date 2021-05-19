@@ -3,18 +3,18 @@ import time
 from datetime import timedelta
 from typing import List
 
-from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import DeviceTypes, Device, AccessTokenError
-from wyzeapy.types import PropertyIDs
-from wyzeapy.client import Client
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     DEVICE_CLASS_MOTION
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ATTRIBUTION
+from homeassistant.core import HomeAssistant
+from wyzeapy.base_client import Device, AccessTokenError
+from wyzeapy.client import Client
+from wyzeapy.types import PropertyIDs
 
 from .const import DOMAIN
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -23,28 +23,17 @@ SCAN_INTERVAL = timedelta(seconds=10)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi binary sensor component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_devices() -> List[Device]:
+    def get_cameras() -> List[Device]:
         try:
-            devices = client.get_devices()
+            return client.get_cameras()
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            devices = client.get_devices()
+            return client.get_cameras()
 
-        return devices
-
-    devices = await hass.async_add_executor_job(get_devices)
-
-    cameras = []
-    for device in devices:
-        try:
-            device_type = DeviceTypes(device.product_type)
-            if device_type == DeviceTypes.CAMERA:
-                cameras.append(WyzeCameraMotion(client, device))
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+    cameras = [WyzeCameraMotion(client, camera) for camera in await hass.async_add_executor_job(get_cameras)]
 
     async_add_entities(cameras, True)
 

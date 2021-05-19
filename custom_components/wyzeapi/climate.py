@@ -25,7 +25,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
 from wyzeapy.client import Client
 from wyzeapy.exceptions import AccessTokenError
-from wyzeapy.types import Device, DeviceTypes, ThermostatProps
+from wyzeapy.types import Device, ThermostatProps
 
 from .const import DOMAIN
 
@@ -35,27 +35,18 @@ ATTRIBUTION = "Data provided by Wyze"
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi thermostat component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_devices() -> List[Device]:
+    def get_thermostats() -> List[Device]:
         try:
-            devices = client.get_devices()
+            return client.get_thermostats()
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            devices = client.get_devices()
+            return client.get_thermostats()
 
-        return devices
-
-    devices = await hass.async_add_executor_job(get_devices)
-
-    thermostats = []
-    for device in devices:
-        try:
-            if DeviceTypes(device.product_type) == DeviceTypes.THERMOSTAT:
-                thermostats.append(WyzeThermostat(client, device))
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+    thermostats = [WyzeThermostat(client, thermostat) for thermostat in
+                   await hass.async_add_executor_job(get_thermostats)]
 
     async_add_entities(thermostats, True)
 
