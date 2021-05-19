@@ -8,13 +8,14 @@ from typing import Any, List
 
 from homeassistant.components.switch import (
     SwitchEntity)
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, DeviceTypes, Device, PropertyIDs
+from homeassistant.core import HomeAssistant
+from wyzeapy.base_client import AccessTokenError, Device
 from wyzeapy.client import Client
+from wyzeapy.types import PropertyIDs
 
 from . import DOMAIN
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -23,33 +24,24 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_devices() -> List[Device]:
+    def get_switches() -> List[Device]:
+        switches = []
         try:
-            devices = client.get_devices()
+            switches.extend(client.get_plugs())
+            switches.extend(client.get_cameras())
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            devices = client.get_devices()
+            switches.extend(client.get_plugs())
+            switches.extend(client.get_cameras())
 
-        return devices
+        return switches
 
-    devices = await hass.async_add_executor_job(get_devices)
+    switches = [WyzeSwitch(client, switch) for switch in await hass.async_add_executor_job(get_switches)]
 
-    plugs = []
-    for device in devices:
-        try:
-            device_type = DeviceTypes(device.product_type)
-            if device_type == DeviceTypes.PLUG or \
-                    device_type == DeviceTypes.OUTDOOR_PLUG or \
-                    device_type == DeviceTypes.CAMERA:
-                plugs.append(WyzeSwitch(client, device))
-
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
-
-    async_add_entities(plugs, True)
+    async_add_entities(switches, True)
 
 
 class WyzeSwitch(SwitchEntity):

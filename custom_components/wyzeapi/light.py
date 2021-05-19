@@ -16,13 +16,14 @@ from homeassistant.components.light import (
     SUPPORT_COLOR,
     LightEntity
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
+from homeassistant.core import HomeAssistant
+from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.client import Client
+from wyzeapy.types import PropertyIDs
 
 from .const import DOMAIN
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -31,32 +32,19 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_devices() -> List[Device]:
+    def get_bulbs() -> List[Device]:
         try:
-            devices = client.get_devices()
+            return client.get_bulbs()
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            devices = client.get_devices()
+            return client.get_bulbs()
 
-        return devices
-
-    devices = await hass.async_add_executor_job(get_devices)
-
-    lights = []
-    color_lights = []
-    for device in devices:
-        try:
-            device_type = DeviceTypes(device.product_type)
-            if device_type == DeviceTypes.LIGHT or device_type == DeviceTypes.MESH_LIGHT:
-                color_lights.append(WyzeLight(client, device))
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+    lights = [WyzeLight(client, light) for light in await hass.async_add_executor_job(get_bulbs)]
 
     async_add_entities(lights, True)
-    async_add_entities(color_lights, True)
 
 
 class WyzeLight(LightEntity):

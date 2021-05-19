@@ -6,13 +6,13 @@ from datetime import timedelta
 from typing import Any, List
 
 from homeassistant.components.scene import (Scene)
-from homeassistant.const import ATTR_ATTRIBUTION
-from wyzeapy.base_client import AccessTokenError, Group, PropertyIDs
-from wyzeapy.client import Client
-
-from . import DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from wyzeapy.base_client import AccessTokenError
+from wyzeapy.client import Client
+from wyzeapy.types import Group
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -25,25 +25,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     def get_groups() -> List[Group]:
         try:
-            groups = client.get_groups()
+            return client.get_groups()
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            groups = client.get_groups()
+            return client.get_groups()
 
-        return groups
+    groups = [WyzeGroup(client, group) for group in await hass.async_add_executor_job(get_groups)]
 
-    groups = await hass.async_add_executor_job(get_groups)
-
-    scenes = []
-    for group in groups:
-        try:
-            scenes.append(WyzeGroup(client, group))
-
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
-
-    async_add_entities(scenes, True)
+    async_add_entities(groups, True)
 
 
 class WyzeGroup(Scene):
