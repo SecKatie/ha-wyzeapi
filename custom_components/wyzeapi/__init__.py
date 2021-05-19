@@ -12,10 +12,11 @@ from wyzeapy.client import Client
 from .const import DOMAIN
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene"]
+PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate"]
 _LOGGER = logging.getLogger(__name__)
 
 
+# noinspection PyUnusedLocal
 async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None):
     # pylint: disable=unused-argument
     """Set up the Alexa domain."""

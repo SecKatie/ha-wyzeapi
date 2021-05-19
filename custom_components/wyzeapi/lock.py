@@ -10,39 +10,30 @@ import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes, PropertyIDs
+from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.client import Client
+from wyzeapy.types import PropertyIDs
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=20)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi lock component""")
-    client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_devices() -> List[Device]:
+    def get_locks() -> List[Device]:
         try:
-            devices = client.get_devices()
+            return client.get_locks()
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            devices = client.get_devices()
+            return client.get_locks()
 
-        return devices
-
-    devices = await hass.async_add_executor_job(get_devices)
-
-    locks = []
-    for device in devices:
-        try:
-            if DeviceTypes(device.product_type) == DeviceTypes.LOCK:
-                locks.append(WyzeLock(client, device))
-        except ValueError as e:
-            _LOGGER.warning("{}: Please report this error to https://github.com/JoshuaMulliken/ha-wyzeapi".format(e))
+    locks = [WyzeLock(client, lock) for lock in await hass.async_add_executor_job(get_locks)]
 
     async_add_entities(locks, True)
 
@@ -107,7 +98,6 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
     @property
     def name(self):
         """Return the display name of this lock."""
-        # self._name = "wyzeapi_"+self._device_mac+"_"+ self._name
         return self._device.nickname
 
     @property
@@ -121,7 +111,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
 
     @property
     def state(self):
-        return homeassistant.components.lock.STATE_UNLOCKED if self._unlocked else homeassistant.components.lock.STATE_LOCKED
+        return homeassistant.components.lock.STATE_UNLOCKED if self._unlocked else \
+            homeassistant.components.lock.STATE_LOCKED
 
     @property
     def device_state_attributes(self):
@@ -154,7 +145,5 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
                     self._available = True if value == "1" else False
                 elif property_id == PropertyIDs.DOOR_OPEN:
                     self._door_open = True if value == "1" else False
-
-            self._just_updated = True
         else:
             self._just_updated = False
