@@ -1,6 +1,6 @@
 {
   "domain": "wyzeapi",
-  "version": "2021.5.16-thermostat",
+  "version": "2021.5.19",
   "name": "Wyze Home Assistant Integration",
   "config_flow": true,
   "iot_class": "cloud_polling",
