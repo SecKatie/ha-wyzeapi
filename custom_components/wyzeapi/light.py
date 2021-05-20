@@ -214,6 +214,5 @@ class WyzeLight(LightEntity):
                 elif self._device_type is DeviceTypes.MESH_LIGHT and property_id == PropertyIDs.COLOR:
                     self._color = value
 
-            self._just_updated = True
         else:
             self._just_updated = False
