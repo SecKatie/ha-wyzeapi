@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy.base_client import BaseClient
 
-from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND, CONF_CAM_SMOKE, CONF_CAM_CO2
+from .const import DOMAIN, CONF_CAM_MOTION, CONF_CAM_SOUND, CONF_CAM_SMOKE, CONF_CAM_CO2, CONF_WYZE_MOTION, CONF_WYZE_CONTACT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
 _LOGGER = logging.getLogger(__name__)
@@ -136,6 +136,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_CAM_CO2, 
                     default=self.config_entry.options.get(
                         CONF_CAM_CO2, False
+                    )
+                ): bool,
+                vol.Required(
+                    CONF_WYZE_MOTION, 
+                    default=self.config_entry.options.get(
+                        CONF_WYZE_MOTION, False
+                    )
+                ): bool,
+                vol.Required(
+                    CONF_WYZE_CONTACT, 
+                    default=self.config_entry.options.get(
+                        CONF_WYZE_CONTACT, False
                     )
                 ): bool,
             }

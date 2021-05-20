@@ -26,8 +26,10 @@
                     "camera_motion_sensor": "Enable camera motion sensor",
                     "camera_sound_sensor": "Enable camera sound sensor",
                     "camera_smoke_sensor": "Enable camera smoke sensor",          
-                    "camera_co2_sensor": "Enable camera co2 sensor"          
-                          },
+                    "camera_co2_sensor": "Enable camera co2 sensor",
+                    "wyze_motion_sensor": "Enable motion sensors",
+                    "wyze_contact_sensor": "Enable contact sensors"          
+                },
                 "title": "Wyze Home Assistant Options"
             }
         }

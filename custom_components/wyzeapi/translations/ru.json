@@ -25,9 +25,11 @@
                 "data": {
                     "camera_motion_sensor": "Включить датчик движения камеры",
                     "camera_sound_sensor": "Включить датчик звука камеры",
-                    "camera_smoke_sensor": "Включить датчик дыма камеры",          
-                    "camera_co2_sensor": "Включить датчик CO2 камеры"          
-                          },
+                    "camera_smoke_sensor": "Включить датчик дыма камеры",
+                    "camera_co2_sensor": "Включить датчик CO2 камеры",
+                    "wyze_motion_sensor": "Включить датчики движения",
+                    "wyze_contact_sensor": "Включить контактные датчики"
+                },
                 "title": "Параметры Wyze Home Assistant"
             }
         }
