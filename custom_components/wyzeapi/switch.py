@@ -136,7 +136,5 @@ class WyzeSwitch(SwitchEntity):
                     self._on = True if value == "1" else False
                 elif property_id == PropertyIDs.AVAILABLE:
                     self._available = True if value == "1" else False
-
-            self._just_updated = True
         else:
             self._just_updated = False

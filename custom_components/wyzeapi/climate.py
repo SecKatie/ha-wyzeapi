@@ -144,10 +144,10 @@ class WyzeThermostat(ClimateEntity):
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
 
-        if target_temp_low != self.target_temperature_low:
+        if target_temp_low != self._heat_sp:
             self._client.set_thermostat_prop(self._device, ThermostatProps.HEAT_SP, int(target_temp_low))
             self._heat_sp = int(target_temp_low)
-        if target_temp_high != self.target_temperature_high:
+        if target_temp_high != self._cool_sp:
             self._cool_sp = int(target_temp_high)
             self._client.set_thermostat_prop(self._device, ThermostatProps.COOL_SP, int(target_temp_high))
 
@@ -268,7 +268,5 @@ class WyzeThermostat(ClimateEntity):
                     self._available = False if value != 'connected' else True
                 elif prop == ThermostatProps.HUMIDITY:
                     self._humidity = value
-
-            self._just_updated = True
         else:
             self._just_updated = False

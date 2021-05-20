@@ -2,7 +2,6 @@
 
 """Platform for light integration."""
 import logging
-# Import the device class from the component that you want to support
 from datetime import timedelta
 from typing import List
 
