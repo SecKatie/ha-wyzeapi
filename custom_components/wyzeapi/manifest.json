@@ -1,6 +1,6 @@
 {
   "domain": "wyzeapi",
-  "version": "2021.5.19",
+  "version": "2021.05.21",
   "name": "Wyze Home Assistant Integration",
   "config_flow": true,
   "iot_class": "cloud_polling",
