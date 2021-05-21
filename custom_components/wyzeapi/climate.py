@@ -1,6 +1,7 @@
 """Platform for light integration."""
 import logging
 # Import the device class from the component that you want to support
+from datetime import timedelta
 from typing import List, Optional
 
 from homeassistant.components.climate import (
@@ -31,6 +32,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -52,7 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
 class WyzeThermostat(ClimateEntity):
-    _just_updated = False
+    _server_out_of_sync = False
     _available = False
     _temp_unit: str = "F"
     _cool_sp: int
@@ -151,7 +153,7 @@ class WyzeThermostat(ClimateEntity):
             self._cool_sp = int(target_temp_high)
             self._client.set_thermostat_prop(self._device, ThermostatProps.COOL_SP, int(target_temp_high))
 
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def set_humidity(self, humidity: int) -> None:
         raise NotImplementedError
@@ -163,7 +165,7 @@ class WyzeThermostat(ClimateEntity):
             self._client.set_thermostat_prop(self._device, ThermostatProps.FAN_MODE, "auto")
 
         self._fan_mode = fan_mode
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def set_hvac_mode(self, hvac_mode: str) -> None:
         if hvac_mode == HVAC_MODE_OFF:
@@ -176,7 +178,7 @@ class WyzeThermostat(ClimateEntity):
             self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "auto")
 
         self._hvac_mode = hvac_mode
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def set_swing_mode(self, swing_mode: str) -> None:
         raise NotImplementedError
@@ -186,11 +188,11 @@ class WyzeThermostat(ClimateEntity):
             self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "sleep")
         elif preset_mode == PRESET_AWAY:
             self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "away")
-        if preset_mode == PRESET_HOME:
+        elif preset_mode == PRESET_HOME:
             self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "home")
 
         self._preset_mode = preset_mode
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def turn_aux_heat_on(self) -> None:
         raise NotImplementedError
@@ -244,10 +246,8 @@ class WyzeThermostat(ClimateEntity):
         }
 
     def update(self):
-        _LOGGER.debug(f"Updating {self._device.nickname}")
-        if not self._just_updated:
+        if not self._server_out_of_sync:
             thermostat_props = self._client.get_thermostat_info(self._device)
-            _LOGGER.debug(f"Got properties for {self._device.nickname}")
 
             for prop, value in thermostat_props:
                 if prop == ThermostatProps.TEMP_UNIT:
@@ -269,4 +269,4 @@ class WyzeThermostat(ClimateEntity):
                 elif prop == ThermostatProps.HUMIDITY:
                     self._humidity = value
         else:
-            self._just_updated = False
+            self._server_out_of_sync = False
