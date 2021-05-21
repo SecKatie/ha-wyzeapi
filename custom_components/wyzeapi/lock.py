@@ -17,7 +17,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=60)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -42,8 +42,9 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
     _unlocked: bool
     _available: bool
     _door_open: bool
+    _update_sync_count: int
 
-    _just_updated = False
+    _server_out_of_sync = False
 
     def __init__(self, client: Client, device: Device):
         """Initialize a Wyze lock."""
@@ -54,6 +55,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             raise AttributeError("Device type not supported")
 
         self._client = client
+        self._update_sync_count = 0
 
     @property
     def device_info(self):
@@ -79,7 +81,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             self._client.turn_on(self._device)
 
         self._unlocked = False
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def unlock(self, **kwargs):
         try:
@@ -89,7 +91,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             self._client.turn_off(self._device)
 
         self._unlocked = True
-        self._just_updated = True
+        self._server_out_of_sync = True
 
     def open(self, **kwargs):
         raise NotImplementedError
@@ -130,19 +132,26 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         return None
 
     def update(self):
-        if not self._just_updated:
-            try:
-                device_info = self._client.get_info(self._device)
-            except AccessTokenError:
-                self._client.reauthenticate()
-                device_info = self._client.get_info(self._device)
+        try:
+            device_info = self._client.get_info(self._device)
+        except AccessTokenError:
+            self._client.reauthenticate()
+            device_info = self._client.get_info(self._device)
 
-            for property_id, value in device_info:
-                if property_id == PropertyIDs.ON:
+        for property_id, value in device_info:
+            if property_id == PropertyIDs.ON:
+                if self._server_out_of_sync:
+                    if self._unlocked != (True if value == "1" else False) and self._update_sync_count < 6:
+                        self._update_sync_count += 1
+                        _LOGGER.debug(f"Server is out of sync. It has been out of sync for "
+                                      f"{self._update_sync_count} cycles")
+                    else:
+                        self._server_out_of_sync = False
+                        _LOGGER.debug(f"Server is in sync. It was out of sync for {self._update_sync_count} cycles")
+                        self._update_sync_count = 0
+                else:
                     self._unlocked = True if value == "1" else False
-                elif property_id == PropertyIDs.AVAILABLE:
-                    self._available = True if value == "1" else False
-                elif property_id == PropertyIDs.DOOR_OPEN:
-                    self._door_open = True if value == "1" else False
-        else:
-            self._just_updated = False
+            elif property_id == PropertyIDs.AVAILABLE:
+                self._available = True if value == "1" else False
+            elif property_id == PropertyIDs.DOOR_OPEN:
+                self._door_open = True if value == "1" else False
