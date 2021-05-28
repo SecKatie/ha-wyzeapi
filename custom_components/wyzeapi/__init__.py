@@ -5,14 +5,14 @@ import asyncio
 import logging
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy.client import Client
 
 from .const import DOMAIN
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate"]
+PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate", "alarm_control_panel"]
 _LOGGER = logging.getLogger(__name__)
 
 

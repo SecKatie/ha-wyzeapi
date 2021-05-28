@@ -27,17 +27,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
     def get_switches() -> List[Device]:
-        switches = []
+        local_switches = []
         try:
-            switches.extend(client.get_plugs())
-            switches.extend(client.get_cameras())
+            local_switches.extend(client.get_plugs())
+            local_switches.extend(client.get_cameras())
         except AccessTokenError as e:
             _LOGGER.warning(e)
             client.reauthenticate()
-            switches.extend(client.get_plugs())
-            switches.extend(client.get_cameras())
+            local_switches.extend(client.get_plugs())
+            local_switches.extend(client.get_cameras())
 
-        return switches
+        return local_switches
 
     switches = [WyzeSwitch(client, switch) for switch in await hass.async_add_executor_job(get_switches)]
 
