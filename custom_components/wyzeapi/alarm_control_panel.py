@@ -89,6 +89,10 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         }
 
     @property
+    def name(self) -> str:
+        return self.NAME
+
+    @property
     def unique_id(self):
         return f"{self.hms_id}-hms"
 
