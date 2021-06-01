@@ -6,7 +6,7 @@
   "iot_class": "cloud_polling",
   "documentation": "https://github.com/JoshuaMulliken/ha-wyzeapi#readme",
   "requirements": [
-    "wyzeapy==0.0.25",
+    "wyzeapy==0.0.28",
     "cachecontrol"
   ],
   "codeowners": [
