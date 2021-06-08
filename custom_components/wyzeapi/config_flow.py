@@ -5,14 +5,13 @@ import logging
 from typing import Any, Dict
 
 import voluptuous as vol
-
 from homeassistant import config_entries
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy.base_client import BaseClient
+from wyzeapy.base_client import NetClient
 
 from .const import DOMAIN
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    base_client = BaseClient()
+    base_client = NetClient()
 
     if not await hass.async_add_executor_job(
         base_client.can_login, data[CONF_USERNAME], data[CONF_PASSWORD]
