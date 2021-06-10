@@ -19,7 +19,11 @@ from homeassistant.components.climate.const import (
     FAN_ON,
     PRESET_HOME,
     PRESET_AWAY,
-    PRESET_SLEEP
+    PRESET_SLEEP,
+    CURRENT_HVAC_IDLE,
+    CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_COOL,
+    CURRENT_HVAC_OFF
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
@@ -64,6 +68,7 @@ class WyzeThermostat(ClimateEntity):
     _preset_mode: str
     _temperature: int
     _humidity: int
+    _working_state: str
 
     def __init__(self, client: Client, device):
         self._client = client
@@ -141,6 +146,17 @@ class WyzeThermostat(ClimateEntity):
     @property
     def swing_modes(self) -> Optional[str]:
         raise NotImplementedError
+
+    @property
+    def hvac_action(self) -> str:
+        if self._working_state == "idle":
+            return CURRENT_HVAC_IDLE
+        elif self._working_state == "heating":
+            return CURRENT_HVAC_HEAT
+        elif self._working_state == "cooling":
+            return CURRENT_HVAC_COOL
+        else:
+            return CURRENT_HVAC_OFF
 
     def set_temperature(self, **kwargs) -> None:
         target_temp_low = kwargs['target_temp_low']
@@ -268,5 +284,7 @@ class WyzeThermostat(ClimateEntity):
                     self._available = False if value != 'connected' else True
                 elif prop == ThermostatProps.HUMIDITY:
                     self._humidity = value
+                elif prop == ThermostatProps.WORKING_STATE:
+                    self._working_state = value
         else:
             self._server_out_of_sync = False
