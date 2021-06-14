@@ -115,6 +115,7 @@ class WyzeCameraMotion(BinarySensorEntity):
     def __init__(self, wyzeapi_client: Client, device: Device):
         self._client = wyzeapi_client
         self._device = device
+        self._available = True
         self._last_event = int(str(int(time.time())) + "000")
 
     @property
