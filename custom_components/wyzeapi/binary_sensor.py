@@ -172,7 +172,7 @@ class WyzeCameraMotion(BinarySensorEntity):
             if property_id == PropertyIDs.AVAILABLE:
                 self._available = True if value == "1" else False
 
-        latest_event = self._client.get_latest_event(self._device)
+        latest_event = self._client.get_cached_latest_event(self._device)
         if latest_event is not None:
             if latest_event.event_ts > self._last_event:
                 self._on = True
