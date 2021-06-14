@@ -13,7 +13,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from wyzeapy.base_client import Device, AccessTokenError
 from wyzeapy.client import Client
-from wyzeapy.types import PropertyIDs, Sensor, DeviceTypes
+from wyzeapy.types import Sensor, DeviceTypes
 
 from .const import DOMAIN
 
@@ -162,16 +162,6 @@ class WyzeCameraMotion(BinarySensorEntity):
         return DEVICE_CLASS_MOTION
 
     def update(self):
-        try:
-            device_info = self._client.get_info(self._device)
-        except AccessTokenError:
-            self._client.reauthenticate()
-            device_info = self._client.get_info(self._device)
-
-        for property_id, value in device_info:
-            if property_id == PropertyIDs.AVAILABLE:
-                self._available = True if value == "1" else False
-
         latest_event = self._client.get_cached_latest_event(self._device)
         if latest_event is not None:
             if latest_event.event_ts > self._last_event:
