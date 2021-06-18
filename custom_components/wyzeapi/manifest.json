@@ -1,12 +1,12 @@
 {
   "domain": "wyzeapi",
   "version": "2021.06.3",
-  "name": "Wyze Home Assistant Integration",
+  "name": "Wyze",
   "config_flow": true,
   "iot_class": "cloud_polling",
   "documentation": "https://github.com/JoshuaMulliken/ha-wyzeapi#readme",
   "requirements": [
-    "wyzeapy==0.0.30",
+    "wyzeapy==0.0.31b20",
     "cachecontrol"
   ],
   "codeowners": [

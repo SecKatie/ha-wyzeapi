@@ -3,7 +3,7 @@
 """Platform for switch integration."""
 import logging
 from datetime import timedelta
-from typing import Any, List
+from typing import Any
 
 from homeassistant.components.scene import (Scene)
 from homeassistant.config_entries import ConfigEntry
@@ -23,15 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("""Creating new WyzeApi group component""")
     client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_groups() -> List[Group]:
-        try:
-            return client.get_groups()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_groups()
-
-    groups = [WyzeGroup(client, group) for group in await hass.async_add_executor_job(get_groups)]
+    groups = [WyzeGroup(client, group) for group in await client.get_groups()]
 
     async_add_entities(groups, True)
 

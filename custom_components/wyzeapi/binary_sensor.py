@@ -1,7 +1,6 @@
 import logging
 import time
 from datetime import timedelta
-from typing import List
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -11,39 +10,23 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import Device, AccessTokenError
+from wyzeapy.base_client import Device
 from wyzeapy.client import Client
-from wyzeapy.types import Sensor, DeviceTypes
+from wyzeapy.types import Sensor, DeviceTypes, Event
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = timedelta(seconds=1)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi binary sensor component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_cameras() -> List[Device]:
-        try:
-            return client.get_cameras()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_cameras()
-
-    def get_sensors() -> List[Sensor]:
-        try:
-            return client.get_sensors()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_sensors()
-
-    cameras = [WyzeCameraMotion(client, camera) for camera in await hass.async_add_executor_job(get_cameras)]
-    sensors = [WyzeSensor(client, sensor) for sensor in await hass.async_add_executor_job(get_sensors)]
+    cameras = [WyzeCameraMotion(client, camera) for camera in await client.get_cameras()]
+    sensors = [WyzeSensor(client, sensor) for sensor in await client.get_sensors()]
 
     async_add_entities(cameras, True)
     async_add_entities(sensors, True)
@@ -54,6 +37,15 @@ class WyzeSensor(BinarySensorEntity):
         self._client = wyzeapi_client
         self._device = device
         self._last_event = int(str(int(time.time())) + "000")
+
+    async def async_added_to_hass(self) -> None:
+        await self._client.register_for_sensor_updates(self.process_update, self._device)
+
+    def process_update(self, sensor: Sensor):
+        if self._device != sensor:
+            self._device = sensor
+
+            self.schedule_update_ha_state()
 
     @property
     def device_info(self):
@@ -74,6 +66,10 @@ class WyzeSensor(BinarySensorEntity):
     def name(self):
         """Return the display name of this switch."""
         return self._device.nickname
+
+    @property
+    def should_poll(self) -> bool:
+        return False
 
     @property
     def is_on(self):
@@ -104,18 +100,16 @@ class WyzeSensor(BinarySensorEntity):
         else:
             raise RuntimeError(f"The device type {self._device.type} is not supported by this class")
 
-    def update(self):
-        self._device = self._client.get_sensor_state(self._device)
+    # async def async_update(self):
+    #     self._device = await self._client.get_sensor_state(self._device)
 
 
 class WyzeCameraMotion(BinarySensorEntity):
-    _on: bool
-    _available: bool
-
     def __init__(self, wyzeapi_client: Client, device: Device):
         self._client = wyzeapi_client
         self._device = device
         self._available = True
+        self._on = False
         self._last_event = int(str(int(time.time())) + "000")
 
     @property
@@ -137,6 +131,10 @@ class WyzeCameraMotion(BinarySensorEntity):
     def name(self):
         """Return the display name of this switch."""
         return self._device.nickname
+
+    @property
+    def should_poll(self) -> bool:
+        return False
 
     @property
     def is_on(self):
@@ -162,16 +160,27 @@ class WyzeCameraMotion(BinarySensorEntity):
     def device_class(self):
         return DEVICE_CLASS_MOTION
 
-    def update(self):
-        latest_event = self._client.get_cached_latest_event(self._device)
-        if latest_event is not None:
-            if latest_event.event_ts > self._last_event:
-                self._on = True
-                self._last_event = latest_event.event_ts
-            else:
-                self._on = False
-                self._last_event = latest_event.event_ts
+    # async def async_update(self):
+    #     latest_event = await self._client.get_cached_latest_event(self._device)
+    #     if latest_event is not None:
+    #         if latest_event.event_ts > self._last_event:
+    #             self._on = True
+    #             self._last_event = latest_event.event_ts
+    #         else:
+    #             self._on = False
+    #             self._last_event = latest_event.event_ts
+    #     else:
+    #         self._on = False
+
+    async def async_added_to_hass(self) -> None:
+        await self._client.register_for_event_updates(self.process_update, self._device)
+
+    def process_update(self, event: Event):
+        if event.event_ts > self._last_event:
+            self._on = True
+            self._last_event = event.event_ts
         else:
             self._on = False
+            self._last_event = event.event_ts
 
-
+        self.schedule_update_ha_state()

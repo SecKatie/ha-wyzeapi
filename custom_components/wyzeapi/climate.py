@@ -29,8 +29,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
 from wyzeapy.client import Client
-from wyzeapy.exceptions import AccessTokenError
-from wyzeapy.types import Device, ThermostatProps
+from wyzeapy.types import ThermostatProps
 
 from .const import DOMAIN
 
@@ -43,16 +42,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("""Creating new WyzeApi thermostat component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_thermostats() -> List[Device]:
-        try:
-            return client.get_thermostats()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_thermostats()
-
     thermostats = [WyzeThermostat(client, thermostat) for thermostat in
-                   await hass.async_add_executor_job(get_thermostats)]
+                   await client.get_thermostats()]
 
     async_add_entities(thermostats, True)
 
@@ -261,9 +252,9 @@ class WyzeThermostat(ClimateEntity):
             "mac": self.unique_id
         }
 
-    def update(self):
+    async def async_update(self):
         if not self._server_out_of_sync:
-            thermostat_props = self._client.get_thermostat_info(self._device)
+            thermostat_props = await self._client.get_thermostat_info(self._device)
 
             for prop, value in thermostat_props:
                 if prop == ThermostatProps.TEMP_UNIT:

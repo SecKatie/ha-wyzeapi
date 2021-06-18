@@ -16,21 +16,17 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(seconds=15)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     _LOGGER.debug("""Creating new WyzeApi Home Monitoring System component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def create_hms_if_exists():
-        if client.has_hms():
-            return WyzeHomeMonitoring(client)
-        return None
+    if await client.has_hms():
+        hms = WyzeHomeMonitoring(client)
+        await hms.async_init()
 
-    hms = await hass.async_add_executor_job(create_hms_if_exists)
-
-    if hms is not None:
         async_add_entities([hms], True)
 
 
@@ -40,27 +36,31 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     AVAILABLE = True
     _state = "disarmed"
     _server_out_of_sync = False
+    hms_id: str
 
     def __init__(self, client):
         self._client: Client = client
-        self.hms_id = self._client.net_client.get_hms_id()
+
+    async def async_init(self):
+        self.hms_id = await self._client.net_client.get_hms_id()
 
     @property
     def state(self):
         return self._state
 
-    def alarm_disarm(self, code=None):
-        self._client.set_hms_status(HMSStatus.DISARMED)
+    async def async_alarm_disarm(self, code=None) -> None:
+        """Send disarm command."""
+        await self._client.set_hms_status(HMSStatus.DISARMED)
         self._state = "disarmed"
         self._server_out_of_sync = True
 
-    def alarm_arm_home(self, code=None):
-        self._client.set_hms_status(HMSStatus.HOME)
+    async def async_alarm_arm_home(self, code=None):
+        await self._client.set_hms_status(HMSStatus.HOME)
         self._state = "armed_home"
         self._server_out_of_sync = True
 
-    def alarm_arm_away(self, code=None):
-        self._client.set_hms_status(HMSStatus.AWAY)
+    async def async_alarm_arm_away(self, code=None):
+        await self._client.set_hms_status(HMSStatus.AWAY)
         self._state = "armed_away"
         self._server_out_of_sync = True
 
@@ -94,7 +94,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
 
     @property
     def unique_id(self):
-        return f"{self.hms_id}-hms"
+        return self.hms_id
 
     @property
     def device_state_attributes(self):
@@ -107,9 +107,9 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             "mac": self.unique_id
         }
 
-    def update(self):
+    async def async_update(self):
         if not self._server_out_of_sync:
-            state = self._client.get_hms_info()
+            state = await self._client.get_hms_info()
             if state is HMSStatus.DISARMED:
                 self._state = "disarmed"
             elif state is HMSStatus.AWAY:
