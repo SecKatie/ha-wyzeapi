@@ -28,9 +28,9 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
+
 from wyzeapy.client import Client
 from wyzeapy.types import ThermostatProps
-
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -149,62 +149,62 @@ class WyzeThermostat(ClimateEntity):
         else:
             return CURRENT_HVAC_OFF
 
-    def set_temperature(self, **kwargs) -> None:
+    async def async_set_temperature(self, **kwargs) -> None:
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
 
         if target_temp_low != self._heat_sp:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.HEAT_SP, int(target_temp_low))
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.HEAT_SP, int(target_temp_low))
             self._heat_sp = int(target_temp_low)
         if target_temp_high != self._cool_sp:
             self._cool_sp = int(target_temp_high)
-            self._client.set_thermostat_prop(self._device, ThermostatProps.COOL_SP, int(target_temp_high))
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.COOL_SP, int(target_temp_high))
 
         self._server_out_of_sync = True
 
-    def set_humidity(self, humidity: int) -> None:
+    async def async_set_humidity(self, humidity: int) -> None:
         raise NotImplementedError
 
-    def set_fan_mode(self, fan_mode: str) -> None:
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
         if fan_mode == FAN_ON:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.FAN_MODE, "on")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.FAN_MODE, "on")
         elif fan_mode == FAN_AUTO:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.FAN_MODE, "auto")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.FAN_MODE, "auto")
 
         self._fan_mode = fan_mode
         self._server_out_of_sync = True
 
-    def set_hvac_mode(self, hvac_mode: str) -> None:
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         if hvac_mode == HVAC_MODE_OFF:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "off")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "off")
         elif hvac_mode == HVAC_MODE_HEAT:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "heat")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "heat")
         elif hvac_mode == HVAC_MODE_COOL:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "cool")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "cool")
         elif hvac_mode == HVAC_MODE_AUTO:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "auto")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.MODE_SYS, "auto")
 
         self._hvac_mode = hvac_mode
         self._server_out_of_sync = True
 
-    def set_swing_mode(self, swing_mode: str) -> None:
+    async def async_set_swing_mode(self, swing_mode: str) -> None:
         raise NotImplementedError
 
-    def set_preset_mode(self, preset_mode: str) -> None:
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode == PRESET_SLEEP:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "sleep")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "sleep")
         elif preset_mode == PRESET_AWAY:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "away")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "away")
         elif preset_mode == PRESET_HOME:
-            self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "home")
+            await self._client.set_thermostat_prop(self._device, ThermostatProps.CONFIG_SCENARIO, "home")
 
         self._preset_mode = preset_mode
         self._server_out_of_sync = True
 
-    def turn_aux_heat_on(self) -> None:
+    async def async_turn_aux_heat_on(self) -> None:
         raise NotImplementedError
 
-    def turn_aux_heat_off(self) -> None:
+    async def async_turn_aux_heat_off(self) -> None:
         raise NotImplementedError
 
     @property
