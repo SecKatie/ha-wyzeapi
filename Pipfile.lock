@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "80038727fa979bbed6ef24ca7d8d4ab5677370c20edcf1608d3968a62059f24c"
+            "sha256": "3de77d2e40ad89eff287b546c2b3dc0b6edcff02dfd7a4fa45a0bf362ecde4b0"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -61,11 +61,11 @@
         },
         "anyio": {
             "hashes": [
-                "sha256:43e20711a9d003d858d694c12356dc44ab82c03ccc5290313c3392fa349dad0e",
-                "sha256:5e335cef65fbd1a422bbfbb4722e8e9a9fadbd8c06d5afe9cd614d12023f6e5a"
+                "sha256:41c4be842c284222b197a625d76a7ab85adf9d52788f563172fe180c2744b6c1",
+                "sha256:89e19b1498c8a6f12277e0bd2949597e445aa1b14361fbab2c36943639ef5190"
             ],
             "markers": "python_full_version >= '3.6.2'",
-            "version": "==3.1.0"
+            "version": "==3.2.0"
         },
         "astral": {
             "hashes": [
@@ -548,11 +548,11 @@
         },
         "wyzeapy": {
             "hashes": [
-                "sha256:2a968737479967e52a49ec2447d512270e72bb8e72afac1642c8173d31ce1e2d",
-                "sha256:8296d72e58f857549f1371ac2b583be2a3df9861797cd45eed021a32869174e6"
+                "sha256:4a7b615c32d14e8ab95d38ff0f89d7e2e80eca68dbecd972ca75e8ce8a240173",
+                "sha256:cf9e0955aaebd77d188959f3bc13efe6c19ba971873b331748e5941cca4ab2dd"
             ],
             "index": "pypi",
-            "version": "==0.0.31b20"
+            "version": "==0.0.31b26"
         },
         "yarl": {
             "hashes": [
