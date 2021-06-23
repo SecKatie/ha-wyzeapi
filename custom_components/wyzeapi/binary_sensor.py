@@ -100,9 +100,6 @@ class WyzeSensor(BinarySensorEntity):
         else:
             raise RuntimeError(f"The device type {self._device.type} is not supported by this class")
 
-    # async def async_update(self):
-    #     self._device = await self._client.get_sensor_state(self._device)
-
 
 class WyzeCameraMotion(BinarySensorEntity):
     def __init__(self, wyzeapi_client: Client, device: Device):
@@ -159,18 +156,6 @@ class WyzeCameraMotion(BinarySensorEntity):
     @property
     def device_class(self):
         return DEVICE_CLASS_MOTION
-
-    # async def async_update(self):
-    #     latest_event = await self._client.get_cached_latest_event(self._device)
-    #     if latest_event is not None:
-    #         if latest_event.event_ts > self._last_event:
-    #             self._on = True
-    #             self._last_event = latest_event.event_ts
-    #         else:
-    #             self._on = False
-    #             self._last_event = latest_event.event_ts
-    #     else:
-    #         self._on = False
 
     async def async_added_to_hass(self) -> None:
         await self._client.register_for_event_updates(self.process_update, self._device)
