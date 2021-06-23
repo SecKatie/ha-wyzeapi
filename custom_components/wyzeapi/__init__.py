@@ -66,11 +66,11 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discover
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wyze Home Assistant Integration from a config entry."""
 
-    def setup_hass_data():
-        hass.data[DOMAIN][entry.entry_id] = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
-
     hass.data.setdefault(DOMAIN, {})
-    await hass.async_add_executor_job(setup_hass_data)
+    client = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
+    await client.async_init()
+
+    hass.data[DOMAIN][entry.entry_id] = client
 
     for platform in PLATFORMS:
         hass.async_create_task(
@@ -82,6 +82,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    client: Client = hass.data[DOMAIN][entry.entry_id]
+    await client.async_close()
+
     unload_ok = all(
         await asyncio.gather(
             *[

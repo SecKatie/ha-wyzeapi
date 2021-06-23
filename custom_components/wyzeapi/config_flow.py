@@ -9,7 +9,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy.base_client import NetClient
+from wyzeapy.client import Client
 
 from .const import DOMAIN
 
@@ -24,20 +24,16 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    base_client = NetClient()
+    client = Client(data[CONF_USERNAME], data[CONF_PASSWORD])
+    await client.async_init()
 
-    if not await hass.async_add_executor_job(
-        base_client.can_login, data[CONF_USERNAME], data[CONF_PASSWORD]
-    ):
+    if not client.valid_login:
+        await client.async_close()
+
         raise InvalidAuth
 
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
-
     # Return info that you want to store in the config entry.
-    return {"title": "Wyze Home Assistant Integration"}
+    return {"title": "Wyze"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -47,7 +43,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     async def async_step_user(
-        self, user_input: Dict[str, Any] = None
+            self, user_input: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """Handle the initial step."""
         if user_input is None:
