@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
     switches = [WyzeSwitch(client, switch) for switch in await client.get_plugs()]
+    switches.extend([WyzeSwitch(client, switch) for switch in await client.get_cameras()])
 
     async_add_entities(switches, True)
 
