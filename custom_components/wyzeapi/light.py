@@ -4,7 +4,7 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import Any, List
+from typing import Any
 
 import homeassistant.util.color as color_util
 from homeassistant.components.light import (
@@ -34,15 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_bulbs() -> List[Device]:
-        try:
-            return client.get_bulbs()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_bulbs()
-
-    lights = [WyzeLight(client, light) for light in await hass.async_add_executor_job(get_bulbs)]
+    lights = [WyzeLight(client, light) for light in await client.get_bulbs()]
 
     async_add_entities(lights, True)
 
@@ -99,7 +91,7 @@ class WyzeLight(LightEntity):
         # Convert the 0-1 range into a value in the right range.
         return output_min + (value_scaled * right_span)
 
-    def turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         pids = []
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
@@ -119,20 +111,20 @@ class WyzeLight(LightEntity):
 
         _LOGGER.debug("Turning on light")
         try:
-            self._client.turn_on(self._device, pids)
+            await self._client.turn_on(self._device, pids)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_on(self._device, pids)
+            await self._client.reauthenticate()
+            await self._client.turn_on(self._device, pids)
 
         self._on = True
         self._just_updated = True
 
-    def turn_off(self, **kwargs: Any) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         try:
-            self._client.turn_off(self._device)
+            await self._client.turn_off(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_off(self._device)
+            await self._client.reauthenticate()
+            await self._client.turn_off(self._device)
 
         self._on = False
         self._just_updated = True
@@ -191,13 +183,13 @@ class WyzeLight(LightEntity):
             return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
-    def update(self):
+    async def async_update(self):
         if not self._just_updated:
             try:
-                device_info = self._client.get_info(self._device)
+                device_info = await self._client.get_info(self._device)
             except AccessTokenError:
-                self._client.reauthenticate()
-                device_info = self._client.get_info(self._device)
+                await self._client.reauthenticate()
+                device_info = await self._client.get_info(self._device)
 
             for property_id, value in device_info:
                 if property_id == PropertyIDs.BRIGHTNESS:

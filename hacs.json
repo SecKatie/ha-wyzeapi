@@ -1,5 +1,5 @@
 {
-  "name": "Wyze Home Assistant Integration",
+  "name": "Wyze",
   "domains": [
     "switch",
     "light",

@@ -3,7 +3,6 @@
 """Platform for light integration."""
 import logging
 from datetime import timedelta
-from typing import List
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
@@ -24,15 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("""Creating new WyzeApi lock component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_locks() -> List[Device]:
-        try:
-            return client.get_locks()
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            return client.get_locks()
-
-    locks = [WyzeLock(client, lock) for lock in await hass.async_add_executor_job(get_locks)]
+    locks = [WyzeLock(client, lock) for lock in await client.get_locks()]
 
     async_add_entities(locks, True)
 
@@ -72,23 +63,23 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
     def should_poll(self) -> bool:
         return True
 
-    def lock(self, **kwargs):
+    async def async_lock(self, **kwargs):
         _LOGGER.debug("Turning on lock")
         try:
-            self._client.turn_on(self._device)
+            await self._client.turn_on(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_on(self._device)
+            await self._client.reauthenticate()
+            await self._client.turn_on(self._device)
 
         self._unlocked = False
         self._server_out_of_sync = True
 
-    def unlock(self, **kwargs):
+    async def async_unlock(self, **kwargs):
         try:
-            self._client.turn_off(self._device)
+            await self._client.turn_off(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_off(self._device)
+            await self._client.reauthenticate()
+            await self._client.turn_off(self._device)
 
         self._unlocked = True
         self._server_out_of_sync = True
@@ -131,12 +122,12 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
     def supported_features(self):
         return None
 
-    def update(self):
+    async def async_update(self):
         try:
-            device_info = self._client.get_info(self._device)
+            device_info = await self._client.get_info(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            device_info = self._client.get_info(self._device)
+            await self._client.reauthenticate()
+            device_info = await self._client.get_info(self._device)
 
         for property_id, value in device_info:
             if property_id == PropertyIDs.ON:

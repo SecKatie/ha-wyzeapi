@@ -4,7 +4,7 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import Any, List
+from typing import Any
 
 from homeassistant.components.switch import (
     SwitchEntity)
@@ -26,20 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
-    def get_switches() -> List[Device]:
-        local_switches = []
-        try:
-            local_switches.extend(client.get_plugs())
-            local_switches.extend(client.get_cameras())
-        except AccessTokenError as e:
-            _LOGGER.warning(e)
-            client.reauthenticate()
-            local_switches.extend(client.get_plugs())
-            local_switches.extend(client.get_cameras())
-
-        return local_switches
-
-    switches = [WyzeSwitch(client, switch) for switch in await hass.async_add_executor_job(get_switches)]
+    switches = [WyzeSwitch(client, switch) for switch in await client.get_plugs()]
+    switches.extend([WyzeSwitch(client, switch) for switch in await client.get_cameras()])
 
     async_add_entities(switches, True)
 
@@ -73,22 +61,22 @@ class WyzeSwitch(SwitchEntity):
     def should_poll(self) -> bool:
         return True
 
-    def turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         try:
-            self._client.turn_on(self._device)
+            await self._client.turn_on(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_on(self._device)
+            await self._client.reauthenticate()
+            await self._client.turn_on(self._device)
 
         self._on = True
         self._just_updated = True
 
-    def turn_off(self, **kwargs: Any) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         try:
-            self._client.turn_off(self._device)
+            await self._client.turn_off(self._device)
         except AccessTokenError:
-            self._client.reauthenticate()
-            self._client.turn_off(self._device)
+            await self._client.reauthenticate()
+            await self._client.turn_off(self._device)
 
         self._on = False
         self._just_updated = True
@@ -123,13 +111,13 @@ class WyzeSwitch(SwitchEntity):
             "mac": self.unique_id
         }
 
-    def update(self):
+    async def async_update(self):
         if not self._just_updated:
             try:
-                device_info = self._client.get_info(self._device)
+                device_info = await self._client.get_info(self._device)
             except AccessTokenError:
-                self._client.reauthenticate()
-                device_info = self._client.get_info(self._device)
+                await self._client.reauthenticate()
+                device_info = await self._client.get_info(self._device)
 
             for property_id, value in device_info:
                 if property_id == PropertyIDs.ON:
