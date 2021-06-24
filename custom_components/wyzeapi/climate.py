@@ -2,7 +2,7 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import List, Optional
+from typing import List, Optional, Callable, Any
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -38,7 +38,17 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
+                            async_add_entities: Callable[[List[Any], bool], None]):
+    """
+    This function sets up the config entry so that it is available to Home Assistant
+
+    :param hass: The Home Assistant instance
+    :param config_entry: The current config entry
+    :param async_add_entities: A function to add entities
+    :return:
+    """
+
     _LOGGER.debug("""Creating new WyzeApi thermostat component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -49,6 +59,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
 class WyzeThermostat(ClimateEntity):
+    """
+    This class defines a representation of a Wyze Thermostat that can be used for Home Assistant
+    """
+
+    # pylint: disable=R0902
     _server_out_of_sync = False
     _available = False
     _temp_unit: str = "F"
@@ -106,6 +121,7 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def hvac_mode(self) -> str:
+        # pylint: disable=R1705
         if self._hvac_mode == "auto":
             return HVAC_MODE_AUTO
         elif self._hvac_mode == "heat":
@@ -129,6 +145,7 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def preset_mode(self) -> Optional[str]:
+        # pylint: disable=R1705
         if self._preset_mode == "home":
             return PRESET_HOME
         elif self._preset_mode == "away":
@@ -164,6 +181,7 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def hvac_action(self) -> str:
+        # pylint: disable=R1705
         if self._working_state == "idle":
             return CURRENT_HVAC_IDLE
         elif self._working_state == "heating":
@@ -276,7 +294,13 @@ class WyzeThermostat(ClimateEntity):
             "mac": self.unique_id
         }
 
-    async def async_update(self):
+    async def async_update(self) -> None:
+        """
+        This function updates the state of the Thermostat
+
+        :return: None
+        """
+
         if not self._server_out_of_sync:
             thermostat_props = await self._client.get_thermostat_info(self._device)
 
@@ -296,7 +320,7 @@ class WyzeThermostat(ClimateEntity):
                 elif prop == ThermostatProps.TEMPERATURE:
                     self._temperature = value
                 elif prop == ThermostatProps.IOT_STATE:
-                    self._available = False if value != 'connected' else True
+                    self._available = False if not value == 'connected' else True  # pylint: disable=R1719
                 elif prop == ThermostatProps.HUMIDITY:
                     self._humidity = value
                 elif prop == ThermostatProps.WORKING_STATE:

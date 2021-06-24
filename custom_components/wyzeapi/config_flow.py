@@ -1,4 +1,5 @@
 """Config flow for Wyze Home Assistant Integration integration."""
+
 from __future__ import annotations
 
 import logging
@@ -60,9 +61,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "cannot_connect"
         except InvalidAuth:
             errors["base"] = "invalid_auth"
-        except Exception:
-            _LOGGER.exception("Unexpected exception")
-            errors["base"] = "unknown"
         else:
             return self.async_create_entry(title=info["title"], data=user_input)
 

@@ -7,6 +7,10 @@ name = "pypi"
 homeassistant = "*"
 requests = "*"
 wyzeapy = "==0.0.31"
+flake8 = "*"
+pylint = "*"
+autopep8 = "*"
+mypy = "*"
 
 [dev-packages]
 

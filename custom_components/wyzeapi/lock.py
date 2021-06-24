@@ -3,6 +3,7 @@
 """Platform for light integration."""
 import logging
 from datetime import timedelta
+from typing import Callable, List, Any
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
@@ -19,7 +20,17 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=10)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
+                            async_add_entities: Callable[[List[Any], bool], None]) -> None:
+    """
+    This function sets up the config_entry
+
+    :param hass: Home Assistant instance
+    :param config_entry: The current config_entry
+    :param async_add_entities: This function adds entities to the config_entry
+    :return:
+    """
+
     _LOGGER.debug("""Creating new WyzeApi lock component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -129,6 +140,10 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         return None
 
     async def async_update(self):
+        """
+        This function updates the entity
+        """
+
         try:
             device_info = await self._client.get_info(self._device)
         except AccessTokenError:
@@ -138,17 +153,20 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         for property_id, value in device_info:
             if property_id == PropertyIDs.ON:
                 if self._server_out_of_sync:
-                    if self._unlocked != (True if value == "1" else False) and self._update_sync_count < 6:
+                    if self._unlocked != (value == "1") and self._update_sync_count < 6:
                         self._update_sync_count += 1
-                        _LOGGER.debug(f"Server is out of sync. It has been out of sync for "
-                                      f"{self._update_sync_count} cycles")
+                        # pylint: disable=logging-not-lazy
+                        _LOGGER.debug("Server is out of sync. It has been out of sync for %s cycles" %
+                                      self._update_sync_count)
                     else:
                         self._server_out_of_sync = False
-                        _LOGGER.debug(f"Server is in sync. It was out of sync for {self._update_sync_count} cycles")
+                        # pylint: disable=logging-not-lazy
+                        _LOGGER.debug('Server is in sync. It was out of sync for %s cycles' %
+                                      self._update_sync_count)
                         self._update_sync_count = 0
                 else:
-                    self._unlocked = True if value == "1" else False
+                    self._unlocked = value == "1"
             elif property_id == PropertyIDs.AVAILABLE:
-                self._available = True if value == "1" else False
+                self._available = value == "1"
             elif property_id == PropertyIDs.DOOR_OPEN:
-                self._door_open = True if value == "1" else False
+                self._door_open = value == "1"
