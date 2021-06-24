@@ -51,11 +51,13 @@ class WyzeSensor(BinarySensorEntity):
     """
 
     def __init__(self, wyzeapi_client: Client, device: Sensor):
+        """Initializes the class"""
         self._client = wyzeapi_client
         self._device = device
         self._last_event = int(str(int(time.time())) + "000")
 
     async def async_added_to_hass(self) -> None:
+        """Registers for updates when the entity is added to Home Assistant"""
         await self._client.register_for_sensor_updates(self.process_update, self._device)
 
     def process_update(self, sensor: Sensor):
