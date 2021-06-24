@@ -20,7 +20,7 @@ jobs:
 
     - name: Lint with pylint
       run: |
-        pip install pylint homeassistant wyzeapy
+        pip install pylint homeassistant wyzeapy==0.0.31
         pylint ./custom_components/wyzeapi
         ...
 
