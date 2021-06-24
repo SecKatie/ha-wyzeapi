@@ -26,9 +26,7 @@ If you like what I have done here and want to help I would recommend that you fi
 Assistant. You can do this by purchasing some swag from their [store](https://teespring.com/stores/home-assistant-store)
 or paying for a Nabu Casa subscription. None of this could happen without them.
 
-After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee.
-
-<a href="https://www.buymeacoffee.com/joshmulliken"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=joshmulliken&button_colour=5F7FFF&font_colour=ffffff&font_family=Poppins&outline_colour=000000&coffee_colour=FFDD00"></a>
+After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee or Github Sponsers in the right hand menu.
 
 ## Installation (HACS) - Highly Recommended
 
