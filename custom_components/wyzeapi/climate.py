@@ -28,9 +28,9 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
-
 from wyzeapy.client import Client
 from wyzeapy.types import ThermostatProps
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +64,30 @@ class WyzeThermostat(ClimateEntity):
     def __init__(self, client: Client, device):
         self._client = client
         self._device = device
+
+    def set_temperature(self, **kwargs) -> None:
+        raise NotImplementedError
+
+    def set_humidity(self, humidity: int) -> None:
+        raise NotImplementedError
+
+    def set_fan_mode(self, fan_mode: str) -> None:
+        raise NotImplementedError
+
+    def set_hvac_mode(self, hvac_mode: str) -> None:
+        raise NotImplementedError
+
+    def set_swing_mode(self, swing_mode: str) -> None:
+        raise NotImplementedError
+
+    def set_preset_mode(self, preset_mode: str) -> None:
+        raise NotImplementedError
+
+    def turn_aux_heat_on(self) -> None:
+        raise NotImplementedError
+
+    def turn_aux_heat_off(self) -> None:
+        raise NotImplementedError
 
     @property
     def current_temperature(self) -> float:

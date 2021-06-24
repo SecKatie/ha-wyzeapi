@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from typing import Optional
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -47,6 +48,15 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     @property
     def state(self):
         return self._state
+
+    def alarm_disarm(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    def alarm_arm_home(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    def alarm_arm_away(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""

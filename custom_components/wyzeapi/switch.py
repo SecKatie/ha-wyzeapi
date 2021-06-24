@@ -11,8 +11,8 @@ from homeassistant.components.switch import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError, Device
 from wyzeapy.client import Client
+from wyzeapy.net_client import AccessTokenError, Device
 from wyzeapy.types import PropertyIDs
 
 from . import DOMAIN
@@ -34,6 +34,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 class WyzeSwitch(SwitchEntity):
     """Representation of a Wyze Switch."""
+
+    def turn_on(self, **kwargs: Any) -> None:
+        pass
+
+    def turn_off(self, **kwargs: Any) -> None:
+        pass
 
     _client: Client
     _device: Device
