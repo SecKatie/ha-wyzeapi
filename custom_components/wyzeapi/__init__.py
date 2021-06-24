@@ -12,31 +12,35 @@ from wyzeapy.client import Client
 
 from .const import DOMAIN
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate", "alarm_control_panel"]
+PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate",
+             "alarm_control_panel"]
 _LOGGER = logging.getLogger(__name__)
 
 
 # noinspection PyUnusedLocal
-async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None):
+async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig,
+                      discovery_info=None):
     # pylint: disable=unused-argument
     """Set up the Alexa domain."""
     if DOMAIN not in config:
         _LOGGER.debug(
-            "Nothing to import from configuration.yaml, loading from Integrations",
+            "Nothing to import from configuration.yaml, loading from "
+            "Integrations",
         )
         return True
 
     domainconfig = config.get(DOMAIN)
     entry_found = False
-    _LOGGER.debug(
-        "Importing config information for {} from configuration.yml".format(domainconfig[CONF_USERNAME])
-    )
+    # pylint: disable=logging-not-lazy
+    _LOGGER.debug("Importing config information for %s from configuration.yml" %
+                  domainconfig[CONF_USERNAME])
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
-            if (
-                    entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
-                    and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
+            if (entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
+                    and
+                    entry.data.get(CONF_PASSWORD) == domainconfig[
+                        CONF_PASSWORD]
             ):
                 _LOGGER.debug("Updating existing entry")
                 hass.config_entries.async_update_entry(
@@ -67,7 +71,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wyze Home Assistant Integration from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-    client = Client(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
+    client = Client(entry.data.get(CONF_USERNAME),
+                    entry.data.get(CONF_PASSWORD))
     await client.async_init()
 
     hass.data[DOMAIN][entry.entry_id] = client

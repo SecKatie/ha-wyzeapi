@@ -4,7 +4,7 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import Any
+from typing import Any, Callable, List, Optional
 
 import homeassistant.util.color as color_util
 from homeassistant.components.light import (
@@ -30,7 +30,16 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
+                            async_add_entities: Callable[[List[Any], bool], None]) -> None:
+    """
+    This function sets up the entities in the config entry
+
+    :param hass: The Home Assistant instance
+    :param config_entry: The config entry
+    :param async_add_entities: A function that adds entities
+    """
+
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -40,9 +49,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
 class WyzeLight(LightEntity):
-    """Representation of a Wyze Bulb."""
-    _brightness: int
-    _color_temp: int
+    """
+    Representation of a Wyze Bulb.
+    """
+    # pylint: disable=R0902
+    _brightness: float
+    _color_temp: float
     _color: str
     _on: bool
     _available: bool
@@ -83,7 +95,19 @@ class WyzeLight(LightEntity):
         return True
 
     @staticmethod
-    def translate(value, input_min, input_max, output_min, output_max):
+    def translate(value: float, input_min: float, input_max: float, output_min: float, output_max: float) -> \
+            Optional[float]:
+        """
+        This function maps an input minimum and maximum to the output minimum and maximum
+
+        :param value: The value to be converted
+        :param input_min: The minimum value of the input
+        :param input_max: The maximum value of the input
+        :param output_min: The minimum value of the output
+        :param output_max: The maximum value of the output
+        :return: The converted value
+        """
+
         if value is None:
             return None
 
@@ -190,6 +214,10 @@ class WyzeLight(LightEntity):
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
     async def async_update(self):
+        """
+        This function updates the lock to be up to date with the Wyze Servers
+        """
+
         if not self._just_updated:
             try:
                 device_info = await self._client.get_info(self._device)
@@ -206,9 +234,9 @@ class WyzeLight(LightEntity):
                     except ValueError:
                         self._color_temp = 2700
                 elif property_id == PropertyIDs.ON:
-                    self._on = True if value == "1" else False
+                    self._on = value == "1"
                 elif property_id == PropertyIDs.AVAILABLE:
-                    self._available = True if value == "1" else False
+                    self._available = value == "1"
                 elif self._device_type is DeviceTypes.MESH_LIGHT and property_id == PropertyIDs.COLOR:
                     self._color = value
 

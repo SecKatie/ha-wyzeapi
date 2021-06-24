@@ -4,7 +4,7 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import Any
+from typing import Any, Callable, List
 
 from homeassistant.components.switch import (
     SwitchEntity)
@@ -22,7 +22,17 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
+                            async_add_entities: Callable[[List[Any], bool], None]) -> None:
+    """
+    This function sets up the config entry
+
+    :param hass: The Home Assistant Instance
+    :param config_entry: The current config entry
+    :param async_add_entities: This function adds entities to the config entry
+    :return:
+    """
+
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -118,6 +128,10 @@ class WyzeSwitch(SwitchEntity):
         }
 
     async def async_update(self):
+        """
+        This function updates the entity
+        """
+
         if not self._just_updated:
             try:
                 device_info = await self._client.get_info(self._device)
@@ -127,8 +141,8 @@ class WyzeSwitch(SwitchEntity):
 
             for property_id, value in device_info:
                 if property_id == PropertyIDs.ON:
-                    self._on = True if value == "1" else False
+                    self._on = value == "1"
                 elif property_id == PropertyIDs.AVAILABLE:
-                    self._available = True if value == "1" else False
+                    self._available = value == "1"
         else:
             self._just_updated = False

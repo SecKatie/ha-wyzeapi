@@ -1,6 +1,10 @@
+"""
+This module handles the Wyze Home Monitoring system
+"""
+
 import logging
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Callable, List, Any
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -20,7 +24,16 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=15)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
+                            async_add_entities: Callable[[List[Any], bool], None]):
+    """
+    This function sets up the integration
+
+    :param hass: Reference to the HomeAssistant instance
+    :param config_entry: Reference to the config entry we are setting up
+    :param async_add_entities: Reference to the
+    """
+
     _LOGGER.debug("""Creating new WyzeApi Home Monitoring System component""")
     client: Client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -32,6 +45,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
 class WyzeHomeMonitoring(AlarmControlPanelEntity):
+    """
+    A representation of the Wyze Home Monitoring system that works for wyze
+    """
+
     DEVICE_MODEL = "HMS"
     NAME = "Wyze Home Monitoring System"
     AVAILABLE = True
@@ -43,6 +60,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         self._client: Client = client
 
     async def async_init(self):
+        """Initialize the control panel so that it has its hms_id"""
         self.hms_id = await self._client.net_client.get_hms_id()
 
     @property
@@ -118,6 +136,8 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         }
 
     async def async_update(self):
+        """Update the entity with data from the Wyze servers"""
+
         if not self._server_out_of_sync:
             state = await self._client.get_hms_info()
             if state is HMSStatus.DISARMED:

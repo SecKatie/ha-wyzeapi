@@ -20,6 +20,15 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+    """
+    This function sets up the config_entry
+
+    :param hass: The Home Assistant instance
+    :param config_entry: The current config_entry
+    :param async_add_entities: This function adds the entities to Home Assistant
+    :return:
+    """
+
     _LOGGER.debug("""Creating new WyzeApi group component""")
     client = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -59,4 +68,3 @@ class WyzeGroup(Scene):
     @property
     def unique_id(self):
         return "{}-scene".format(self._group.group_id)
-
