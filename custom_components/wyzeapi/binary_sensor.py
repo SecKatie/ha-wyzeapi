@@ -1,6 +1,5 @@
 import logging
 import time
-from datetime import timedelta
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -10,15 +9,14 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import Device
 from wyzeapy.client import Client
+from wyzeapy.net_client import Device
 from wyzeapy.types import Sensor, DeviceTypes, Event
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-SCAN_INTERVAL = timedelta(seconds=1)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):

@@ -19,8 +19,8 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.client import Client
+from wyzeapy.net_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.types import PropertyIDs
 
 from .const import DOMAIN
@@ -60,6 +60,12 @@ class WyzeLight(LightEntity):
             raise AttributeError("Device type not supported")
 
         self._client = client
+
+    def turn_on(self, **kwargs: Any) -> None:
+        raise NotImplementedError
+
+    def turn_off(self, **kwargs: Any) -> None:
+        raise NotImplementedError
 
     @property
     def device_info(self):

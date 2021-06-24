@@ -8,8 +8,8 @@ import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.client import Client
+from wyzeapy.net_client import AccessTokenError, Device, DeviceTypes
 from wyzeapy.types import PropertyIDs
 
 from .const import DOMAIN
@@ -58,6 +58,12 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             "manufacturer": "WyzeLabs",
             "model": self._device.product_model
         }
+
+    def lock(self, **kwargs):
+        raise NotImplementedError
+
+    def unlock(self, **kwargs):
+        raise NotImplementedError
 
     @property
     def should_poll(self) -> bool:

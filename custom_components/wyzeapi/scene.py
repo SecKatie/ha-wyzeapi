@@ -8,8 +8,8 @@ from typing import Any
 from homeassistant.components.scene import (Scene)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from wyzeapy.base_client import AccessTokenError
 from wyzeapy.client import Client
+from wyzeapy.net_client import AccessTokenError
 from wyzeapy.types import Group
 
 from . import DOMAIN
