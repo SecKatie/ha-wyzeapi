@@ -10,7 +10,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy.client import Client
+from wyzeapy import Wyzeapy
 
 from .const import DOMAIN
 
@@ -24,11 +24,10 @@ async def validate_input(_: HomeAssistant, data: Dict[str, Any]) -> Dict[str, An
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
+    client = await Wyzeapy.create()
+    await client.login(data[CONF_USERNAME], data[CONF_PASSWORD])
 
-    client = Client(data[CONF_USERNAME], data[CONF_PASSWORD])
-    await client.async_init()
-
-    if not client.valid_login:
+    if not await client.valid_login:
         await client.async_close()
 
         raise InvalidAuth

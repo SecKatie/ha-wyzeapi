@@ -4,16 +4,17 @@
 import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Union
 
 from homeassistant.components.switch import (
     SwitchEntity)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.client import Client
-from wyzeapy.net_client import AccessTokenError, Device
-from wyzeapy.types import PropertyIDs
+from wyzeapy import Wyzeapy, CameraService, SwitchService
+from wyzeapy.net_client import Device
+from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.switch_service import Switch
 
 from . import DOMAIN
 
@@ -34,10 +35,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    client: Client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    switch_service = await client.switch_service
+    camera_service = await client.camera_service
 
-    switches = [WyzeSwitch(client, switch) for switch in await client.get_plugs()]
-    switches.extend([WyzeSwitch(client, switch) for switch in await client.get_cameras()])
+    switches = [WyzeSwitch(switch_service, switch) for switch in await switch_service.get_switches()]
+    switches.extend([WyzeSwitch(camera_service, switch) for switch in await camera_service.get_cameras()])
 
     async_add_entities(switches, True)
 
@@ -51,16 +54,19 @@ class WyzeSwitch(SwitchEntity):
     def turn_off(self, **kwargs: Any) -> None:
         pass
 
-    _client: Client
-    _device: Device
     _on: bool
     _available: bool
     _just_updated = False
 
-    def __init__(self, client: Client, device: Device):
+    def __init__(self, service: Union[CameraService, SwitchService], device: Device):
         """Initialize a Wyze Bulb."""
         self._device = device
-        self._client = client
+        self._service = service
+
+        if type(self._device) is Camera:
+            self._device = Camera(self._device.raw_dict)
+        elif type(self._device) is Switch:
+            self._device = Switch(self._device.raw_dict)
 
     @property
     def device_info(self):
@@ -78,23 +84,15 @@ class WyzeSwitch(SwitchEntity):
         return True
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        try:
-            await self._client.turn_on(self._device)
-        except AccessTokenError:
-            await self._client.reauthenticate()
-            await self._client.turn_on(self._device)
+        await self._service.turn_on(self._device)
 
-        self._on = True
+        self._device.on = True
         self._just_updated = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        try:
-            await self._client.turn_off(self._device)
-        except AccessTokenError:
-            await self._client.reauthenticate()
-            await self._client.turn_off(self._device)
+        await self._service.turn_off(self._device)
 
-        self._on = False
+        self._device.on = False
         self._just_updated = True
 
     @property
@@ -110,7 +108,7 @@ class WyzeSwitch(SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self._on
+        return self._device.on
 
     @property
     def unique_id(self):
@@ -133,16 +131,6 @@ class WyzeSwitch(SwitchEntity):
         """
 
         if not self._just_updated:
-            try:
-                device_info = await self._client.get_info(self._device)
-            except AccessTokenError:
-                await self._client.reauthenticate()
-                device_info = await self._client.get_info(self._device)
-
-            for property_id, value in device_info:
-                if property_id == PropertyIDs.ON:
-                    self._on = value == "1"
-                elif property_id == PropertyIDs.AVAILABLE:
-                    self._available = value == "1"
+            self._device = await self._service.update(self._device)
         else:
             self._just_updated = False

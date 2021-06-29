@@ -14,9 +14,10 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy.client import Client
-from wyzeapy.net_client import Device
-from wyzeapy.types import Sensor, DeviceTypes, Event
+from wyzeapy import Wyzeapy, CameraService, SensorService
+from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.sensor_service import Sensor
+from wyzeapy.types import DeviceTypes
 
 from .const import DOMAIN
 
@@ -36,10 +37,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi binary sensor component""")
-    client: Client = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
 
-    cameras = [WyzeCameraMotion(client, camera) for camera in await client.get_cameras()]
-    sensors = [WyzeSensor(client, sensor) for sensor in await client.get_sensors()]
+    sensor_service = await client.sensor_service
+    camera_service = await client.camera_service
+
+    cameras = [WyzeCameraMotion(camera_service, camera) for camera in await camera_service.get_cameras()]
+    sensors = [WyzeSensor(sensor_service, sensor) for sensor in await sensor_service.get_sensors()]
 
     async_add_entities(cameras, True)
     async_add_entities(sensors, True)
@@ -50,15 +54,15 @@ class WyzeSensor(BinarySensorEntity):
     A representation of the WyzeSensor for use in Home Assistant
     """
 
-    def __init__(self, wyzeapi_client: Client, device: Sensor):
+    def __init__(self, sensor_service: SensorService, sensor: Sensor):
         """Initializes the class"""
-        self._client = wyzeapi_client
-        self._device = device
+        self._sensor_service = sensor_service
+        self._sensor = sensor
         self._last_event = int(str(int(time.time())) + "000")
 
     async def async_added_to_hass(self) -> None:
         """Registers for updates when the entity is added to Home Assistant"""
-        await self._client.register_for_sensor_updates(self.process_update, self._device)
+        await self._sensor_service.register_for_updates(self._sensor, self.process_update)
 
     def process_update(self, sensor: Sensor):
         """
@@ -67,8 +71,8 @@ class WyzeSensor(BinarySensorEntity):
         :param sensor: The sensor with the updated values
         """
 
-        if self._device != sensor:
-            self._device = sensor
+        if self._sensor != sensor:
+            self._sensor = sensor
 
             self.schedule_update_ha_state()
 
@@ -80,7 +84,7 @@ class WyzeSensor(BinarySensorEntity):
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",
-            "model": self._device.product_model
+            "model": self._sensor.product_model
         }
 
     @property
@@ -90,7 +94,7 @@ class WyzeSensor(BinarySensorEntity):
     @property
     def name(self):
         """Return the display name of this switch."""
-        return self._device.nickname
+        return self._sensor.nickname
 
     @property
     def should_poll(self) -> bool:
@@ -98,12 +102,12 @@ class WyzeSensor(BinarySensorEntity):
 
     @property
     def is_on(self):
-        """Return true if switch is on."""
-        return self._device.activity_detected == 1
+        """Return true if sensor detects motion"""
+        return self._sensor.detected
 
     @property
     def unique_id(self):
-        return "{}-motion".format(self._device.mac)
+        return "{}-motion".format(self._sensor.mac)
 
     @property
     def device_state_attributes(self):
@@ -112,53 +116,52 @@ class WyzeSensor(BinarySensorEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self._device.product_model,
+            "device model": self._sensor.product_model,
             "mac": self.unique_id
         }
 
     @property
     def device_class(self):
         # pylint: disable=R1705
-        if self._device.type is DeviceTypes.MOTION_SENSOR:
+        if self._sensor.type is DeviceTypes.MOTION_SENSOR:
             return DEVICE_CLASS_MOTION
-        elif self._device.type is DeviceTypes.CONTACT_SENSOR:
+        elif self._sensor.type is DeviceTypes.CONTACT_SENSOR:
             return DEVICE_CLASS_DOOR
         else:
             raise RuntimeError(
-                f"The device type {self._device.type} is not supported by this class")
+                f"The device type {self._sensor.type} is not supported by this class")
 
 
 class WyzeCameraMotion(BinarySensorEntity):
     """
     A representation of the Wyze Camera for use as a binary sensor in Home Assistant
     """
+    _is_on = False
+    _last_event = time.time() * 1000
 
-    def __init__(self, wyzeapi_client: Client, device: Device):
-        self._client = wyzeapi_client
-        self._device = device
-        self._available = True
-        self._on = False
-        self._last_event = int(str(int(time.time())) + "000")
+    def __init__(self, camera_service: CameraService, camera: Camera):
+        self._camera_service = camera_service
+        self._camera = camera
 
     @property
     def device_info(self):
         return {
             "identifiers": {
-                (DOMAIN, self._device.mac)
+                (DOMAIN, self._camera.mac)
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",
-            "model": self._device.product_model
+            "model": self._camera.product_model
         }
 
     @property
     def available(self) -> bool:
-        return self._available
+        return self._camera.available
 
     @property
     def name(self):
         """Return the display name of this switch."""
-        return self._device.nickname
+        return self._camera.nickname
 
     @property
     def should_poll(self) -> bool:
@@ -166,12 +169,12 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     @property
     def is_on(self):
-        """Return true if switch is on."""
-        return self._on
+        """Return true if the binary sensor is on"""
+        return self._is_on
 
     @property
     def unique_id(self):
-        return "{}-motion".format(self._device.mac)
+        return "{}-motion".format(self._camera.mac)
 
     @property
     def device_state_attributes(self):
@@ -180,7 +183,7 @@ class WyzeCameraMotion(BinarySensorEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self._device.product_model,
+            "device model": self._camera.product_model,
             "mac": self.unique_id
         }
 
@@ -189,20 +192,21 @@ class WyzeCameraMotion(BinarySensorEntity):
         return DEVICE_CLASS_MOTION
 
     async def async_added_to_hass(self) -> None:
-        await self._client.register_for_event_updates(self.process_update, self._device)
+        await self._camera_service.register_for_updates(self._camera, self.process_update)
 
-    def process_update(self, event: Event) -> None:
+    def process_update(self, camera: Camera) -> None:
         """
         Is called by the update worker for events to update the values in this sensor
 
-        :param event: The event that includes the updated information
+        :param camera: An updated version of the current camera
         """
+        self._camera = camera
 
-        if event.event_ts > self._last_event:
-            self._on = True
-            self._last_event = event.event_ts
+        if camera.last_event_ts > self._last_event:
+            self._is_on = True
+            self._last_event = camera.last_event_ts
         else:
-            self._on = False
-            self._last_event = event.event_ts
+            self._is_on = False
+            self._last_event = camera.last_event_ts
 
         self.schedule_update_ha_state()
