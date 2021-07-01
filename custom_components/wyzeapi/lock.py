@@ -10,8 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, LockService
-from wyzeapy.net_client import DeviceTypes
 from wyzeapy.services.lock_service import Lock
+from wyzeapy.types import DeviceTypes
 
 from .const import DOMAIN
 

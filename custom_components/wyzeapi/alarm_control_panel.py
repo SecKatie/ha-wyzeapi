@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     :param hass: Reference to the HomeAssistant instance
     :param config_entry: Reference to the config entry we are setting up
-    :param async_add_entities: Reference to the
+    :param async_add_entities:
     """
 
     _LOGGER.debug("""Creating new WyzeApi Home Monitoring System component""")
@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     hms_service = await client.hms_service
     if await hms_service.has_hms:
-        async_add_entities([hms_service], True)
+        async_add_entities([WyzeHomeMonitoring(hms_service)], True)
 
 
 class WyzeHomeMonitoring(AlarmControlPanelEntity):
@@ -115,7 +115,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
 
     @property
     def unique_id(self):
-        return await self._hms_service.hms_id
+        return self._hms_service.hms_id
 
     @property
     def device_state_attributes(self):
@@ -132,13 +132,15 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         """Update the entity with data from the Wyze servers"""
 
         if not self._server_out_of_sync:
-            state = await self._hms_service.update(await self._hms_service.hms_id)
+            state = await self._hms_service.update(self._hms_service.hms_id)
             if state is HMSMode.DISARMED:
                 self._state = "disarmed"
             elif state is HMSMode.AWAY:
                 self._state = "armed_away"
             elif state is HMSMode.HOME:
                 self._state = "armed_home"
+            elif state is HMSMode.CHANGING:
+                self._state = "disarmed"
             else:
                 _LOGGER.warning(f"Received {state} from server")
 

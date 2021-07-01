@@ -66,16 +66,6 @@ class WyzeThermostat(ClimateEntity):
 
     # pylint: disable=R0902
     _server_out_of_sync = False
-    _available = False
-    _temp_unit: str = "F"
-    _cool_sp: int
-    _heat_sp: int
-    _fan_mode: str
-    _hvac_mode: str
-    _preset_mode: str
-    _temperature: int
-    _humidity: int
-    _working_state: str
 
     def __init__(self, thermostat_service: ThermostatService, thermostat: Thermostat):
         self._thermostat_service = thermostat_service
@@ -107,11 +97,11 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def current_temperature(self) -> float:
-        return float(self._thermostat.temperature)
+        return self._thermostat.temperature
 
     @property
     def current_humidity(self) -> Optional[int]:
-        return int(self._thermostat.humidity)
+        return self._thermostat.humidity
 
     @property
     def temperature_unit(self) -> str:
@@ -138,11 +128,11 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def target_temperature_high(self) -> Optional[float]:
-        return float(self._thermostat.cool_set_point)
+        return self._thermostat.cool_set_point
 
     @property
     def target_temperature_low(self) -> Optional[float]:
-        return float(self._thermostat.heat_set_point)
+        return self._thermostat.heat_set_point
 
     @property
     def preset_mode(self) -> Optional[str]:
@@ -197,10 +187,10 @@ class WyzeThermostat(ClimateEntity):
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
 
-        if target_temp_low != self._heat_sp:
+        if target_temp_low != self._thermostat.heat_set_point:
             await self._thermostat_service.set_heat_point(self._thermostat, int(target_temp_low))
             self._thermostat.heat_set_point = int(target_temp_low)
-        if target_temp_high != self._cool_sp:
+        if target_temp_high != self._thermostat.cool_set_point:
             await self._thermostat_service.set_cool_point(self._thermostat, int(target_temp_high))
             self._thermostat.cool_set_point = int(target_temp_high)
 
@@ -212,10 +202,11 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         if fan_mode == FAN_ON:
             await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.ON)
+            self._thermostat.fan_mode = FanMode.ON
         elif fan_mode == FAN_AUTO:
             await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.AUTO)
+            self._thermostat.fan_mode = FanMode.AUTO
 
-        self._fan_mode = fan_mode
         self._server_out_of_sync = True
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:

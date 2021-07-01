@@ -21,8 +21,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, BulbService
-from wyzeapy.net_client import DeviceTypes
 from wyzeapy.services.bulb_service import Bulb
+from wyzeapy.types import DeviceTypes
 
 from .const import DOMAIN
 
@@ -130,29 +130,30 @@ class WyzeLight(LightEntity):
             brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
 
             loop = asyncio.get_event_loop()
-            loop.create_task(await self._bulb_service.set_brightness(self._bulb, int(brightness)))
+            loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
             color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
 
             loop = asyncio.get_event_loop()
-            loop.create_task(await self._bulb_service.set_color_temp(self._bulb, int(color_temp)))
+            loop.create_task(self._bulb_service.set_color_temp(self._bulb, int(color_temp)))
         if self._device_type is DeviceTypes.MESH_LIGHT and kwargs.get(ATTR_HS_COLOR) is not None:
             _LOGGER.debug("Setting color")
             color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
 
             loop = asyncio.get_event_loop()
-            loop.create_task(await self._bulb_service.set_color(self._bulb, color))
+            loop.create_task(self._bulb_service.set_color(self._bulb, color))
 
         _LOGGER.debug("Turning on light")
         loop = asyncio.get_event_loop()
-        loop.create_task(await self._bulb_service.turn_on(self._bulb))
+        loop.create_task(self._bulb_service.turn_on(self._bulb))
 
         self._bulb.on = True
         self._just_updated = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._bulb_service.turn_off(self._bulb)
+        loop = asyncio.get_event_loop()
+        loop.create_task(self._bulb_service.turn_off(self._bulb))
 
         self._bulb.on = False
         self._just_updated = True

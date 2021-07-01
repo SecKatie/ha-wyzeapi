@@ -70,8 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     client = await Wyzeapy.create()
-    client.login(entry.data.get(CONF_USERNAME),
-                 entry.data.get(CONF_PASSWORD))
+    await client.login(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
 
     hass.data[DOMAIN][entry.entry_id] = client
 

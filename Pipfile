@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 homeassistant = "*"
 requests = "*"
-wyzeapy = "==0.1.0b7"
+wyzeapy = "==0.1.0"
 flake8 = "*"
 pylint = "*"
 autopep8 = "*"

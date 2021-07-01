@@ -70,11 +70,8 @@ class WyzeSensor(BinarySensorEntity):
 
         :param sensor: The sensor with the updated values
         """
-
-        if self._sensor != sensor:
-            self._sensor = sensor
-
-            self.schedule_update_ha_state()
+        self._sensor = sensor
+        self.schedule_update_ha_state()
 
     @property
     def device_info(self):

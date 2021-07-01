@@ -24,12 +24,8 @@ async def validate_input(_: HomeAssistant, data: Dict[str, Any]) -> Dict[str, An
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    client = await Wyzeapy.create()
-    await client.login(data[CONF_USERNAME], data[CONF_PASSWORD])
 
-    if not await client.valid_login:
-        await client.async_close()
-
+    if not await Wyzeapy.valid_login(data[CONF_USERNAME], data[CONF_PASSWORD]):
         raise InvalidAuth
 
     # Return info that you want to store in the config entry.

@@ -12,9 +12,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, CameraService, SwitchService
-from wyzeapy.net_client import Device
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
+from wyzeapy.types import Device
 
 from . import DOMAIN
 
@@ -103,7 +103,7 @@ class WyzeSwitch(SwitchEntity):
     @property
     def available(self):
         """Return the connection status of this switch"""
-        return self._available
+        return self._device.available
 
     @property
     def is_on(self):
