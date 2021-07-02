@@ -11,7 +11,7 @@ from homeassistant.components.switch import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy import Wyzeapy, CameraService, SwitchService, PHONE_SYSTEM_TYPE
+from wyzeapy import Wyzeapy, CameraService, SwitchService, PHONE_ID
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
@@ -68,7 +68,7 @@ class WyzeNotifications(SwitchEntity):
     def device_info(self):
         return {
             "identifiers": {
-                (DOMAIN, PHONE_SYSTEM_TYPE)
+                (DOMAIN, PHONE_ID)
             },
             "name": self.name,
             "manufacturer": "WyzeLabs"
@@ -110,9 +110,9 @@ class WyzeNotifications(SwitchEntity):
     @property
     def unique_id(self):
         if self._on:
-            return f"{PHONE_SYSTEM_TYPE}-on"
+            return f"{PHONE_ID}-on"
         else:
-            return f"{PHONE_SYSTEM_TYPE}-off"
+            return f"{PHONE_ID}-off"
 
     @property
     def device_state_attributes(self):
