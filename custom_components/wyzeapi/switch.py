@@ -62,17 +62,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     uid = await hass.async_add_executor_job(get_uid)
 
-    switches.append(WyzeNotifications(client, True, uid))
-    switches.append(WyzeNotifications(client, False, uid))
+    switches.append(WyzeNotifications(client, uid))
 
     async_add_entities(switches, True)
 
 
 class WyzeNotifications(SwitchEntity):
-    def __init__(self, client: Wyzeapy, on: bool, uid):
+    def __init__(self, client: Wyzeapy, uid):
         self._client = client
         self._is_on = False
-        self._on = on
         self._uid = uid
 
     @property
@@ -97,33 +95,22 @@ class WyzeNotifications(SwitchEntity):
 
     @property
     def should_poll(self) -> bool:
-        return False
+        return True
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        if self._on:
-            await self._client.enable_notifications()
-        else:
-            await self._client.disable_notifications()
+        await self._client.enable_notifications()
 
-        self._is_on = False
-        self.async_schedule_update_ha_state()
+        self._is_on = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        if self._on:
-            await self._client.disable_notifications()
-        else:
-            await self._client.enable_notifications()
+        await self._client.disable_notifications()
 
         self._is_on = False
-        self.async_schedule_update_ha_state()
 
     @property
     def name(self):
         """Return the display name of this switch."""
-        if self._on:
-            return "Wyze Notifications On"
-        else:
-            return 'Wyze Notifications Off'
+        return "Wyze Notifications"
 
     @property
     def available(self):
@@ -132,10 +119,7 @@ class WyzeNotifications(SwitchEntity):
 
     @property
     def unique_id(self):
-        if self._on:
-            return f"{self._uid}-on"
-        else:
-            return f"{self._uid}-off"
+        return self._uid
 
     @property
     def device_state_attributes(self):
@@ -146,6 +130,9 @@ class WyzeNotifications(SwitchEntity):
             "available": self.available,
             "mac": self.unique_id
         }
+
+    async def async_update(self):
+        self._is_on = await self._client.notifications_are_on
 
 
 class WyzeSwitch(SwitchEntity):
