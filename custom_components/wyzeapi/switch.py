@@ -107,7 +107,7 @@ class WyzeNotifications(SwitchEntity):
             await self._client.disable_notifications()
 
         self._is_on = False
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -117,7 +117,7 @@ class WyzeNotifications(SwitchEntity):
             await self._client.enable_notifications()
 
         self._is_on = False
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
         self.async_write_ha_state()
 
     @property
