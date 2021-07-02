@@ -8,12 +8,12 @@ from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.check_config import HomeAssistantConfig
-from wyzeapy.client import Client
+from wyzeapy import Wyzeapy
 
 from .const import DOMAIN
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock", "scene", "climate",
-             "alarm_control_panel"]
+PLATFORMS = ["light", "switch", "binary_sensor", "lock", "climate",
+             "alarm_control_panel"]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -37,11 +37,8 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig,
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
-            if (entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
-                    and
-                    entry.data.get(CONF_PASSWORD) == domainconfig[
-                        CONF_PASSWORD]
-            ):
+            if (entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME] and entry.data.get(CONF_PASSWORD) ==
+                    domainconfig[CONF_PASSWORD]):
                 _LOGGER.debug("Updating existing entry")
                 hass.config_entries.async_update_entry(
                     entry,
@@ -71,9 +68,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wyze Home Assistant Integration from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-    client = Client(entry.data.get(CONF_USERNAME),
-                    entry.data.get(CONF_PASSWORD))
-    await client.async_init()
+
+    client = await Wyzeapy.create()
+    await client.login(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
 
     hass.data[DOMAIN][entry.entry_id] = client
 
@@ -87,7 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    client: Client = hass.data[DOMAIN][entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][entry.entry_id]
     await client.async_close()
 
     unload_ok = all(
