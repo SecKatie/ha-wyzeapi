@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
+import configparser
 import logging
 # Import the device class from the component that you want to support
+import uuid
 from datetime import timedelta
 from typing import Any, Callable, List, Union
 
@@ -11,7 +13,7 @@ from homeassistant.components.switch import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy import Wyzeapy, CameraService, SwitchService, PHONE_ID
+from wyzeapy import Wyzeapy, CameraService, SwitchService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
@@ -42,17 +44,36 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     switches: List[SwitchEntity] = [WyzeSwitch(switch_service, switch) for switch in
                                     await switch_service.get_switches()]
     switches.extend([WyzeSwitch(camera_service, switch) for switch in await camera_service.get_cameras()])
-    switches.append(WyzeNotifications(client, True))
-    switches.append(WyzeNotifications(client, False))
+
+    def get_uid():
+        config = configparser.ConfigParser()
+        config.read('wyze_config.ini')
+        if config.has_option("OPTIONS", "SYSTEM_ID"):
+            return config["OPTIONS"]["SYSTEM_ID"]
+        else:
+            new_uid = uuid.uuid4().hex
+            config["OPTIONS"] = {}
+            config["OPTIONS"]["SYSTEM_ID"] = uid
+
+            with open('wyze_config.ini') as configfile:
+                config.write(configfile)
+
+            return new_uid
+
+    uid = await hass.async_add_executor_job(get_uid)
+
+    switches.append(WyzeNotifications(client, True, uid))
+    switches.append(WyzeNotifications(client, False, uid))
 
     async_add_entities(switches, True)
 
 
 class WyzeNotifications(SwitchEntity):
-    def __init__(self, client: Wyzeapy, on: bool):
+    def __init__(self, client: Wyzeapy, on: bool, uid):
         self._client = client
         self._is_on = False
         self._on = on
+        self._uid = uid
 
     @property
     def is_on(self) -> bool:
@@ -68,7 +89,7 @@ class WyzeNotifications(SwitchEntity):
     def device_info(self):
         return {
             "identifiers": {
-                (DOMAIN, PHONE_ID)
+                (DOMAIN, self._uid)
             },
             "name": "Wyze Notifications",
             "manufacturer": "WyzeLabs"
@@ -110,9 +131,9 @@ class WyzeNotifications(SwitchEntity):
     @property
     def unique_id(self):
         if self._on:
-            return f"{PHONE_ID}-on"
+            return f"{self._uid}-on"
         else:
-            return f"{PHONE_ID}-off"
+            return f"{self._uid}-off"
 
     @property
     def device_state_attributes(self):
