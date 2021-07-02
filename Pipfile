@@ -6,11 +6,12 @@ name = "pypi"
 [packages]
 homeassistant = "*"
 requests = "*"
-wyzeapy = "==0.1.0"
 flake8 = "*"
 pylint = "*"
 autopep8 = "*"
 mypy = "*"
+wyzeapy = "==0.1.2"
+wheel = "*"
 
 [dev-packages]
 
