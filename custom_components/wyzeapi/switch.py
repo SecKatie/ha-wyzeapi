@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
-import asyncio
 import configparser
 import logging
 # Import the device class from the component that you want to support
@@ -107,8 +106,7 @@ class WyzeNotifications(SwitchEntity):
             await self._client.disable_notifications()
 
         self._is_on = False
-        await asyncio.sleep(0.2)
-        self.async_write_ha_state()
+        self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         if self._on:
@@ -117,8 +115,7 @@ class WyzeNotifications(SwitchEntity):
             await self._client.enable_notifications()
 
         self._is_on = False
-        await asyncio.sleep(0.2)
-        self.async_write_ha_state()
+        self.async_schedule_update_ha_state()
 
     @property
     def name(self):
