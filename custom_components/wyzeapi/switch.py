@@ -70,7 +70,7 @@ class WyzeNotifications(SwitchEntity):
             "identifiers": {
                 (DOMAIN, PHONE_ID)
             },
-            "name": self.name,
+            "name": "Wyze Notifications",
             "manufacturer": "WyzeLabs"
         }
 
