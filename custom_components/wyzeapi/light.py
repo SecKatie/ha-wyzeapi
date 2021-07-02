@@ -55,12 +55,6 @@ class WyzeLight(LightEntity):
     """
     Representation of a Wyze Bulb.
     """
-    # pylint: disable=R0902
-    _brightness: float
-    _color_temp: float
-    _color: str
-    _on: bool
-    _available: bool
 
     _just_updated = False
 
@@ -133,7 +127,7 @@ class WyzeLight(LightEntity):
             loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
-            color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 2700, 6500)
+            color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 1800, 6500)
 
             loop = asyncio.get_event_loop()
             loop.create_task(self._bulb_service.set_color_temp(self._bulb, int(color_temp)))
