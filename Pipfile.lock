@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1a69dddb59e36944008446c3fcba7497c86372dbe6083bad418353b62b25a843"
+            "sha256": "5bc73667dfd3d9d7c637749fe73a62a7a435b436794b76eae1b9e7530e43eed7"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -757,11 +757,11 @@
         },
         "wyzeapy": {
             "hashes": [
-                "sha256:1d5da9794925dc77d1d0a7cc957818c4b63282df3237baf8bead5110425faad9",
-                "sha256:a9b84da2877b4f6699e77fe555fa3ffd5d6fa67179ead849cfef07ebb1849715"
+                "sha256:2386a432a624992251b46fdce1cc6251a117545e32d74532feb487baec540817",
+                "sha256:5de73b25df939da1a6af122fdb09055a0d8979533c260eee1cc3d8579c82da96"
             ],
             "index": "pypi",
-            "version": "==0.1.2"
+            "version": "==0.2.0"
         },
         "yarl": {
             "hashes": [

@@ -11,7 +11,7 @@ from homeassistant.components.switch import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy import Wyzeapy, CameraService, SwitchService
+from wyzeapy import Wyzeapy, CameraService, SwitchService, PHONE_SYSTEM_TYPE
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
@@ -39,10 +39,90 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     switch_service = await client.switch_service
     camera_service = await client.camera_service
 
-    switches = [WyzeSwitch(switch_service, switch) for switch in await switch_service.get_switches()]
+    switches: List[SwitchEntity] = [WyzeSwitch(switch_service, switch) for switch in
+                                    await switch_service.get_switches()]
     switches.extend([WyzeSwitch(camera_service, switch) for switch in await camera_service.get_cameras()])
+    switches.append(WyzeNotifications(client, True))
+    switches.append(WyzeNotifications(client, False))
 
     async_add_entities(switches, True)
+
+
+class WyzeNotifications(SwitchEntity):
+    def __init__(self, client: Wyzeapy, on: bool):
+        self._client = client
+        self._is_on = False
+        self._on = on
+
+    @property
+    def is_on(self) -> bool:
+        return self._is_on
+
+    def turn_on(self, **kwargs: Any) -> None:
+        pass
+
+    def turn_off(self, **kwargs: Any) -> None:
+        pass
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, PHONE_SYSTEM_TYPE)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs"
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        if self._on:
+            await self._client.enable_notifications()
+        else:
+            await self._client.disable_notifications()
+
+        self._is_on = False
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        if self._on:
+            await self._client.disable_notifications()
+        else:
+            await self._client.enable_notifications()
+
+        self._is_on = False
+
+    @property
+    def name(self):
+        """Return the display name of this switch."""
+        if self._on:
+            return "Wyze Notifications On"
+        else:
+            return 'Wyze Notifications Off'
+
+    @property
+    def available(self):
+        """Return the connection status of this switch"""
+        return True
+
+    @property
+    def unique_id(self):
+        if self._on:
+            return f"{PHONE_SYSTEM_TYPE}-on"
+        else:
+            return f"{PHONE_SYSTEM_TYPE}-off"
+
+    @property
+    def device_state_attributes(self):
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "state": self.is_on,
+            "available": self.available,
+            "mac": self.unique_id
+        }
 
 
 class WyzeSwitch(SwitchEntity):
