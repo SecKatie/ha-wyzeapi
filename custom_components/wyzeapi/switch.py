@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
+import asyncio
 import configparser
 import logging
 # Import the device class from the component that you want to support
@@ -53,9 +54,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
         else:
             new_uid = uuid.uuid4().hex
             config["OPTIONS"] = {}
-            config["OPTIONS"]["SYSTEM_ID"] = uid
+            config["OPTIONS"]["SYSTEM_ID"] = new_uid
 
-            with open('wyze_config.ini') as configfile:
+            with open('wyze_config.ini', 'w') as configfile:
                 config.write(configfile)
 
             return new_uid
@@ -106,6 +107,8 @@ class WyzeNotifications(SwitchEntity):
             await self._client.disable_notifications()
 
         self._is_on = False
+        await asyncio.sleep(0.5)
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         if self._on:
@@ -114,6 +117,8 @@ class WyzeNotifications(SwitchEntity):
             await self._client.enable_notifications()
 
         self._is_on = False
+        await asyncio.sleep(0.5)
+        self.async_write_ha_state()
 
     @property
     def name(self):
