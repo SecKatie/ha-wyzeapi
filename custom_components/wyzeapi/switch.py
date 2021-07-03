@@ -72,6 +72,7 @@ class WyzeNotifications(SwitchEntity):
         self._client = client
         self._is_on = False
         self._uid = uid
+        self._just_updated = False
 
     @property
     def is_on(self) -> bool:
@@ -101,11 +102,13 @@ class WyzeNotifications(SwitchEntity):
         await self._client.enable_notifications()
 
         self._is_on = True
+        self._just_updated = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._client.disable_notifications()
 
         self._is_on = False
+        self._just_updated = True
 
     @property
     def name(self):
@@ -132,7 +135,10 @@ class WyzeNotifications(SwitchEntity):
         }
 
     async def async_update(self):
-        self._is_on = await self._client.notifications_are_on
+        if not self._just_updated:
+            self._is_on = await self._client.notifications_are_on
+        else:
+            self._just_updated = False
 
 
 class WyzeSwitch(SwitchEntity):
