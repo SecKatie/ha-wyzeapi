@@ -10,7 +10,7 @@ flake8 = "*"
 pylint = "*"
 autopep8 = "*"
 mypy = "*"
-wyzeapy = "==0.2.4"
+wyzeapy = "==0.2.5"
 wheel = "*"
 
 [dev-packages]
