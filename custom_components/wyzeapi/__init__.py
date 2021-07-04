@@ -67,6 +67,7 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig,
     return True
 
 
+# noinspection DuplicatedCode
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Wyze Home Assistant Integration from a config entry."""
 
