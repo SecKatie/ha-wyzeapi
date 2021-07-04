@@ -77,7 +77,7 @@ class WyzeSensor(BinarySensorEntity):
     def device_info(self):
         return {
             "identifiers": {
-                (DOMAIN, self.unique_id)
+                (DOMAIN, self._sensor.mac)
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",
