@@ -18,7 +18,7 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
 
-from . import DOMAIN
+from . import DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -37,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     switch_service = await client.switch_service
     camera_service = await client.camera_service
 

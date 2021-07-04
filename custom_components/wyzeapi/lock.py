@@ -13,7 +13,7 @@ from wyzeapy import Wyzeapy, LockService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.types import DeviceTypes
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -32,7 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi lock component""")
-    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     lock_service = await client.lock_service
 
     locks = [WyzeLock(lock_service, lock) for lock in await lock_service.get_locks()]
