@@ -31,7 +31,7 @@ from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, HVACMode, Preset, FanMode, HVACState
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -50,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi thermostat component""")
-    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     thermostat_service = await client.thermostat_service
     thermostats = [WyzeThermostat(thermostat_service, thermostat) for thermostat in

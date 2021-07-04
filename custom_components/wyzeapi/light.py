@@ -24,7 +24,7 @@ from wyzeapy import Wyzeapy, BulbService
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -42,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
-    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     bulb_service = await client.bulb_service
 

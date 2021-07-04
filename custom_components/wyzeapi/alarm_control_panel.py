@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, HMSService
 from wyzeapy.services.hms_service import HMSMode
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -35,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     """
 
     _LOGGER.debug("""Creating new WyzeApi Home Monitoring System component""")
-    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     hms_service = await client.hms_service
     if await hms_service.has_hms:

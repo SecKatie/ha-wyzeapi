@@ -7,10 +7,11 @@ import logging
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy import Wyzeapy
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_CLIENT, CONF_COORDINATOR, DISCOVERY_SCAN_INTERVAL
 
 PLATFORMS = ["light", "switch", "binary_sensor", "lock", "climate",
              "alarm_control_panel"]  # Fixme: Re add scene
@@ -72,12 +73,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client = await Wyzeapy.create()
     await client.login(entry.data.get(CONF_USERNAME), entry.data.get(CONF_PASSWORD))
 
-    hass.data[DOMAIN][entry.entry_id] = client
+    hass.data[DOMAIN][entry.entry_id] = {
+        CONF_CLIENT: client
+    }
 
     for platform in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
+        hass.create_task(hass.config_entries.async_forward_entry_setup(entry, platform))
+
+    device_registry = await dr.async_get_registry(hass)
+    device_ids = await client.unique_device_ids
+    for device_entry in dr.async_entries_for_config_entry(
+            device_registry, entry.entry_id
+    ):
+        for identifier in device_entry.identifiers:
+            if identifier in device_ids:
+                break
+        else:
+            device_registry.async_remove_device(device_entry.id)
 
     return True
 
