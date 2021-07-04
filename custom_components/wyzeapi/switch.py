@@ -25,6 +25,7 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
+# noinspection DuplicatedCode
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]) -> None:
     """
