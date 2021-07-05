@@ -120,7 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    client: Wyzeapy = hass.data[DOMAIN][entry.entry_id]
+    client: Wyzeapy = hass.data[DOMAIN][entry.entry_id][CONF_CLIENT]
     await client.async_close()
 
     unload_ok = all(
