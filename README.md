@@ -63,11 +63,12 @@ If you need help with anything then please connect with the community!
 1. Setup your logger to print debug messages for this component by adding this to your `configuration.yaml`:
     ```yaml
     logger:
-      default: warning
-      logs:
-        custom_components.wyzeapi: debug
+     default: warning
+     logs:
+       custom_components.wyzeapi: debug
+       wyzeapy: debug
     ```
 2. Restart HA
 3. Verify you're still having the issue
-4. File an issue in this Github Repository
+4. File an issue in this Github Repository (being sure to fill out every provided field)
 
