@@ -2,6 +2,7 @@
 
 """Platform for light integration."""
 import logging
+from abc import ABC
 from datetime import timedelta
 from typing import Callable, List, Any
 
@@ -18,6 +19,7 @@ from .const import DOMAIN, CONF_CLIENT
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=10)
+MAX_OUT_OF_SYNC_COUNT = 5
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
@@ -40,14 +42,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     async_add_entities(locks, True)
 
 
-class WyzeLock(homeassistant.components.lock.LockEntity):
+class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     """Representation of a Wyze Lock."""
-    _unlocked: bool
-    _available: bool
-    _door_open: bool
-    _update_sync_count: int
-
-    _server_out_of_sync = False
 
     def __init__(self, lock_service: LockService, lock: Lock):
         """Initialize a Wyze lock."""
@@ -58,7 +54,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
             raise AttributeError("Device type not supported")
 
         self._lock_service = lock_service
-        self._update_sync_count = 0
+
+        self._out_of_sync_count = 0
 
     @property
     def device_info(self):
@@ -86,16 +83,15 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         await self._lock_service.lock(self._lock)
 
         self._lock.unlocked = False
-        self._server_out_of_sync = True
 
     async def async_unlock(self, **kwargs):
         await self._lock_service.unlock(self._lock)
 
         self._lock.unlocked = True
-        self._server_out_of_sync = True
 
-    def open(self, **kwargs):
-        raise NotImplementedError
+    @property
+    def is_locked(self):
+        return not self._lock.unlocked
 
     @property
     def name(self):
@@ -108,13 +104,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
 
     @property
     def available(self):
-        """Return the connection status of this light"""
+        """Return the connection status of this lock"""
         return self._lock.available
-
-    @property
-    def state(self):
-        return homeassistant.components.lock.STATE_UNLOCKED if self._lock.unlocked else \
-            homeassistant.components.lock.STATE_LOCKED
 
     @property
     def device_state_attributes(self):
@@ -136,7 +127,9 @@ class WyzeLock(homeassistant.components.lock.LockEntity):
         """
         This function updates the entity
         """
-        if not self._server_out_of_sync:
-            self._lock = await self._lock_service.update(self._lock)
+        lock = await self._lock_service.update(self._lock)
+        if lock.unlocked == self._lock.unlocked or self._out_of_sync_count >= MAX_OUT_OF_SYNC_COUNT:
+            self._lock = lock
+            self._out_of_sync_count = 0
         else:
-            self._server_out_of_sync = True
+            self._out_of_sync_count += 1
