@@ -26,13 +26,6 @@ System: <!-- Docker, HASS.IO, Bare Metal -->
 HA Version: <!-- v0.103.0 -->
 WyzeApi Version: <!-- v0.4.0 -->
 
-**configuration.yaml**
-<!-- The config you are using to enable wyzeapi -->
-
-```yaml
-<YOUR CONFIG HERE>
-```
-
 **home-assistant.log**
 <!--
 Ensure that your logger is set up by adding this to your configuration.yaml
