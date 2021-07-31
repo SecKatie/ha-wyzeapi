@@ -64,6 +64,9 @@ class WyzeSensor(BinarySensorEntity):
         """Registers for updates when the entity is added to Home Assistant"""
         await self._sensor_service.register_for_updates(self._sensor, self.process_update)
 
+    async def async_will_remove_from_hass(self) -> None:
+        await self._sensor_service.deregister_for_updates(self._sensor)
+
     def process_update(self, sensor: Sensor):
         """
         This function processes an update for the Wyze Sensor
@@ -190,6 +193,9 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await self._camera_service.register_for_updates(self._camera, self.process_update)
+
+    async def async_will_remove_from_hass(self) -> None:
+        await self._camera_service.deregister_for_updates(self._camera)
 
     def process_update(self, camera: Camera) -> None:
         """

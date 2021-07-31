@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import configparser
 import logging
+import os
 import uuid
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
@@ -86,8 +87,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     mac_addresses = await client.unique_device_ids
 
     def get_uid():
+        config_path = os.getcwd() + os.sep + 'wyze_config.ini'
+
         config = configparser.ConfigParser()
-        config.read('wyze_config.ini')
+        config.read(config_path)
         if config.has_option("OPTIONS", "SYSTEM_ID"):
             return config["OPTIONS"]["SYSTEM_ID"]
         else:
@@ -95,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             config["OPTIONS"] = {}
             config["OPTIONS"]["SYSTEM_ID"] = new_uid
 
-            with open('wyze_config.ini', 'w') as configfile:
+            with open(config_path, 'w') as configfile:
                 config.write(configfile)
 
             return new_uid
