@@ -16,7 +16,7 @@ from wyzeapy import Wyzeapy
 
 from .const import DOMAIN, CONF_CLIENT
 
-PLATFORMS = ["light", "switch", "binary_sensor", "lock", "climate",
+PLATFORMS = ["light", "switch", "lock", "climate",
              "alarm_control_panel"]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
