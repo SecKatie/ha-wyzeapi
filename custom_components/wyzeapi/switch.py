@@ -49,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     def get_uid():
         config = configparser.ConfigParser()
-        config_path = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'wyze_config.ini'
+        config_path = hass.config.path('wyze_config.ini')
         config.read(config_path)
         if config.has_option("OPTIONS", "SYSTEM_ID"):
             return config["OPTIONS"]["SYSTEM_ID"]

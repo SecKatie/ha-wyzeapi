@@ -87,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     mac_addresses = await client.unique_device_ids
 
     def get_uid():
-        config_path = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'wyze_config.ini'
+        config_path = hass.config.path('wyze_config.ini')
 
         config = configparser.ConfigParser()
         config.read(config_path)
