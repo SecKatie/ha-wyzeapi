@@ -4,6 +4,7 @@
 import configparser
 import logging
 # Import the device class from the component that you want to support
+import os
 import uuid
 from datetime import timedelta
 from typing import Any, Callable, List, Union
@@ -48,7 +49,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     def get_uid():
         config = configparser.ConfigParser()
-        config.read('wyze_config.ini')
+        config_path = hass.config.path('wyze_config.ini')
+        config.read(config_path)
         if config.has_option("OPTIONS", "SYSTEM_ID"):
             return config["OPTIONS"]["SYSTEM_ID"]
         else:
@@ -56,7 +58,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
             config["OPTIONS"] = {}
             config["OPTIONS"]["SYSTEM_ID"] = new_uid
 
-            with open('wyze_config.ini', 'w') as configfile:
+            with open(config_path, 'w') as configfile:
                 config.write(configfile)
 
             return new_uid
