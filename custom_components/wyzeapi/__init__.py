@@ -13,8 +13,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy import Wyzeapy
+from wyzeapy.wyze_auth_lib import Token
 
-from .const import DOMAIN, CONF_CLIENT
+from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
 PLATFORMS = ["light", "switch", "lock", "climate",
              "alarm_control_panel"]  # Fixme: Re add scene
@@ -22,33 +23,58 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # noinspection PyUnusedLocal
-async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig,
-                      discovery_info=None):
+async def async_setup(
+    hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
+):
     # pylint: disable=unused-argument
     """Set up the Alexa domain."""
     if DOMAIN not in config:
         _LOGGER.debug(
-            "Nothing to import from configuration.yaml, loading from "
-            "Integrations",
+            "Nothing to import from configuration.yaml, loading from " "Integrations",
         )
         return True
 
     domainconfig = config.get(DOMAIN)
     entry_found = False
     # pylint: disable=logging-not-lazy
-    _LOGGER.debug("Importing config information for %s from configuration.yml" %
-                  domainconfig[CONF_USERNAME])
+    _LOGGER.debug(
+        "Importing config information for %s from configuration.yml"
+        % domainconfig[CONF_USERNAME]
+    )
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
-            if (entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME] and entry.data.get(CONF_PASSWORD) ==
-                    domainconfig[CONF_PASSWORD]):
+            if (
+                entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
+                and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
+                and not domainconfig[ACCESS_TOKEN]
+            ):
                 _LOGGER.debug("Updating existing entry")
                 hass.config_entries.async_update_entry(
                     entry,
                     data={
                         CONF_USERNAME: domainconfig[CONF_USERNAME],
                         CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                    },
+                )
+                entry_found = True
+                break
+            elif (
+                entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
+                and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
+                and entry.data.get(ACCESS_TOKEN) == domainconfig[ACCESS_TOKEN]
+                and entry.data.get(REFRESH_TOKEN) == domainconfig[REFRESH_TOKEN]
+                and entry.data.get(REFRESH_TIME) == domainconfig[REFRESH_TIME]
+            ):
+                _LOGGER.debug("Updating existing entry")
+                hass.config_entries.async_update_entry(
+                    entry,
+                    data={
+                        CONF_USERNAME: domainconfig[CONF_USERNAME],
+                        CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                        ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
+                        REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
+                        REFRESH_TIME: domainconfig[REFRESH_TIME],
                     },
                 )
                 entry_found = True
@@ -62,6 +88,9 @@ async def async_setup(hass: HomeAssistant, config: HomeAssistantConfig,
                 data={
                     CONF_USERNAME: domainconfig[CONF_USERNAME],
                     CONF_PASSWORD: domainconfig[CONF_PASSWORD],
+                    ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
+                    REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
+                    REFRESH_TIME: domainconfig[REFRESH_TIME],
                 },
             )
         )
@@ -75,14 +104,26 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})
 
     client = await Wyzeapy.create()
-    await client.login(config_entry.data.get(CONF_USERNAME), config_entry.data.get(CONF_PASSWORD))
+    token = None
+    if config_entry.data.get(ACCESS_TOKEN):
+        token = Token(
+            config_entry.data.get(ACCESS_TOKEN),
+            config_entry.data.get(REFRESH_TOKEN),
+            float(config_entry.data.get(REFRESH_TIME)),
+        )
+    # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get a login with the token
+    await client.login(
+        config_entry.data.get(CONF_USERNAME),
+        config_entry.data.get(CONF_PASSWORD),
+        token,
+    )
 
-    hass.data[DOMAIN][config_entry.entry_id] = {
-        CONF_CLIENT: client
-    }
+    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
 
     for platform in PLATFORMS:
-        hass.create_task(hass.config_entries.async_forward_entry_setup(config_entry, platform))
+        hass.create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, platform)
+        )
 
     mac_addresses = await client.unique_device_ids
 
@@ -112,11 +153,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         mac_addresses.add(hms_id)
 
     device_registry = await dr.async_get_registry(hass)
-    for device in dr.async_entries_for_config_entry(device_registry, config_entry.entry_id):
+    for device in dr.async_entries_for_config_entry(
+        device_registry, config_entry.entry_id
+    ):
         for identifier in device.identifiers:
             domain, mac = identifier
             if mac not in mac_addresses:
-                _LOGGER.warning(f"{mac} is not in the mac_addresses list. Removing the entry...")
+                _LOGGER.warning(
+                    f"{mac} is not in the mac_addresses list. Removing the entry..."
+                )
                 device_registry.async_remove_device(device.id)
     return True
 
