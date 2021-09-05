@@ -17,8 +17,13 @@ from wyzeapy.wyze_auth_lib import Token
 
 from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
-PLATFORMS = ["light", "switch", "lock", "climate",
-             "alarm_control_panel"]  # Fixme: Re add scene
+PLATFORMS = [
+    "light",
+    "switch",
+    "lock",
+    "climate",
+    "alarm_control_panel",
+]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -128,7 +133,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     mac_addresses = await client.unique_device_ids
 
     def get_uid():
-        config_path = hass.config.path('wyze_config.ini')
+        config_path = hass.config.path("wyze_config.ini")
 
         config = configparser.ConfigParser()
         config.read(config_path)
@@ -139,7 +144,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             config["OPTIONS"] = {}
             config["OPTIONS"]["SYSTEM_ID"] = new_uid
 
-            with open(config_path, 'w') as configfile:
+            with open(config_path, "w") as configfile:
                 config.write(configfile)
 
             return new_uid
