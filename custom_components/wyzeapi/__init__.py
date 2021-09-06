@@ -35,7 +35,7 @@ async def async_setup(
     """Set up the Alexa domain."""
     if DOMAIN not in config:
         _LOGGER.debug(
-            "Nothing to import from configuration.yaml, loading from " "Integrations",
+            "Nothing to import from configuration.yaml, loading from Integrations",
         )
         return True
 
