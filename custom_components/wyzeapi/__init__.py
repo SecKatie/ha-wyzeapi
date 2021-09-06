@@ -6,6 +6,7 @@ import configparser
 import logging
 import os
 import uuid
+from homeassistant import config_entries
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
@@ -14,6 +15,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
+
+from .token_manager import TokenManager
 
 from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
@@ -50,8 +53,8 @@ async def async_setup(
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
             if (
-                entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
-                and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
+                entry.data.get(CONF_USERNAME) != domainconfig[CONF_USERNAME]
+                or entry.data.get(CONF_PASSWORD) != domainconfig[CONF_PASSWORD]
                 and not domainconfig[ACCESS_TOKEN]
             ):
                 _LOGGER.debug("Updating existing entry")
@@ -66,10 +69,10 @@ async def async_setup(
                 break
             elif (
                 entry.data.get(CONF_USERNAME) == domainconfig[CONF_USERNAME]
-                and entry.data.get(CONF_PASSWORD) == domainconfig[CONF_PASSWORD]
-                and entry.data.get(ACCESS_TOKEN) == domainconfig[ACCESS_TOKEN]
-                and entry.data.get(REFRESH_TOKEN) == domainconfig[REFRESH_TOKEN]
-                and entry.data.get(REFRESH_TIME) == domainconfig[REFRESH_TIME]
+                and entry.data.get(CONF_PASSWORD) != domainconfig[CONF_PASSWORD]
+                or entry.data.get(ACCESS_TOKEN) != domainconfig[ACCESS_TOKEN]
+                or entry.data.get(REFRESH_TOKEN) != domainconfig[REFRESH_TOKEN]
+                or entry.data.get(REFRESH_TIME) != domainconfig[REFRESH_TIME]
             ):
                 _LOGGER.debug("Updating existing entry")
                 hass.config_entries.async_update_entry(
@@ -116,6 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             config_entry.data.get(REFRESH_TOKEN),
             float(config_entry.data.get(REFRESH_TIME)),
         )
+        token_manager = TokenManager(hass, config_entries)
+        client.register_for_token_callback(token_manager.token_callback)
     # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get a login with the token
     await client.login(
         config_entry.data.get(CONF_USERNAME),

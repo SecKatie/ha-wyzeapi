@@ -1,18 +1,18 @@
 {
-  "title": "Wyze",
+  "title": "[%key:common::config_flow::data::title%]",
   "config": {
     "step": {
       "user": {
+        "title": "[%key:common::config_flow::data::title%]",
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
         }
       },
       "2fa": {
+        "title": "[%key:common::config_flow::data::title%]",
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "validation_code": "[%key:common::config_flow::data::validation_code%]"
+          "verification_code": "[%key:common::config_flow::data::verification_code%]"
         }
       }
     },
