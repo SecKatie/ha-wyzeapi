@@ -45,6 +45,8 @@ def token_exception_handler(func):
                 func(*args, **kwargs)
         except (AccessTokenError, LoginError):
             _LOGGER.error("TokenManager detected a login issue and reset the stored entry.")
-            TokenManager.hass.config_entries.remove(DOMAIN)
+            if TokenManager.hass.config_entries.async_entries(DOMAIN):
+                for entry in TokenManager.hass.config_entries.async_entries(DOMAIN):
+                    await TokenManager.hass.config_entries.async_remove(entry.entry_id)
 
     return inner_function
