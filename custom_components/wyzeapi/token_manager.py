@@ -1,7 +1,10 @@
 import logging
+from inspect import iscoroutinefunction
+
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from wyzeapy.wyze_auth_lib import Token
+from wyzeapy.exceptions import AccessTokenError, LoginError
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from .const import DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
@@ -31,3 +34,17 @@ class TokenManager:
                         REFRESH_TIME: str(token.refresh_time),
                     },
                 )
+
+
+def token_exception_handler(func):
+    async def inner_function(*args, **kwargs):
+        try:
+            if iscoroutinefunction(func):
+                await func(*args, **kwargs)
+            else:
+                func(*args, **kwargs)
+        except (AccessTokenError, LoginError):
+            _LOGGER.error("TokenManager detected a login issue and reset the stored entry.")
+            TokenManager.hass.config_entries.remove(DOMAIN)
+
+    return inner_function
