@@ -18,6 +18,7 @@ from wyzeapy import Wyzeapy, CameraService, SwitchService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
+from .token_manager import token_exception_handler
 
 from . import DOMAIN, CONF_CLIENT
 
@@ -27,6 +28,7 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 
 # noinspection DuplicatedCode
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]) -> None:
     """
@@ -182,12 +184,14 @@ class WyzeSwitch(SwitchEntity):
     def should_poll(self) -> bool:
         return True
 
+    @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._service.turn_on(self._device)
 
         self._device.on = True
         self._just_updated = True
 
+    @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._service.turn_off(self._device)
 
@@ -224,6 +228,7 @@ class WyzeSwitch(SwitchEntity):
             "mac": self.unique_id
         }
 
+    @token_exception_handler
     async def async_update(self):
         """
         This function updates the entity

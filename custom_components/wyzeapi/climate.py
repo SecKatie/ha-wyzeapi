@@ -29,6 +29,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, HVACMode, Preset, FanMode, HVACState
+from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -37,6 +38,7 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]):
     """
@@ -176,6 +178,7 @@ class WyzeThermostat(ClimateEntity):
         else:
             return CURRENT_HVAC_OFF
 
+    @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
@@ -192,6 +195,7 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_humidity(self, humidity: int) -> None:
         raise NotImplementedError
 
+    @token_exception_handler
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         if fan_mode == FAN_ON:
             await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.ON)
@@ -202,6 +206,7 @@ class WyzeThermostat(ClimateEntity):
 
         self._server_out_of_sync = True
 
+    @token_exception_handler
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         if hvac_mode == HVAC_MODE_OFF:
             await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.OFF)
@@ -221,6 +226,7 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         raise NotImplementedError
 
+    @token_exception_handler
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode == PRESET_SLEEP:
             await self._thermostat_service.set_preset(self._thermostat, Preset.SLEEP)
@@ -284,6 +290,7 @@ class WyzeThermostat(ClimateEntity):
             "mac": self.unique_id
         }
 
+    @token_exception_handler
     async def async_update(self) -> None:
         """
         This function updates the state of the Thermostat
