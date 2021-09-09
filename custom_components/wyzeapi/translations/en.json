@@ -2,6 +2,32 @@
     "title": "Wyze Home Assistant Integration",
     "config": {
         "abort": {
+            "already_configured": "Device is already configured",
+            "reauth_successful": "Reauthentication Successful"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "title": "Enter Wyze Login Credentials",
+                "data": {
+                    "password": "Password",
+                    "username": "Username"
+                }
+            },
+            "2fa": {
+                "title": "Enter Wyze 2FA Verification Code",
+                "data": {
+                    "verification_code": "2FA Verification Code"
+                }
+            }
+        }
+    },
+    "options": {
+        "abort": {
             "already_configured": "Device is already configured"
         },
         "error": {

@@ -1,8 +1,10 @@
+from config.custom_components import wyzeapi
 import logging
 from inspect import iscoroutinefunction
 
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT, SOURCE_REAUTH
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from wyzeapy.wyze_auth_lib import Token
 from wyzeapy.exceptions import AccessTokenError, LoginError
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
@@ -43,10 +45,8 @@ def token_exception_handler(func):
                 await func(*args, **kwargs)
             else:
                 func(*args, **kwargs)
-        except (AccessTokenError, LoginError):
-            _LOGGER.error("TokenManager detected a login issue and reset the stored entry.")
-            if TokenManager.hass.config_entries.async_entries(DOMAIN):
-                for entry in TokenManager.hass.config_entries.async_entries(DOMAIN):
-                    await TokenManager.hass.config_entries.async_remove(entry.entry_id)
+        except (AccessTokenError, LoginError) as err:
+            _LOGGER.error("TokenManager detected a login issue please re-login.")
+            raise ConfigEntryAuthFailed("Unable to login, please re-login.") from err
 
     return inner_function

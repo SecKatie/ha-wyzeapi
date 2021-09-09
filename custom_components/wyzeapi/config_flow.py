@@ -8,9 +8,8 @@ from typing import Any, Dict
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_ACCESS_TOKEN
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy import Wyzeapy, exceptions, Token
+from wyzeapy import Wyzeapy, exceptions
 
 from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
@@ -19,7 +18,6 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str})
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
 
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wyze Home Assistant Integration."""
 
@@ -27,6 +25,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     client: Wyzeapy = None
     user_params = {}
+
+    def __init__(self):
+        """Initialize."""
+        self.email = None
+        self.password = None
 
     async def get_client(self):
         if not self.client:
@@ -59,7 +62,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.user_params[CONF_PASSWORD] = user_input[CONF_PASSWORD]
             return await self.async_step_2fa()
         else:
-            return self.async_create_entry(title="Wyze", data=user_input)
+            if self.hass.config_entries.async_entries(DOMAIN):
+                for entry in self.hass.config_entries.async_entries(DOMAIN):
+                    self.hass.config_entries.async_update_entry(entry, data=user_input)
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                    return self.async_abort(reason="reauth_successful")
+            else:
+                return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
@@ -81,7 +90,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.user_params[ACCESS_TOKEN] = token.access_token
             self.user_params[REFRESH_TOKEN] = token.refresh_token
             self.user_params[REFRESH_TIME] = token.refresh_time
-            return self.async_create_entry(title="Wyze", data=self.user_params)
+            if self.hass.config_entries.async_entries(DOMAIN):
+                for entry in self.hass.config_entries.async_entries(DOMAIN):
+                    self.hass.config_entries.async_update_entry(entry, data=self.user_params)
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                    return self.async_abort(reason="reauth_successful")
+            else:
+                return self.async_create_entry(title="", data=self.user_params)
 
         return self.async_show_form(
             step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA, errors=errors
@@ -90,6 +105,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
         return await self.async_step_user(import_config)
+
+    async def async_step_reauth(self, user_input=None):
+        """Perform reauth upon an API authentication error."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema({}),
+            )
+        return await self.async_step_user()
 
 
 class CannotConnect(HomeAssistantError):
