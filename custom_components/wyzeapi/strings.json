@@ -1,12 +1,18 @@
 {
-  "title": "Wyze",
+  "title": "[%key:common::config_flow::data::title%]",
   "config": {
     "step": {
       "user": {
+        "title": "[%key:common::config_flow::data::title%]",
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
+        }
+      },
+      "2fa": {
+        "title": "[%key:common::config_flow::data::title%]",
+        "data": {
+          "verification_code": "[%key:common::config_flow::data::verification_code%]"
         }
       }
     },
@@ -17,6 +23,32 @@
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "[%key:common::config_flow::data::title%]",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      },
+      "2fa": {
+        "title": "[%key:common::config_flow::data::title%]",
+        "data": {
+          "verification_code": "[%key:common::config_flow::data::verification_code%]"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   }
 }

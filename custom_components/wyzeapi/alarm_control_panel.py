@@ -16,6 +16,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, HMSService
 from wyzeapy.services.hms_service import HMSMode
+from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -24,6 +25,7 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=15)
 
 
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]):
     """
@@ -69,17 +71,20 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     def alarm_arm_away(self, code: Optional[str] = None) -> None:
         raise NotImplementedError
 
+    @token_exception_handler
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
         await self._hms_service.set_mode(HMSMode.DISARMED)
         self._state = "disarmed"
         self._server_out_of_sync = True
 
+    @token_exception_handler
     async def async_alarm_arm_home(self, code=None):
         await self._hms_service.set_mode(HMSMode.HOME)
         self._state = "armed_home"
         self._server_out_of_sync = True
 
+    @token_exception_handler
     async def async_alarm_arm_away(self, code=None):
         await self._hms_service.set_mode(HMSMode.AWAY)
         self._state = "armed_away"
@@ -128,6 +133,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             "mac": self.unique_id
         }
 
+    @token_exception_handler
     async def async_update(self):
         """Update the entity with data from the Wyze servers"""
 

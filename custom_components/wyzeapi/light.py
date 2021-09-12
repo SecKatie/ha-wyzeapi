@@ -23,6 +23,7 @@ from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, BulbService
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes
+from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -31,6 +32,7 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]) -> None:
     """
@@ -118,6 +120,7 @@ class WyzeLight(LightEntity):
         # Convert the 0-1 range into a value in the right range.
         return output_min + (value_scaled * right_span)
 
+    @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
@@ -145,6 +148,7 @@ class WyzeLight(LightEntity):
         self._bulb.on = True
         self._just_updated = True
 
+    @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
         loop = asyncio.get_event_loop()
         loop.create_task(self._bulb_service.turn_off(self._bulb))
@@ -206,6 +210,7 @@ class WyzeLight(LightEntity):
             return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
+    @token_exception_handler
     async def async_update(self):
         """
         This function updates the lock to be up to date with the Wyze Servers
