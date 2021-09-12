@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Joshua Mulliken <joshua@mulliken.net>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # [Wyze Integration for Home Assistant](https://github.com/JoshuaMulliken/ha-wyzeapi)
 
 This is a custom component to allow control of various Wyze devices in Home Assistant using the unofficial API. Please
