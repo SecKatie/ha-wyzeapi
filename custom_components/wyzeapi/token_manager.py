@@ -1,4 +1,3 @@
-from config.custom_components import wyzeapi
 import logging
 from inspect import iscoroutinefunction
 
