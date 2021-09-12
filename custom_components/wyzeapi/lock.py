@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from wyzeapy import Wyzeapy, LockService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.types import DeviceTypes
+from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -22,6 +23,7 @@ SCAN_INTERVAL = timedelta(seconds=10)
 MAX_OUT_OF_SYNC_COUNT = 5
 
 
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]) -> None:
     """
@@ -78,12 +80,14 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     def should_poll(self) -> bool:
         return True
 
+    @token_exception_handler
     async def async_lock(self, **kwargs):
         _LOGGER.debug("Turning on lock")
         await self._lock_service.lock(self._lock)
 
         self._lock.unlocked = False
 
+    @token_exception_handler
     async def async_unlock(self, **kwargs):
         await self._lock_service.unlock(self._lock)
 
@@ -123,6 +127,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     def supported_features(self):
         return None
 
+    @token_exception_handler
     async def async_update(self):
         """
         This function updates the entity

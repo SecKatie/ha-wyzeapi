@@ -18,6 +18,7 @@ from wyzeapy import Wyzeapy, CameraService, SensorService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.sensor_service import Sensor
 from wyzeapy.types import DeviceTypes
+from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -25,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
 
+@token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]):
     """
@@ -197,6 +199,7 @@ class WyzeCameraMotion(BinarySensorEntity):
     async def async_will_remove_from_hass(self) -> None:
         await self._camera_service.deregister_for_updates(self._camera)
 
+    @token_exception_handler
     def process_update(self, camera: Camera) -> None:
         """
         Is called by the update worker for events to update the values in this sensor
