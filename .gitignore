@@ -139,3 +139,4 @@ dmypy.json
 secrets.py
 wyzeconfig.ini
 .idea/
+.test/
