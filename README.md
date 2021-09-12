@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Joshua Mulliken <joshua@mulliken.net>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Updates from my conversation with Wyze
 
 **_TLDR:_ Some functionality has to go away (motion sensors, contact sensors, and camera motion detection). We account for over 50% of their traffic while being a _very_ small minority of their userbase. I would like to request some help fixing a bug with the auth endpoint -> contact me here if you can help: [joshua@mulliken.net](mailto:joshua@mulliken.net)**
