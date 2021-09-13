@@ -140,3 +140,4 @@ secrets.py
 wyzeconfig.ini
 .idea/
 .test/
+workflow/
