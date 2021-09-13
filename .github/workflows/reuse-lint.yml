@@ -14,4 +14,4 @@ jobs:
         with:
           python-version: '3.x'
       - run: pip install reuse
-      - run: rereuse lint
+      - run: reuse lint
