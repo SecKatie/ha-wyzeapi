@@ -220,13 +220,18 @@ class WyzeSwitch(SwitchEntity):
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
-        return {
+        dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
             "device model": self._device.product_model,
             "mac": self.unique_id
         }
+
+        if self._device.device_params.get("electricity"):
+            dev_info["battery"] = str(self._device.device_params.get("electricity") + "%")
+
+        return dev_info
 
     @token_exception_handler
     async def async_update(self):
