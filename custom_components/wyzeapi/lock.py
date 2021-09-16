@@ -127,6 +127,10 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         if self._lock.raw_dict.get("power"):
             dev_info["lock battery"] = str(self._lock.raw_dict.get("power")) + "%"
 
+        # Add the keypad's battery value if it exists
+        if self._lock.raw_dict.get("keypad", {}).get("power"):
+            dev_info["keypad battery"] = str(self._lock.raw_dict.get("keypad", {}).get("power")) + "%"
+
         return dev_info
 
     @property
