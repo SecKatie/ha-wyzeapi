@@ -123,8 +123,9 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             "mac": self.unique_id
         }
 
+        # Add the lock battery value if it exists
         if self._lock.raw_dict.get("power"):
-            dev_info["battery"] = str(self._lock.raw_dict.get("power")) + "%"
+            dev_info["lock battery"] = str(self._lock.raw_dict.get("power")) + "%"
 
         return dev_info
 
