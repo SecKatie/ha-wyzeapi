@@ -114,7 +114,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
-        return {
+        dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.state,
             "available": self.available,
@@ -122,6 +122,11 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             "device_model": self._lock.product_model,
             "mac": self.unique_id
         }
+
+        if self._lock.raw_dict.get("power"):
+            dev_info["battery"] = str(self._lock.raw_dict.get("power")) + "%"
+
+        return dev_info
 
     @property
     def supported_features(self):
