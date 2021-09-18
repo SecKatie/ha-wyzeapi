@@ -55,7 +55,8 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 ### Potential Downsides
 
 * This is an unofficial implementation of the api and therefore may be disabled or broken at anytime by WyzeLabs
-* ***It requires two factor authentication to be disabled on your account***
+* ~~***It requires two factor authentication to be disabled on your account***~~ 
+* ***Two Factor Authentication is supported as of version 2021.9.2***
 
 ## Funding
 
