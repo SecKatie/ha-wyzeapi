@@ -127,7 +127,7 @@ class WyzeLight(LightEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
-            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100, 0)
+            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100, 1)
 
             loop = asyncio.get_event_loop()
             loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
@@ -195,7 +195,7 @@ class WyzeLight(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return round((self._bulb.brightness / 255) * 100, 1)
+        return round(self._bulb.brightness * 2.55, 1)
 
     @property
     def color_temp(self):
