@@ -4,37 +4,6 @@ SPDX-FileCopyrightText: 2021 Joshua Mulliken <joshua@mulliken.net>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Updates from my conversation with Wyze
-
-**_TLDR:_ Some functionality has to go away (motion sensors, contact sensors, and camera motion detection). We account for over 50% of their traffic while being a _very_ small minority of their userbase. I would like to request some help fixing a bug with the auth endpoint -> contact me here if you can help: [joshua@mulliken.net](mailto:joshua@mulliken.net)**
-
-My conversation with the people at Wyze was very productive. We are planning a way forward to continue the integration with HA while being good citizens of their platform. 
-
-Based on the information I have from this repo and the _limited_ information they were able to share, this integration is used by between 1,000-10,000 individual HA instances. This number is increasing steadily; however, it is still a tiny fraction of the multiple millions of people who use their services. Even though we are such a small percentage of their userbase, we account for over 50% of the traffic to their servers. This amounts to a tangible cost (monetarily for Wyze) and usability effect on the rest of their users.
-
-## Issues that need to be resolved
-
-### Point 1: Motion Sensors, Contact Sensors, and Camera Motion Detection
-
-They want me to disable the binary sensor devices as these are absolutely pummeling their servers. I will release an update tonight that removes them _entirely_ until we can find another way to implement them. If we don't all upgrade to that version and stop requesting from their API for those devices, they have said they are considering shutting down **all** access from Home Assistant.
-
-### Point 2: Requests to the Auth Endpoint
-
-They have also informed me that we have a bug that is causing requests to their authorization endpoint way more than is necessary (1 for every request) which I will be investigating <- **and would appreciate any debugging assistance on this point from the community**
-
-## Updates on Public APIs/Legit Home Assistant Integration
-
-Some employees of Wyze use the integration 😄!! They definitely want it to keep working! I asked about APIs or methods that I could use to reduce the load on their servers while still maintaining all functionality, and they were unable to speak to their future roadmap. They offered me an NDA, but since I am speaking to you now, it should be obvious that I declined.
-
-They have promised to share information on how to implement the 2FA in line with their requirements going forward and did say that they will be requiring 2FA for all logins at some point in the near future. I will be working with them to ensure that this is working in the integration before that requirement is in place.
-
-It is unclear when or if the devices that require up-to-date state information (motion sensors, contact sensors, and camera motion detection) will be available again.
-
-For any additional discussion surrounding this issue I have created a Github Discussion forum here: #232
-
------
-
-
 <a href="https://www.buymeacoffee.com/joshmulliken"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=joshmulliken&button_colour=FFDD00&font_colour=000000&font_family=Poppins&outline_colour=000000&coffee_colour=ffffff"></a> 
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=JoshuaMulliken_ha-wyzeapi&metric=alert_status)](https://sonarcloud.io/dashboard?id=JoshuaMulliken_ha-wyzeapi) [![Visit our IRC channel](https://kiwiirc.com/buttons/irc.libera.chat/wyzeapi.png)](https://kiwiirc.com/client/irc.libera.chat/#wyzeapi) 
@@ -48,14 +17,15 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 
 * Control Wyze Bulbs as lights through HA
 * Control Wyze Plugs as switches through HA
-* Use Wyze Cameras as motion sensors
+* Use Wyze Cameras as motion sensors **NOTE:** Disabled following API usage incident with Wyze
 * Turn on and off Wyze Cameras
 * Lock, unlock, and view status of lock and door for the Wyze Lock
 
 ### Potential Downsides
 
 * This is an unofficial implementation of the api and therefore may be disabled or broken at anytime by WyzeLabs
-* ***It requires two factor authentication to be disabled on your account***
+* ~~***It requires two factor authentication to be disabled on your account***~~ 
+* ***Two Factor Authentication is supported as of version 2021.9.2***
 
 ## Funding
 
