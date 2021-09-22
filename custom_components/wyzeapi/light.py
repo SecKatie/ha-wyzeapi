@@ -127,7 +127,7 @@ class WyzeLight(LightEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
-            brightness = round(kwargs.get(ATTR_BRIGHTNESS) * 255 / 100, 1)
+            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100, 0)
 
             loop = asyncio.get_event_loop()
             loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
@@ -195,7 +195,7 @@ class WyzeLight(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return round(self._bulb.brightness * 100 / 255, 1)
+        return round((self._bulb.brightness / 255) * 100, 1)
 
     @property
     def color_temp(self):
@@ -204,13 +204,13 @@ class WyzeLight(LightEntity):
 
     # Assuming that mireds follow the 1,000,000/kelvin temperature conversion, these values for min/max *should* work
     @property
-    def min_mireds(self) -> int:
+    def max_mireds(self) -> int:
         if self._device_type is DeviceTypes.MESH_LIGHT:
             return 556
         return 370
 
     @property
-    def max_mireds(self) -> int:
+    def min_mireds(self) -> int:
         return 153
 
     @property
