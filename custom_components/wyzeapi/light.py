@@ -211,7 +211,7 @@ class WyzeLight(LightEntity):
 
     @property
     def min_mireds(self) -> int:
-        return 153
+        return 154
 
     @property
     def is_on(self):
