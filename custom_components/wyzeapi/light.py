@@ -93,44 +93,47 @@ class WyzeLight(LightEntity):
     def should_poll(self) -> bool:
         return True
 
-    @staticmethod
-    def translate(value: float, input_min: float, input_max: float, output_min: float, output_max: float) -> \
-            Optional[float]:
+    def translate_color_temp(self, value: float) -> Optional[float]:
         """
         This function maps an input minimum and maximum to the output minimum and maximum
 
         :param value: The value to be converted
-        :param input_min: The minimum value of the input
-        :param input_max: The maximum value of the input
-        :param output_min: The minimum value of the output
-        :param output_max: The maximum value of the output
         :return: The converted value
         """
 
         if value is None:
             return None
 
-        # Figure out how 'wide' each range is
-        left_span = input_max - input_min
-        right_span = output_max - output_min
-
-        # Convert the left range into a 0-1 range (float)
-        value_scaled = float(value - input_min) / float(left_span)
-
-        # Convert the 0-1 range into a value in the right range.
-        return output_min + (value_scaled * right_span)
+        # under 1000 we can easily assume that the value is in mireds
+        if value < 1000:
+            if value < self.min_mireds:
+                value = self.min_mireds
+            elif value > self.max_mireds:
+                value = self.max_mireds
+            return color_util.color_temperature_mired_to_kelvin(value)
+        if value >= 1000:
+            # use the color bulb range by default as it is wider.
+            temp_max = 6500
+            temp_min = 1800
+            if self._device_type is DeviceTypes.LIGHT:
+                temp_min = 2700
+            if value < temp_min:
+                value = temp_min
+            elif value > temp_max:
+                value = temp_max
+            return color_util.color_temperature_kelvin_to_mired(value)
 
     @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
-            brightness = self.translate(kwargs.get(ATTR_BRIGHTNESS), 1, 255, 1, 100)
+            brightness = round(kwargs.get(ATTR_BRIGHTNESS) * 255 / 100, 1)
 
             loop = asyncio.get_event_loop()
             loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
-            color_temp = self.translate(kwargs.get(ATTR_COLOR_TEMP), 500, 140, 1800, 6500)
+            color_temp = self.translate_color_temp(kwargs.get(ATTR_COLOR_TEMP))
 
             loop = asyncio.get_event_loop()
             loop.create_task(self._bulb_service.set_color_temp(self._bulb, int(color_temp)))
@@ -192,12 +195,23 @@ class WyzeLight(LightEntity):
         This method is optional. Removing it indicates to Home Assistant
         that brightness is not supported for this light.
         """
-        return self.translate(self._bulb.brightness, 1, 100, 1, 255)
+        return round(self._bulb.brightness * 100 / 255, 1)
 
     @property
     def color_temp(self):
         """Return the CT color value in mired."""
-        return self.translate(self._bulb.color_temp, 2700, 6500, 500, 140)
+        return self.translate_color_temp(self._bulb.color_temp)
+
+    # Assuming that mireds follow the 1,000,000/kelvin temperature conversion, these values for min/max *should* work
+    @property
+    def min_mireds(self) -> int:
+        if self._device_type is DeviceTypes.MESH_LIGHT:
+            return 556
+        return 370
+
+    @property
+    def max_mireds(self) -> int:
+        return 153
 
     @property
     def is_on(self):
