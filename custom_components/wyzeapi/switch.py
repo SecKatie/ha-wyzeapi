@@ -229,7 +229,13 @@ class WyzeSwitch(SwitchEntity):
         }
 
         if self._device.device_params.get("electricity"):
-            dev_info["battery"] = str(self._device.device_params.get("electricity") + "%")
+            dev_info["Battery"] = str(self._device.device_params.get("electricity") + "%")
+        if self._device.device_params.get("ip"):
+            dev_info["IP"] = str(self._device.device_params.get("ip"))
+        if self._device.device_params.get("rssi"):
+            dev_info["RSSI"] = str(self._device.device_params.get("rssi"))
+        if self._device.device_params.get("ssid"):
+            dev_info["SSID"] = str(self._device.device_params.get("ssid"))
 
         return dev_info
 
