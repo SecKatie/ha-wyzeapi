@@ -1,6 +1,6 @@
 {
   "domain": "wyzeapi",
-  "version": "2021.9.8b1",
+  "version": "2021.9.8b2",
   "name": "Wyze",
   "config_flow": true,
   "iot_class": "cloud_polling",
