@@ -9,7 +9,7 @@ from typing import Callable, List, Any
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from wyzeapy import Wyzeapy, LockService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.types import DeviceTypes
@@ -78,7 +78,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
 
     @property
     def should_poll(self) -> bool:
-        return True
+        return False
 
     @token_exception_handler
     async def async_lock(self, **kwargs):
@@ -148,3 +148,19 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             self._out_of_sync_count = 0
         else:
             self._out_of_sync_count += 1
+
+    @callback
+    def async_update_callback(self, lock: Lock):
+        """Update the switch's state."""
+        self._lock = lock
+        self.async_schedule_update_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to update events."""
+        self._lock.callback_function = self.async_update_callback
+        self._lock_service.register_updater(self._lock, 10)
+        await self._lock_service.start_update_manager()
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._lock_service.unregister_updater()

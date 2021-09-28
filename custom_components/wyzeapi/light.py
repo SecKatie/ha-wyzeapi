@@ -19,7 +19,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from wyzeapy import Wyzeapy, BulbService
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes
@@ -91,7 +91,7 @@ class WyzeLight(LightEntity):
 
     @property
     def should_poll(self) -> bool:
-        return True
+        return False
 
     def translate_color_temp(self, value: float) -> Optional[float]:
         """
@@ -234,3 +234,19 @@ class WyzeLight(LightEntity):
             self._bulb = await self._bulb_service.update(self._bulb)
         else:
             self._just_updated = False
+
+    @callback
+    def async_update_callback(self, bulb: Bulb):
+        """Update the bulb's state."""
+        self._bulb = bulb
+        self.async_schedule_update_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to update events."""
+        self._bulb.callback_function = self.async_update_callback
+        self._bulb_service.register_updater(self._device, 30)
+        await self._bulb_service.start_update_manager()
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._bulb_service.unregister_updater()
