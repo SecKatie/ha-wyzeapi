@@ -312,7 +312,7 @@ class WyzeThermostat(ClimateEntity):
     async def async_added_to_hass(self) -> None:
         """Subscribe to update events."""
         self._thermostat.callback_function = self.async_update_callback
-        self._thermostat_service.register_updater(self._device, 30)
+        self._thermostat_service.register_updater(self._thermostat, 30)
         await self._thermostat_service.start_update_manager()
         return await super().async_added_to_hass()
 
