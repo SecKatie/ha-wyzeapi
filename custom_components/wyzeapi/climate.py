@@ -191,6 +191,7 @@ class WyzeThermostat(ClimateEntity):
             self._thermostat.cool_set_point = int(target_temp_high)
 
         self._server_out_of_sync = True
+        self.async_schedule_update_ha_state()
 
     async def async_set_humidity(self, humidity: int) -> None:
         raise NotImplementedError
@@ -205,6 +206,7 @@ class WyzeThermostat(ClimateEntity):
             self._thermostat.fan_mode = FanMode.AUTO
 
         self._server_out_of_sync = True
+        self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
@@ -222,6 +224,7 @@ class WyzeThermostat(ClimateEntity):
             self._thermostat.hvac_mode = HVACMode.AUTO
 
         self._server_out_of_sync = True
+        self.async_schedule_update_ha_state()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         raise NotImplementedError
@@ -239,6 +242,7 @@ class WyzeThermostat(ClimateEntity):
             self._thermostat.preset = Preset.HOME
 
         self._server_out_of_sync = True
+        self.async_schedule_update_ha_state()
 
     async def async_turn_aux_heat_on(self) -> None:
         raise NotImplementedError

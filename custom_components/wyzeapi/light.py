@@ -150,6 +150,7 @@ class WyzeLight(LightEntity):
 
         self._bulb.on = True
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -158,6 +159,7 @@ class WyzeLight(LightEntity):
 
         self._bulb.on = False
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     @property
     def name(self):

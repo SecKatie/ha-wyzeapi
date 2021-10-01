@@ -86,12 +86,14 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         await self._lock_service.lock(self._lock)
 
         self._lock.unlocked = False
+        self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_unlock(self, **kwargs):
         await self._lock_service.unlock(self._lock)
 
         self._lock.unlocked = True
+        self.async_schedule_update_ha_state()
 
     @property
     def is_locked(self):

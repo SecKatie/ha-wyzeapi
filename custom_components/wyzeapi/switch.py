@@ -108,12 +108,14 @@ class WyzeNotifications(SwitchEntity):
 
         self._is_on = True
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._client.disable_notifications()
 
         self._is_on = False
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     @property
     def name(self):
