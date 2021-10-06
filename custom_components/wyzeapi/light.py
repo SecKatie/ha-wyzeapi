@@ -182,13 +182,22 @@ class WyzeLight(LightEntity):
     @property
     def device_state_attributes(self):
         """Return device attributes of the entity."""
-        return {
+        dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
             "device model": self._bulb.product_model,
             "mac": self.unique_id
         }
+
+        if self._bulb.device_params.get("ip"):
+            dev_info["IP"] = str(self._bulb.device_params.get("ip"))
+        if self._bulb.device_params.get("rssi"):
+            dev_info["RSSI"] = str(self._bulb.device_params.get("rssi"))
+        if self._bulb.device_params.get("ssid"):
+            dev_info["SSID"] = str(self._bulb.device_params.get("ssid"))
+
+        return dev_info
 
     @property
     def brightness(self):
