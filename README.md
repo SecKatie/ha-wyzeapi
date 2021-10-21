@@ -45,9 +45,9 @@ After you have done that if you feel like my work has been valuable to you I wel
 5. Navigate to _Integrations_ in the config interface.
 6. Click _ADD INTEGRATION_
 7. Search for _Wyze Home Assistant Integration_
-8. If _Wyze Home Assistant Integration_ does not appear, hard refresh the browser (ctrl+F5) and search again
-9. Put the email for wyze in the first box and your password in the second
-10. Click _SUBMIT_ and profit!
+   **NOTE:** If _Wyze Home Assistant Integration_ does not appear, hard refresh the browser (ctrl+F5) and search again
+8. Put the email for wyze in the first box and your password in the second
+9. Click _SUBMIT_ and profit!
 
 ## Usage
 
