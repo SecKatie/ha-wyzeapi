@@ -6,6 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 
 # Change Log
 
+
+- - -
+## 2021.10.1..2021.10.2 - 2021-10-26
+
+
+### Features
+
+33e57d - update to bump wyzeapy - Joshua Mulliken
+
 - - -
 ## 2021.9.6..2021.10.1 - 2021-10-06
 
