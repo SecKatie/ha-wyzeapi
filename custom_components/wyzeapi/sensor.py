@@ -38,12 +38,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     lock_service = await client.lock_service
 
     locks = await lock_service.get_locks()
-    lock_battery_sensors = []
+    sensors = []
     for lock in locks:
-        lock_battery_sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.LOCK_BATTERY))
-        lock_battery_sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.KEYPAD_BATTERY))
+        sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.LOCK_BATTERY))
+        sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.KEYPAD_BATTERY))
 
-    async_add_entities(lock_battery_sensors, True)
+    async_add_entities(sensors, True)
 
 class WyzeLockBatterySensor(SensorEntity):
     """Representation of a Wyze Lock or Lock Keypad Battery"""
