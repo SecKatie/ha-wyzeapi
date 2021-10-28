@@ -10,7 +10,7 @@ from wyzeapy.services.lock_service import Lock
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import DEVICE_CLASS_BATTERY, PERCENTAGE
+from homeassistant.const import ATTR_ATTRIBUTION, DEVICE_CLASS_BATTERY, PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -18,6 +18,7 @@ from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
+ATTRIBUTION = "Data provided by Wyze"
 
 @token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
@@ -108,6 +109,15 @@ class WyzeLockBatterySensor(SensorEntity):
             },
             "name": f"{self._lock.nickname}.{self._battery_type}",
             "type": f"lock.{self._battery_type}"
+        }
+
+    @property
+    def device_state_attributes(self):
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "available": self.available,
+            "device model": f"{self._lock.product_model}.{self._battery_type}",
         }
 
     @property
