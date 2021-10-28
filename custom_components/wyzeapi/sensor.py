@@ -22,7 +22,14 @@ _LOGGER = logging.getLogger(__name__)
 @token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: Callable[[List[Any], bool], None]) -> None:
+    """
+    This function sets up the config_entry
 
+    :param hass: Home Assistant instance
+    :param config_entry: The current config_entry
+    :param async_add_entities: This function adds entities to the config_entry
+    :return:
+    """
     _LOGGER.debug("""Creating new WyzeApi sensor component""")
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
@@ -38,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     async_add_entities(lock_battery_sensors, True)
 
 class WyzeLockBatterySensor(SensorEntity):
-
+    """Representation of a Wyze Lock or Lock Keypad Battery"""
     LOCK_BATTERY = "lock_battery"
     KEYPAD_BATTERY = "keypad_battery"
 
