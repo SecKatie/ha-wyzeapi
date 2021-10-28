@@ -104,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             token,
         )
     except:
-        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration.")
+        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration")
         raise ConfigEntryAuthFailed("Unable to login, please re-login.")
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
