@@ -80,6 +80,10 @@ class WyzeLockBatterySensor(SensorEntity):
             )
         )
 
+    @property
+    def name(self) -> str:
+        battery_type = self._battery_type.replace("_", " ").title()
+        return f"{self._lock.nickname} {battery_type}"
 
     @property
     def unique_id(self):
