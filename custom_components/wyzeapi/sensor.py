@@ -87,6 +87,10 @@ class WyzeLockBatterySensor(SensorEntity):
         return self._available
 
     @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
     def device_info(self):
         return {
             "identifiers": {
