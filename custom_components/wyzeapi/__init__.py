@@ -51,7 +51,6 @@ async def async_setup(
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
             if entry:
-                entry.data
                 hass.config_entries.async_update_entry(
                     entry,
                     data={
