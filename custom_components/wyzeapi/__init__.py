@@ -149,7 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
-                    f"{mac} is not in the mac_addresses list. Removing the entry..."
+                    '%s is not in the mac_addresses list. Removing the entry...', mac
                 )
                 device_registry.async_remove_device(device.id)
     return True
@@ -169,7 +169,7 @@ async def options_update_listener(
                         REFRESH_TIME: config_entry.options.get(REFRESH_TIME),
                     },
                 )
-    _LOGGER.debug("Reload entry: " + config_entry.entry_id)
+    _LOGGER.debug("Reload entry: %s", config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
