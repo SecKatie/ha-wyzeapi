@@ -99,6 +99,7 @@ class WyzeLockBatterySensor(SensorEntity):
             return False
         # The battery voltage will always be available for the lock
         return True
+
     @property
     def device_info(self):
         return {
