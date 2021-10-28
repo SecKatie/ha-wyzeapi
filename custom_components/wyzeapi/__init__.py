@@ -146,6 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         device_registry, config_entry.entry_id
     ):
         for identifier in device.identifiers:
+            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
             domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
