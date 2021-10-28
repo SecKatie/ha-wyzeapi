@@ -34,7 +34,7 @@ async def async_setup(
     hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
 ):
     # pylint: disable=unused-argument
-    """Set up the Alexa domain."""
+    """Set up the WyzeApi domain."""
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug(
             "Nothing to import from configuration.yaml, loading from Integrations",
