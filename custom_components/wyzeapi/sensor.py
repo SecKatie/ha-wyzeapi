@@ -65,6 +65,8 @@ class WyzeLockBatterySensor(SensorEntity):
         if self._lock.raw_dict.get("power") and self._battery_type == self.LOCK_BATTERY:
             self._available = True
         if self._lock.raw_dict.get("keypad", {}).get("power") and self._battery_type == self.KEYPAD_BATTERY:
+            if self.enabled is False:
+                self.enabled = True
             self._available = True
         self.async_write_ha_state()
 
@@ -90,6 +92,13 @@ class WyzeLockBatterySensor(SensorEntity):
     def should_poll(self) -> bool:
         return False
 
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        if self._battery_type == self.KEYPAD_BATTERY:
+            # The keypad battery may not be available if the lock has no keypad
+            return False
+        # The battery voltage will always be available for the lock
+        return True
     @property
     def device_info(self):
         return {
