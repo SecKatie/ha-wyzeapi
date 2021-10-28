@@ -146,7 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         device_registry, config_entry.entry_id
     ):
         for identifier in device.identifiers:
-            mac = identifier
+            domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
                     '%s is not in the mac_addresses list, removing the entry', mac
