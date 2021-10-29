@@ -258,6 +258,11 @@ class WyzeSwitch(SwitchEntity):
     def async_update_callback(self, switch: Switch):
         """Update the switch's state."""
         self._device = switch
+        async_dispatcher_send(
+            self.hass,
+            f"{CAMERA_UPDATED}-{switch.mac}",
+            switch,
+        )
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
