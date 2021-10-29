@@ -8,3 +8,4 @@ REFRESH_TOKEN = "refresh_token"
 REFRESH_TIME = "refresh_time"
 
 LOCK_UPDATED = "lock_updated"
+CAMERA_UPDATED = "camera_updated"
