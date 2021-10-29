@@ -2,25 +2,27 @@
 
 """Platform for switch integration."""
 import configparser
+from datetime import timedelta
 import logging
+
 # Import the device class from the component that you want to support
 import os
-import uuid
-from datetime import timedelta
 from typing import Any, Callable, List, Union
+import uuid
 
-from homeassistant.components.switch import (
-    SwitchEntity)
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant, callback
-from wyzeapy import Wyzeapy, CameraService, SwitchService
+from wyzeapy import CameraService, SwitchService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
-from .token_manager import token_exception_handler
 
-from . import DOMAIN, CONF_CLIENT
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ATTRIBUTION
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
+from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
