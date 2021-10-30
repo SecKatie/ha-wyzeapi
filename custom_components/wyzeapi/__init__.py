@@ -150,10 +150,10 @@ async def options_update_listener(
     if not config_entry.data.get(UUID):
         # if the user re-logs in, we need to create a new UUID as the configflow will overwrite the old one in the config_entry data
         entry_data[UUID] = uuid.uuid4().hex
-    hass.config_entries.async_update_entry(
-                    config_entry,
-                    data=entry_data,
-                )
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=entry_data,
+        )
     _LOGGER.debug("Reload entry: " + config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
 
