@@ -18,7 +18,7 @@ from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
 from .token_manager import TokenManager
 
-from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
+from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, UUID
 
 PLATFORMS = [
     "light",
@@ -87,6 +87,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.data.setdefault(DOMAIN, {})
 
+    # Store a uuid for the notification toggle if it doesn't exist to get away from storing it in an ini file
+    if not config_entry.data.get(UUID):
+        _LOGGER.debug("No Existing UUID found for %s", DOMAIN)
+        entry_data = config_entry.as_dict().get("data")
+        entry_data[UUID] = uuid.uuid4().hex
+        hass.config_entries.async_update_entry(
+                config_entry,
+                    data=entry_data,
+                )
+
     client = await Wyzeapy.create()
     token = None
     if config_entry.data.get(ACCESS_TOKEN):
@@ -117,25 +127,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     mac_addresses = await client.unique_device_ids
 
-    def get_uid():
-        config_path = hass.config.path("wyze_config.ini")
-
-        config = configparser.ConfigParser()
-        config.read(config_path)
-        if config.has_option("OPTIONS", "SYSTEM_ID"):
-            return config["OPTIONS"]["SYSTEM_ID"]
-        else:
-            new_uid = uuid.uuid4().hex
-            config["OPTIONS"] = {}
-            config["OPTIONS"]["SYSTEM_ID"] = new_uid
-
-            with open(config_path, "w") as configfile:
-                config.write(configfile)
-
-            return new_uid
-
-    uid = await hass.async_add_executor_job(get_uid)
-    mac_addresses.add(uid)
+    mac_addresses.add(config_entry.data.get(UUID))
 
     hms_service = await client.hms_service
     hms_id = hms_service.hms_id
