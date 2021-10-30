@@ -8,4 +8,4 @@ REFRESH_TOKEN = "refresh_token"
 REFRESH_TIME = "refresh_time"
 
 LOCK_UPDATED = f"{DOMAIN}.lock_updated"
-CAMERA_UPDATED = "camera_updated"
+CAMERA_UPDATED = f"{DOMAIN}.camera_updated"
