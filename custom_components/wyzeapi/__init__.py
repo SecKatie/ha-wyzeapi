@@ -51,16 +51,10 @@ async def async_setup(
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
             if entry:
-                entry.data
+                entry_data = entry.as_dict().get("data")
                 hass.config_entries.async_update_entry(
                     entry,
-                    data={
-                        CONF_USERNAME: entry.data.get(CONF_USERNAME),
-                        CONF_PASSWORD: entry.data.get(CONF_PASSWORD),
-                        ACCESS_TOKEN: entry.data.get(ACCESS_TOKEN),
-                        REFRESH_TOKEN: entry.data.get(REFRESH_TOKEN),
-                        REFRESH_TIME: entry.data.get(REFRESH_TIME),
-                    },
+                    data=entry_data,
                 )
                 break
     else:
@@ -152,15 +146,13 @@ async def options_update_listener(
 ):
     """Handle options update."""
     _LOGGER.debug("Updated options")
+    entry_data = config_entry.as_dict().get("data")
+    if not config_entry.data.get(UUID):
+        # if the user re-logs in, we need to create a new UUID as the configflow will overwrite the old one in the config_entry data
+        entry_data[UUID] = uuid.uuid4().hex
     hass.config_entries.async_update_entry(
                     config_entry,
-                    data={
-                        CONF_USERNAME: config_entry.options.get(CONF_USERNAME),
-                        CONF_PASSWORD: config_entry.options.get(CONF_PASSWORD),
-                        ACCESS_TOKEN: config_entry.options.get(ACCESS_TOKEN),
-                        REFRESH_TOKEN: config_entry.options.get(REFRESH_TOKEN),
-                        REFRESH_TIME: config_entry.options.get(REFRESH_TIME),
-                    },
+                    data=entry_data,
                 )
     _LOGGER.debug("Reload entry: " + config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
