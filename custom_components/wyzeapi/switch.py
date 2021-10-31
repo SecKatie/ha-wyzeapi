@@ -192,6 +192,7 @@ class WyzeSwitch(SwitchEntity):
 
         self._device.on = True
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -199,6 +200,7 @@ class WyzeSwitch(SwitchEntity):
 
         self._device.on = False
         self._just_updated = True
+        self.async_schedule_update_ha_state()
 
     @property
     def name(self):
