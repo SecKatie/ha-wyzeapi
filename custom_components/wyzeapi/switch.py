@@ -20,7 +20,7 @@ from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device
 from .token_manager import token_exception_handler
 
-from . import DOMAIN, CONF_CLIENT
+from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -160,6 +160,7 @@ class WyzeSwitch(SwitchEntity):
     _on: bool
     _available: bool
     _just_updated = False
+    _old_event_ts: int = None
 
     def __init__(self, service: Union[CameraService, SwitchService], device: Device):
         """Initialize a Wyze Bulb."""
@@ -259,6 +260,30 @@ class WyzeSwitch(SwitchEntity):
         """Update the switch's state."""
         self._device = switch
         self.async_schedule_update_ha_state()
+        # if the switch is from a camera, lets check for new events
+        if isinstance(switch, Camera):
+            if self._old_event_ts is not None and self._old_event_ts != switch.last_event_ts:
+                # The screenshot/video urls are not always in the same positions in the lists, so we have to loop through them
+                _screenshot_url = None
+                _video_url = None
+                _ai_tag_list = []
+                for resource in switch.last_event.file_list:
+                    _ai_tag_list = _ai_tag_list + resource.ai_tag_list
+                    if resource.type == "1":
+                        _screenshot_url = resource.url
+                    elif resource.type == "2":
+                        _video_url = resource.url
+                _LOGGER.debug("Camera: %s has a new event", switch.nickname)
+                self.hass.bus.fire(WYZE_CAMERA_EVENT, {
+                    "device_name": switch.nickname,
+                    "device_mac": switch.mac,
+                    "ai_tag_list": _ai_tag_list,
+                    "tag_list": switch.last_event.tag_list,
+                    "event_screenshot": _screenshot_url,
+                    "event_video": _video_url,
+                    "raw_event": switch.event
+                })
+            self._old_event_ts = switch.last_event_ts
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to update events."""
