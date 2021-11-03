@@ -1,23 +1,23 @@
 #!/usr/bin/python3
 
 """Platform for light integration."""
-import logging
 from abc import ABC
 from datetime import timedelta
-from typing import Callable, List, Any
+import logging
+from typing import Any, Callable, List
+
+from wyzeapy import LockService, Wyzeapy
+from wyzeapy.services.lock_service import Lock
+from wyzeapy.types import DeviceTypes
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
-from wyzeapy import Wyzeapy, LockService
-from wyzeapy.services.lock_service import Lock
-from wyzeapy.types import DeviceTypes
-
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .token_manager import token_exception_handler
 
-from .const import DOMAIN, CONF_CLIENT, LOCK_UPDATED
+from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
+from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
