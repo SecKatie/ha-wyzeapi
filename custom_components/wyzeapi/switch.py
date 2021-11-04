@@ -24,6 +24,8 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
+from .const import DOMAIN, CONF_CLIENT, UUID
+
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -51,23 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                                     await switch_service.get_switches()]
     switches.extend([WyzeSwitch(camera_service, switch) for switch in await camera_service.get_cameras()])
 
-    def get_uid():
-        config = configparser.ConfigParser()
-        config_path = hass.config.path('wyze_config.ini')
-        config.read(config_path)
-        if config.has_option("OPTIONS", "SYSTEM_ID"):
-            return config["OPTIONS"]["SYSTEM_ID"]
-        else:
-            new_uid = uuid.uuid4().hex
-            config["OPTIONS"] = {}
-            config["OPTIONS"]["SYSTEM_ID"] = new_uid
-
-            with open(config_path, 'w') as configfile:
-                config.write(configfile)
-
-            return new_uid
-
-    uid = await hass.async_add_executor_job(get_uid)
+    uid = config_entry.data.get(UUID)
 
     switches.append(WyzeNotifications(client, uid))
 
