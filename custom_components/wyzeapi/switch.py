@@ -13,7 +13,7 @@ import uuid
 from wyzeapy import CameraService, SwitchService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
-from wyzeapy.types import Device
+from wyzeapy.types import Device, Event
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -24,7 +24,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
-from .const import DOMAIN, CONF_CLIENT, UUID
+from .const import DOMAIN, CONF_CLIENT, UUID, WYZE_CAMERA_EVENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -148,6 +148,7 @@ class WyzeSwitch(SwitchEntity):
     _on: bool
     _available: bool
     _just_updated = False
+    _old_event_ts: int = 0 # preload with 0 so that we know when it's been updated
 
     def __init__(self, service: Union[CameraService, SwitchService], device: Device):
         """Initialize a Wyze Bulb."""
@@ -252,6 +253,30 @@ class WyzeSwitch(SwitchEntity):
             switch,
         )
         self.async_schedule_update_ha_state()
+        # if the switch is from a camera, lets check for new events
+        if isinstance(switch, Camera):
+            if self._old_event_ts > 0 and self._old_event_ts != switch.last_event_ts and switch.last_event is not None:
+                event: Event = switch.last_event
+                # The screenshot/video urls are not always in the same positions in the lists, so we have to loop through them
+                _screenshot_url = None
+                _video_url = None
+                _ai_tag_list = []
+                for resource in event.file_list:
+                    _ai_tag_list = _ai_tag_list + resource["ai_tag_list"]
+                    if resource["type"] == 1:
+                        _screenshot_url = resource["url"]
+                    elif resource["type"] == 2:
+                        _video_url = resource["url"]
+                _LOGGER.debug("Camera: %s has a new event", switch.nickname)
+                self.hass.bus.fire(WYZE_CAMERA_EVENT, {
+                    "device_name": switch.nickname,
+                    "device_mac": switch.mac,
+                    "ai_tag_list": _ai_tag_list,
+                    "tag_list": event.tag_list,
+                    "event_screenshot": _screenshot_url,
+                    "event_video": _video_url
+                })
+            self._old_event_ts = switch.last_event_ts
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to update events."""

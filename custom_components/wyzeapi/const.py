@@ -10,3 +10,5 @@ UUID = "uuid"
 
 LOCK_UPDATED = f"{DOMAIN}.lock_updated"
 CAMERA_UPDATED = f"{DOMAIN}.camera_updated"
+#EVENT NAMES
+WYZE_CAMERA_EVENT = "wyze_camera_event"
