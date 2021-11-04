@@ -35,7 +35,7 @@ async def async_setup(
     hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
 ):
     # pylint: disable=unused-argument
-    """Set up the Alexa domain."""
+    """Set up the WyzeApi domain."""
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug(
             "Nothing to import from configuration.yaml, loading from Integrations",
@@ -110,8 +110,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             token,
         )
     except:
-        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration.")
-        raise ConfigEntryAuthFailed("Unable to login, please re-login.")
+        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration")
+        raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
 
@@ -134,10 +134,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         device_registry, config_entry.entry_id
     ):
         for identifier in device.identifiers:
+            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
             domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
-                    f"{mac} is not in the mac_addresses list. Removing the entry..."
+                    '%s is not in the mac_addresses list, removing the entry', mac
                 )
                 device_registry.async_remove_device(device.id)
     return True
