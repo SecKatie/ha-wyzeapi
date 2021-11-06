@@ -30,6 +30,19 @@ PLATFORMS = [
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
+async def get_uuid(hass: HomeAssistant):
+        # persist the old ini file's uuid for a few versions
+        # This function will be removed in an updated version
+        config_path = hass.config.path("wyze_config.ini")
+        if os.path.exists(config_path):
+            config = configparser.ConfigParser()
+            config.read(config_path)
+            if config.has_option("OPTIONS", "SYSTEM_ID"):
+                return config["OPTIONS"]["SYSTEM_ID"]
+        else:
+            _LOGGER.debug("No Existing UUID found for %s", DOMAIN)
+            return uuid.uuid4().hex
+
 # noinspection PyUnusedLocal
 async def async_setup(
     hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
@@ -70,6 +83,7 @@ async def async_setup(
                     ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
                     REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
                     REFRESH_TIME: domainconfig[REFRESH_TIME],
+                    UUID: uuid.uuid4().hex,
                 },
             )
         )
@@ -83,14 +97,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})
 
     # Store a uuid for the notification toggle if it doesn't exist to get away from storing it in an ini file
+    entry_data = config_entry.as_dict().get("data")
     if not config_entry.data.get(UUID):
-        _LOGGER.debug("No Existing UUID found for %s", DOMAIN)
-        entry_data = config_entry.as_dict().get("data")
-        entry_data[UUID] = uuid.uuid4().hex
-        hass.config_entries.async_update_entry(
-                config_entry,
-                    data=entry_data,
-                )
+        entry_data[UUID] = await get_uuid(hass)
+    hass.config_entries.async_update_entry(
+            config_entry,
+                data=entry_data,
+            )
 
     client = await Wyzeapy.create()
     token = None
@@ -150,12 +163,11 @@ async def options_update_listener(
     _LOGGER.debug("Updated options")
     entry_data = config_entry.as_dict().get("data")
     if not config_entry.data.get(UUID):
-        # if the user re-logs in, we need to create a new UUID as the configflow will overwrite the old one in the config_entry data
-        entry_data[UUID] = uuid.uuid4().hex
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data=entry_data,
-        )
+        entry_data[UUID] = await get_uuid(hass)
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data=entry_data,
+    )
     _LOGGER.debug("Reload entry: " + config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
 
