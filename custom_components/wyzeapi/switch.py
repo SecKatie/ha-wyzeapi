@@ -8,7 +8,6 @@ import logging
 # Import the device class from the component that you want to support
 import os
 from typing import Any, Callable, List, Union
-import uuid
 
 from wyzeapy import CameraService, SwitchService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
@@ -24,7 +23,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
-from .const import DOMAIN, CONF_CLIENT, UUID, WYZE_CAMERA_EVENT
+from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -53,18 +52,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                                     await switch_service.get_switches()]
     switches.extend([WyzeSwitch(camera_service, switch) for switch in await camera_service.get_cameras()])
 
-    uid = config_entry.data.get(UUID)
-
-    switches.append(WyzeNotifications(client, uid))
+    switches.append(WyzeNotifications(client))
 
     async_add_entities(switches, True)
 
 
 class WyzeNotifications(SwitchEntity):
-    def __init__(self, client: Wyzeapy, uid):
+    def __init__(self, client: Wyzeapy):
         self._client = client
         self._is_on = False
-        self._uid = uid
+        self._uid = WYZE_NOTIFICATION_TOGGLE
         self._just_updated = False
 
     @property
@@ -84,7 +81,8 @@ class WyzeNotifications(SwitchEntity):
                 (DOMAIN, self._uid)
             },
             "name": "Wyze Notifications",
-            "manufacturer": "WyzeLabs"
+            "manufacturer": "WyzeLabs",
+            "model": "WyzeNotificationToggle"
         }
 
     @property

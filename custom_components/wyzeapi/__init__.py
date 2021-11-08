@@ -5,7 +5,6 @@ import asyncio
 import configparser
 import logging
 import os
-import uuid
 from homeassistant import config_entries
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
@@ -18,7 +17,7 @@ from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
 from .token_manager import TokenManager
 
-from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, UUID
+from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE
 
 PLATFORMS = [
     "light",
@@ -29,19 +28,6 @@ PLATFORMS = [
     "sensor"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
-
-async def get_uuid(hass: HomeAssistant):
-        # persist the old ini file's uuid for a few versions
-        # This function will be removed in an updated version
-        config_path = hass.config.path("wyze_config.ini")
-        if os.path.exists(config_path):
-            config = configparser.ConfigParser()
-            config.read(config_path)
-            if config.has_option("OPTIONS", "SYSTEM_ID"):
-                return config["OPTIONS"]["SYSTEM_ID"]
-        else:
-            _LOGGER.debug("No Existing UUID found for %s", DOMAIN)
-            return uuid.uuid4().hex
 
 # noinspection PyUnusedLocal
 async def async_setup(
@@ -83,7 +69,6 @@ async def async_setup(
                     ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
                     REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
                     REFRESH_TIME: domainconfig[REFRESH_TIME],
-                    UUID: uuid.uuid4().hex,
                 },
             )
         )
@@ -95,15 +80,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up Wyze Home Assistant Integration from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-
-    # Store a uuid for the notification toggle if it doesn't exist to get away from storing it in an ini file
-    entry_data = config_entry.as_dict().get("data")
-    if not config_entry.data.get(UUID):
-        entry_data[UUID] = await get_uuid(hass)
-    hass.config_entries.async_update_entry(
-            config_entry,
-                data=entry_data,
-            )
 
     client = await Wyzeapy.create()
     token = None
@@ -135,7 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     mac_addresses = await client.unique_device_ids
 
-    mac_addresses.add(config_entry.data.get(UUID))
+    mac_addresses.add(config_entry.data.get(WYZE_NOTIFICATION_TOGGLE))
 
     hms_service = await client.hms_service
     hms_id = hms_service.hms_id
@@ -162,8 +138,6 @@ async def options_update_listener(
     """Handle options update."""
     _LOGGER.debug("Updated options")
     entry_data = config_entry.as_dict().get("data")
-    if not config_entry.data.get(UUID):
-        entry_data[UUID] = await get_uuid(hass)
     hass.config_entries.async_update_entry(
         config_entry,
         data=entry_data,
