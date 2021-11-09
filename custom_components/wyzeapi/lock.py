@@ -1,21 +1,23 @@
 #!/usr/bin/python3
 
 """Platform for light integration."""
-import logging
 from abc import ABC
 from datetime import timedelta
-from typing import Callable, List, Any
+import logging
+from typing import Any, Callable, List
+
+from wyzeapy import LockService, Wyzeapy
+from wyzeapy.services.lock_service import Lock
+from wyzeapy.types import DeviceTypes
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
-from wyzeapy import Wyzeapy, LockService
-from wyzeapy.services.lock_service import Lock
-from wyzeapy.types import DeviceTypes
-from .token_manager import token_exception_handler
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DOMAIN, CONF_CLIENT
+from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
+from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -155,6 +157,11 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     def async_update_callback(self, lock: Lock):
         """Update the switch's state."""
         self._lock = lock
+        async_dispatcher_send(
+            self.hass,
+            f"{LOCK_UPDATED}-{self._lock.mac}",
+            lock,
+        )
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
