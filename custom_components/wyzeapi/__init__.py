@@ -111,7 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     mac_addresses = await client.unique_device_ids
 
-    mac_addresses.add(config_entry.data.get(WYZE_NOTIFICATION_TOGGLE))
+    mac_addresses.add(WYZE_NOTIFICATION_TOGGLE)
 
     hms_service = await client.hms_service
     hms_id = hms_service.hms_id
