@@ -57,6 +57,11 @@ After you have done that if you feel like my work has been valuable to you I wel
     * Switches: https://www.home-assistant.io/integrations/switch/
     * Camera motion sensors: https://www.home-assistant.io/integrations/binary_sensor/
 
+## Contributing
+
+* To help with testing please join our Matrix https://matrix.to/#/%23wyzeapi-testers:one.ems.host
+* For development contributions please join our IRC channel #wyzeapi on Libre.Chat
+
 ## Support
 
 If you need help with anything then please connect with the community!
