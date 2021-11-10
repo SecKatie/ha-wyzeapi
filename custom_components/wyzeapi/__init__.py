@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.entity_registry import async_get as er_get
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from wyzeapy import Wyzeapy
@@ -118,18 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if hms_id is not None:
         mac_addresses.add(hms_id)
 
-    device_registry = await dr.async_get_registry(hass)
-    for device in dr.async_entries_for_config_entry(
-        device_registry, config_entry.entry_id
-    ):
-        for identifier in device.identifiers:
-            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
-            domain, mac = identifier
-            if mac not in mac_addresses:
-                _LOGGER.warning(
-                    '%s is not in the mac_addresses list, removing the entry', mac
-                )
-                device_registry.async_remove_device(device.id)
+    await cleanup_registries(hass, config_entry, mac_addresses)
+
     return True
 
 async def options_update_listener(
@@ -161,3 +152,51 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+async def cleanup_registries(hass, config_entry, mac_addresses):
+    device_registry = await dr.async_get_registry(hass)
+    entity_registry = er_get(hass)
+    entity_registry_list = entity_registry.entities.copy()
+    for entity in entity_registry_list:
+        ent = entity_registry.async_get(entity)
+        # IMPORTANT!
+        # restrict this to our integration/platform so as not to remove other entities for other integrations
+        #
+        # Note: Home Assistant stores the integration domain as "platform" in the entity properties. This is misleading.
+        if ent.platform != DOMAIN:
+            continue
+        #
+        # continue on to general cleanup
+        #
+        # get rid of any entities that do not belong to a current/valid device
+        if device_registry.async_get(hass.helpers.template.device_id(hass, ent.entity_id)) is None:
+            _LOGGER.warning(
+                "%s does not belong to a current device, removing the entity: ", ent.entity_id
+                )
+            entity_registry.async_remove(ent.entity_id)
+            continue
+        # remove platforms that are no longer supported
+        if ent.domain not in PLATFORMS:
+            _LOGGER.warning(
+                '%s is no longer a supported platform, removing the entity', ent.entity_id
+            )
+            await entity_registry.async_remove(ent.entity_id)
+
+        # get rid of the old notification toggle entity
+        if "switch.wyze_notifications" in ent.entity_id and ent.unique_id != "wyzeapi.wyze.notification.toggle":
+            _LOGGER.warning(
+                '%s - wyze notifcation toggle UUID has been changed so this is now a defunt entity, removing the entity', ent.entity_id
+            )
+            await entity_registry.async_remove(ent.entity_id)
+
+    for device in dr.async_entries_for_config_entry(
+        device_registry, config_entry.entry_id
+    ):
+        for identifier in device.identifiers:
+            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
+            domain, mac = identifier
+            if mac not in mac_addresses:
+                _LOGGER.warning(
+                    '%s is not in the mac_addresses list, removing the entry', mac
+                )
+                await device_registry.async_remove_device(device.id)
