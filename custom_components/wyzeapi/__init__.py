@@ -5,7 +5,6 @@ import asyncio
 import configparser
 import logging
 import os
-import uuid
 from homeassistant import config_entries
 
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
@@ -18,7 +17,7 @@ from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
 from .token_manager import TokenManager
 
-from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
+from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE
 
 PLATFORMS = [
     "light",
@@ -26,6 +25,7 @@ PLATFORMS = [
     "lock",
     "climate",
     "alarm_control_panel",
+    "sensor"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ async def async_setup(
     hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
 ):
     # pylint: disable=unused-argument
-    """Set up the Alexa domain."""
+    """Set up the WyzeApi domain."""
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug(
             "Nothing to import from configuration.yaml, loading from Integrations",
@@ -51,16 +51,10 @@ async def async_setup(
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
             if entry:
-                entry.data
+                entry_data = entry.as_dict().get("data")
                 hass.config_entries.async_update_entry(
                     entry,
-                    data={
-                        CONF_USERNAME: entry.data.get(CONF_USERNAME),
-                        CONF_PASSWORD: entry.data.get(CONF_PASSWORD),
-                        ACCESS_TOKEN: entry.data.get(ACCESS_TOKEN),
-                        REFRESH_TOKEN: entry.data.get(REFRESH_TOKEN),
-                        REFRESH_TIME: entry.data.get(REFRESH_TIME),
-                    },
+                    data=entry_data,
                 )
                 break
     else:
@@ -105,8 +99,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             token,
         )
     except:
-        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration.")
-        raise ConfigEntryAuthFailed("Unable to login, please re-login.")
+        _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration")
+        raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
 
@@ -117,25 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     mac_addresses = await client.unique_device_ids
 
-    def get_uid():
-        config_path = hass.config.path("wyze_config.ini")
-
-        config = configparser.ConfigParser()
-        config.read(config_path)
-        if config.has_option("OPTIONS", "SYSTEM_ID"):
-            return config["OPTIONS"]["SYSTEM_ID"]
-        else:
-            new_uid = uuid.uuid4().hex
-            config["OPTIONS"] = {}
-            config["OPTIONS"]["SYSTEM_ID"] = new_uid
-
-            with open(config_path, "w") as configfile:
-                config.write(configfile)
-
-            return new_uid
-
-    uid = await hass.async_add_executor_job(get_uid)
-    mac_addresses.add(uid)
+    mac_addresses.add(WYZE_NOTIFICATION_TOGGLE)
 
     hms_service = await client.hms_service
     hms_id = hms_service.hms_id
@@ -147,10 +123,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         device_registry, config_entry.entry_id
     ):
         for identifier in device.identifiers:
+            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
             domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
-                    f"{mac} is not in the mac_addresses list. Removing the entry..."
+                    '%s is not in the mac_addresses list, removing the entry', mac
                 )
                 device_registry.async_remove_device(device.id)
     return True
@@ -160,16 +137,11 @@ async def options_update_listener(
 ):
     """Handle options update."""
     _LOGGER.debug("Updated options")
+    entry_data = config_entry.as_dict().get("data")
     hass.config_entries.async_update_entry(
-                    config_entry,
-                    data={
-                        CONF_USERNAME: config_entry.options.get(CONF_USERNAME),
-                        CONF_PASSWORD: config_entry.options.get(CONF_PASSWORD),
-                        ACCESS_TOKEN: config_entry.options.get(ACCESS_TOKEN),
-                        REFRESH_TOKEN: config_entry.options.get(REFRESH_TOKEN),
-                        REFRESH_TIME: config_entry.options.get(REFRESH_TIME),
-                    },
-                )
+        config_entry,
+        data=entry_data,
+    )
     _LOGGER.debug("Reload entry: " + config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
 
