@@ -190,6 +190,7 @@ class WyzeLight(LightEntity):
             "mac": self.unique_id
         }
 
+        # noinspection DuplicatedCode
         if self._bulb.device_params.get("ip"):
             dev_info["IP"] = str(self._bulb.device_params.get("ip"))
         if self._bulb.device_params.get("rssi"):

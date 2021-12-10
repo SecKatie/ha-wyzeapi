@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
@@ -27,9 +26,10 @@ PLATFORMS = [
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
+
 # noinspection PyUnusedLocal
 async def async_setup(
-    hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
+        hass: HomeAssistant, config: HomeAssistantConfig, discovery_info=None
 ):
     # pylint: disable=unused-argument
     """Set up the WyzeApi domain."""
@@ -39,6 +39,7 @@ async def async_setup(
         )
         return True
 
+    # noinspection SpellCheckingInspection
     domainconfig = config.get(DOMAIN)
     # pylint: disable=logging-not-lazy
     _LOGGER.debug(
@@ -87,17 +88,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             config_entry.data.get(REFRESH_TOKEN),
             float(config_entry.data.get(REFRESH_TIME)),
         )
-    token_manager = TokenManager(hass, config_entries)
-    client.register_for_token_callback(token_manager.token_callback)
-    # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get a login with the token
+    a_tkn_manager = TokenManager(hass, config_entry)
+    client.register_for_token_callback(a_tkn_manager.token_callback)
+    # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get
+    # a login with the token
     try:
         await client.login(
             config_entry.data.get(CONF_USERNAME),
             config_entry.data.get(CONF_PASSWORD),
             token,
         )
-    except:
+    except Exception as e:
         _LOGGER.error("Wyzeapi: Could not login. Please re-login through integration configuration")
+        _LOGGER.error(e)
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
@@ -118,10 +121,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     device_registry = await dr.async_get_registry(hass)
     for device in dr.async_entries_for_config_entry(
-        device_registry, config_entry.entry_id
+            device_registry, config_entry.entry_id
     ):
         for identifier in device.identifiers:
-            # domain has to remain here. If it is removed the integration will remove all entities for not being in the mac address list each boot.
+            # domain has to remain here. If it is removed the integration will remove all entities for not being in
+            # the mac address list each boot.
             domain, mac = identifier
             if mac not in mac_addresses:
                 _LOGGER.warning(
@@ -130,8 +134,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 device_registry.async_remove_device(device.id)
     return True
 
+
 async def options_update_listener(
-    hass: HomeAssistant, config_entry: config_entries.ConfigEntry
+        hass: HomeAssistant, config_entry: ConfigEntry
 ):
     """Handle options update."""
     _LOGGER.debug("Updated options")

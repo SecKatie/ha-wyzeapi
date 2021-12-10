@@ -11,12 +11,13 @@ from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_ACCESS_TOKEN
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
-from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
+from .const import DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str})
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
+
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wyze Home Assistant Integration."""
@@ -36,7 +37,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.client = await Wyzeapy.create()
 
     async def async_step_user(
-        self, user_input: Dict[str, Any] = None
+            self, user_input: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """Handle the initial step."""
         await self.get_client()
