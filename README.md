@@ -38,7 +38,7 @@ After you have done that if you feel like my work has been valuable to you I wel
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
-2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzebulb) as a custom
+2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzeapi) as a custom
    repository as Type: Integration
 3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
 4. Restart HA
