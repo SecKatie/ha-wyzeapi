@@ -1,13 +1,13 @@
 {
   "domain": "wyzeapi",
-  "version": "2021.11.1",
+  "version": "0.1.0-b3",
   "name": "Wyze",
   "config_flow": true,
   "iot_class": "cloud_polling",
   "documentation": "https://github.com/JoshuaMulliken/ha-wyzeapi#readme",
   "issue_tracker": "https://github.com/JoshuaMulliken/ha-wyzeapi/issues",
   "requirements": [
-    "wyzeapy==0.5.1"
+    "wyzeapy==0.5.2b6"
   ],
   "codeowners": [
     "@JoshuaMulliken"

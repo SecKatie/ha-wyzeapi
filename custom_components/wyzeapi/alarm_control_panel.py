@@ -48,7 +48,6 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     """
     A representation of the Wyze Home Monitoring system that works for wyze
     """
-
     DEVICE_MODEL = "HMS"
     NAME = "Wyze Home Monitoring System"
     AVAILABLE = True
@@ -57,6 +56,9 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
 
     def __init__(self, hms_service: HMSService):
         self._hms_service = hms_service
+
+    def alarm_arm_vacation(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
 
     @property
     def state(self):

@@ -1,29 +1,24 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
-import configparser
-from datetime import timedelta
 import logging
-
+from datetime import timedelta
 # Import the device class from the component that you want to support
-import os
 from typing import Any, Callable, List, Union
-
-from wyzeapy import CameraService, SwitchService, Wyzeapy
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.switch_service import Switch
-from wyzeapy.types import Device, Event
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from wyzeapy import CameraService, SwitchService, Wyzeapy
+from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.switch_service import Switch
+from wyzeapy.types import Device, Event
 
-from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
-from .token_manager import token_exception_handler
-
+from .const import CAMERA_UPDATED
 from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
+from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -146,7 +141,7 @@ class WyzeSwitch(SwitchEntity):
     _on: bool
     _available: bool
     _just_updated = False
-    _old_event_ts: int = 0 # preload with 0 so that we know when it's been updated
+    _old_event_ts: int = 0  # preload with 0 so that we know when it's been updated
 
     def __init__(self, service: Union[CameraService, SwitchService], device: Device):
         """Initialize a Wyze Bulb."""
@@ -221,6 +216,7 @@ class WyzeSwitch(SwitchEntity):
 
         if self._device.device_params.get("electricity"):
             dev_info["Battery"] = str(self._device.device_params.get("electricity") + "%")
+        # noinspection DuplicatedCode
         if self._device.device_params.get("ip"):
             dev_info["IP"] = str(self._device.device_params.get("ip"))
         if self._device.device_params.get("rssi"):
@@ -255,7 +251,8 @@ class WyzeSwitch(SwitchEntity):
         if isinstance(switch, Camera):
             if self._old_event_ts > 0 and self._old_event_ts != switch.last_event_ts and switch.last_event is not None:
                 event: Event = switch.last_event
-                # The screenshot/video urls are not always in the same positions in the lists, so we have to loop through them
+                # The screenshot/video urls are not always in the same positions in the lists, so we have to loop
+                # through them
                 _screenshot_url = None
                 _video_url = None
                 _ai_tag_list = []
