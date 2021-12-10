@@ -8,7 +8,7 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.8"
 homeassistant = "^2021.11.5"
-wyzeapy = "0.5.2b3"
+wyzeapy = "0.5.2b4"
 
 [tool.poetry.dev-dependencies]
 
