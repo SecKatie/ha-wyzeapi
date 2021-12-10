@@ -1,23 +1,21 @@
-"""The Wyze Home Assistant Integration integration."""
+"""The Wyze Home Assistant Integration."""
 from __future__ import annotations
 
 import asyncio
-import configparser
 import logging
-import os
-from homeassistant import config_entries
 
+from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
-from .token_manager import TokenManager
 
 from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE
+from .token_manager import TokenManager
 
 PLATFORMS = [
     "light",
