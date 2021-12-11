@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <a href="https://www.buymeacoffee.com/joshmulliken"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=joshmulliken&button_colour=FFDD00&font_colour=000000&font_family=Poppins&outline_colour=000000&coffee_colour=ffffff"></a> 
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=JoshuaMulliken_ha-wyzeapi&metric=alert_status)](https://sonarcloud.io/dashboard?id=JoshuaMulliken_ha-wyzeapi) [![Visit our IRC channel](https://kiwiirc.com/buttons/irc.libera.chat/wyzeapi.png)](https://kiwiirc.com/client/irc.libera.chat/#wyzeapi) 
+[![Visit our IRC channel](https://kiwiirc.com/buttons/irc.libera.chat/wyzeapi.png)](https://kiwiirc.com/client/irc.libera.chat/#wyzeapi) 
 
 # Home Assistant - Wyze Integration
 
