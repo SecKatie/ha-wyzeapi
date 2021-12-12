@@ -22,7 +22,8 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from wyzeapy import Wyzeapy, BulbService
 from wyzeapy.services.bulb_service import Bulb
-from wyzeapy.types import DeviceTypes
+from wyzeapy.types import DeviceTypes, PropertyIDs
+from wyzeapy.utils import create_pid_pair
 
 from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
@@ -95,34 +96,36 @@ class WyzeLight(LightEntity):
 
     @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
+        options = []
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             _LOGGER.debug("Setting brightness")
-            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100, 1)
+            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100)
 
-            loop = asyncio.get_event_loop()
-            loop.create_task(self._bulb_service.set_brightness(self._bulb, int(brightness)))
+            options.append(create_pid_pair(PropertyIDs.BRIGHTNESS, str(brightness)))
+
+            _LOGGER.debug("Setting brightness to %s" % brightness)
+            _LOGGER.debug("Options: %s" % options)
 
             self._bulb.brightness = brightness
         if kwargs.get(ATTR_COLOR_TEMP) is not None:
             _LOGGER.debug("Setting color temp")
             color_temp = color_util.color_temperature_mired_to_kelvin(kwargs.get(ATTR_COLOR_TEMP))
 
-            loop = asyncio.get_event_loop()
-            loop.create_task(self._bulb_service.set_color_temp(self._bulb, int(color_temp)))
+            options.append(create_pid_pair(PropertyIDs.COLOR_TEMP, str(color_temp)))
 
             self._bulb.color_temp = color_temp
+            self._bulb.color = color_util.color_rgb_to_hex(*color_util.color_temperature_to_rgb(color_temp))
         if self._device_type is DeviceTypes.MESH_LIGHT and kwargs.get(ATTR_HS_COLOR) is not None:
             _LOGGER.debug("Setting color")
             color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
 
-            loop = asyncio.get_event_loop()
-            loop.create_task(self._bulb_service.set_color(self._bulb, color))
+            options.append(create_pid_pair(PropertyIDs.COLOR, str(color)))
 
             self._bulb.color = color
 
         _LOGGER.debug("Turning on light")
         loop = asyncio.get_event_loop()
-        loop.create_task(self._bulb_service.turn_on(self._bulb))
+        loop.create_task(self._bulb_service.turn_on(self._bulb, options))
 
         self._bulb.on = True
         self._just_updated = True
