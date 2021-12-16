@@ -159,7 +159,7 @@ class WyzeLight(LightEntity):
         return color_util.color_RGB_to_hs(*color_util.rgb_hex_to_rgb_list(self._bulb.color))
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,

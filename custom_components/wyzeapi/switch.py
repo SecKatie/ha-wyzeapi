@@ -113,7 +113,7 @@ class WyzeNotifications(SwitchEntity):
         return self._uid
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
@@ -204,7 +204,7 @@ class WyzeSwitch(SwitchEntity):
         return "{}-switch".format(self._device.mac)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,

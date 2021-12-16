@@ -125,7 +125,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         return self._hms_service.hms_id
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
