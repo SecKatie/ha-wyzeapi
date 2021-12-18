@@ -4,7 +4,7 @@
 
 [tool.poetry]
 name = "ha-wyzeapi"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Home Assistant integration for Wyze devices"
 authors = ["Joshua Mulliken <joshua@mulliken.net>"]
 license = "Apache-2.0"
