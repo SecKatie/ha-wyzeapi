@@ -116,7 +116,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         return self._lock.available
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,

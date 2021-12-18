@@ -112,7 +112,7 @@ class WyzeSensor(BinarySensorEntity):
         return "{}-motion".format(self._sensor.mac)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
@@ -179,7 +179,7 @@ class WyzeCameraMotion(BinarySensorEntity):
         return "{}-motion".format(self._camera.mac)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
