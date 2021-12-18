@@ -67,7 +67,8 @@ class WyzeLight(LightEntity):
         self._device_type = DeviceTypes(self._bulb.product_type)
         if self._device_type not in [
             DeviceTypes.LIGHT,
-            DeviceTypes.MESH_LIGHT
+            DeviceTypes.MESH_LIGHT,
+            DeviceTypes.LIGHTSTRIP
         ]:
             raise AttributeError("Device type not supported")
 
@@ -115,7 +116,11 @@ class WyzeLight(LightEntity):
 
             self._bulb.color_temp = color_temp
             self._bulb.color = color_util.color_rgb_to_hex(*color_util.color_temperature_to_rgb(color_temp))
-        if self._device_type is DeviceTypes.MESH_LIGHT and kwargs.get(ATTR_HS_COLOR) is not None:
+        if (
+            self._device_type is DeviceTypes.MESH_LIGHT
+            or self._device_type is DeviceTypes.LIGHTSTRIP
+            and kwargs.get(ATTR_HS_COLOR) is not None
+        ):
             _LOGGER.debug("Setting color")
             color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
 
@@ -210,7 +215,10 @@ class WyzeLight(LightEntity):
 
     @property
     def supported_features(self):
-        if self._bulb.type is DeviceTypes.MESH_LIGHT:
+        if (
+            self._bulb.type is DeviceTypes.MESH_LIGHT
+            or self._bulb.type is DeviceTypes.LIGHTSTRIP
+        ):
             return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
