@@ -117,9 +117,11 @@ class WyzeLight(LightEntity):
             self._bulb.color_temp = color_temp
             self._bulb.color = color_util.color_rgb_to_hex(*color_util.color_temperature_to_rgb(color_temp))
         if (
-            self._device_type is DeviceTypes.MESH_LIGHT
-            or self._device_type is DeviceTypes.LIGHTSTRIP
-            and kwargs.get(ATTR_HS_COLOR) is not None
+            kwargs.get(ATTR_HS_COLOR) is not None
+            and (
+                self._device_type is DeviceTypes.MESH_LIGHT
+                or self._device_type is DeviceTypes.LIGHTSTRIP
+            )
         ):
             _LOGGER.debug("Setting color")
             color = color_util.color_rgb_to_hex(*color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR)))
