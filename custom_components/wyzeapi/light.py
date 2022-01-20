@@ -173,7 +173,8 @@ class WyzeLight(LightEntity):
             "state": self.is_on,
             "available": self.available,
             "device model": self._bulb.product_model,
-            "mac": self.unique_id
+            "mac": self.unique_id,
+            "Cloud": self._bulb.cloud_fallback
         }
 
         # noinspection DuplicatedCode
