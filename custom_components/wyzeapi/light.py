@@ -173,9 +173,14 @@ class WyzeLight(LightEntity):
             "state": self.is_on,
             "available": self.available,
             "device model": self._bulb.product_model,
-            "mac": self.unique_id,
-            "Cloud": self._bulb.cloud_fallback
+            "mac": self.unique_id
         }
+
+        if (
+            self._device_type is DeviceTypes.MESH_LIGHT
+            or self._device_type is DeviceTypes.LIGHTSTRIP
+        ):
+            dev_info["Cloud"] = self._bulb.cloud_fallback
 
         # noinspection DuplicatedCode
         if self._bulb.device_params.get("ip"):
