@@ -502,7 +502,7 @@ voluptuous = "*"
 
 [[package]]
 name = "wyzeapy"
-version = "0.5.3"
+version = "0.5.6a0"
 description = "A library for interacting with Wyze devices"
 category = "main"
 optional = false
@@ -529,7 +529,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3773424bae4e790f40288dae5be822f393b785feb724176680b12bff34d39dd3"
+content-hash = "7dcb51e9e2de4d4a139077ed447effde8fa1159b91cd8bf6e363ddb48e2b215c"
 
 [metadata.files]
 aiodns = [
@@ -1191,8 +1191,8 @@ voluptuous-serialize = [
     {file = "voluptuous_serialize-2.4.0-py3-none-any.whl", hash = "sha256:44799b2b7fdba19279258f102ccd0e92ee2c10ff5eda5f393d4a71247b6dfa92"},
 ]
 wyzeapy = [
-    {file = "wyzeapy-0.5.3-py3-none-any.whl", hash = "sha256:13510062b87a930f6ce7467491948110939aa33738592c12c978726179da18ba"},
-    {file = "wyzeapy-0.5.3.tar.gz", hash = "sha256:fba4b2fe994416adff7cd99780a8a3d728ed25708aeb087fe4eb756c5a42a574"},
+    {file = "wyzeapy-0.5.6a0-py3-none-any.whl", hash = "sha256:8d3f484d98650490634061a2058027c811b4e69d927f264bb95baae51b767c48"},
+    {file = "wyzeapy-0.5.6a0.tar.gz", hash = "sha256:7ae017f98a249b0f09a61a0f5787ed76111d1c07586f57fac7ae41d02b01ba6c"},
 ]
 yarl = [
     {file = "yarl-1.6.3-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:0355a701b3998dcd832d0dc47cc5dedf3874f966ac7f870e0f3a6788d802d434"},
