@@ -132,6 +132,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     '%s is not in the mac_addresses list, removing the entry', mac
                 )
                 device_registry.async_remove_device(device.id)
+
+    config_entry.async_on_unload(config_entry.add_update_listener(options_update_listener))
+
     return True
 
 

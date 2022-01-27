@@ -25,7 +25,7 @@ from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes, PropertyIDs
 from wyzeapy.utils import create_pid_pair
 
-from .const import DOMAIN, CONF_CLIENT
+from .const import DOMAIN, CONF_CLIENT, BULB_LOCAL_CONTROL
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,8 +48,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     bulb_service = await client.bulb_service
-
-    lights = [WyzeLight(bulb_service, light) for light in await bulb_service.get_bulbs()]
+    local_control = config_entry.options.get(BULB_LOCAL_CONTROL, True)
+    lights = [WyzeLight(bulb_service, light, local_control) for light in await bulb_service.get_bulbs()]
 
     async_add_entities(lights, True)
 
@@ -61,10 +61,11 @@ class WyzeLight(LightEntity):
 
     _just_updated = False
 
-    def __init__(self, bulb_service: BulbService, bulb: Bulb):
+    def __init__(self, bulb_service: BulbService, bulb: Bulb, local_control):
         """Initialize a Wyze Bulb."""
         self._bulb = bulb
         self._device_type = DeviceTypes(self._bulb.product_type)
+        self._local_control = local_control
         if self._device_type not in [
             DeviceTypes.LIGHT,
             DeviceTypes.MESH_LIGHT,
@@ -132,7 +133,7 @@ class WyzeLight(LightEntity):
 
         _LOGGER.debug("Turning on light")
         loop = asyncio.get_event_loop()
-        loop.create_task(self._bulb_service.turn_on(self._bulb, options))
+        loop.create_task(self._bulb_service.turn_on(self._bulb, self._local_control, options))
 
         self._bulb.on = True
         self._just_updated = True
@@ -141,7 +142,7 @@ class WyzeLight(LightEntity):
     @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
         loop = asyncio.get_event_loop()
-        loop.create_task(self._bulb_service.turn_off(self._bulb))
+        loop.create_task(self._bulb_service.turn_off(self._bulb, self._local_control))
 
         self._bulb.on = False
         self._just_updated = True
@@ -175,6 +176,12 @@ class WyzeLight(LightEntity):
             "device model": self._bulb.product_model,
             "mac": self.unique_id
         }
+
+        if (
+            self._device_type is DeviceTypes.MESH_LIGHT
+            or self._device_type is DeviceTypes.LIGHTSTRIP
+        ):
+            dev_info["Cloud"] = self._bulb.cloud_fallback or not self._local_control
 
         # noinspection DuplicatedCode
         if self._bulb.device_params.get("ip"):
