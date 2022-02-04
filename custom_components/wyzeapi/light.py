@@ -255,4 +255,4 @@ class WyzeLight(LightEntity):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
-        self._bulb_service.unregister_updater()
+        self._bulb_service.unregister_updater(self._bulb)

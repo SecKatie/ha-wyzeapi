@@ -172,4 +172,4 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
-        self._lock_service.unregister_updater()
+        self._lock_service.unregister_updater(self._lock)
