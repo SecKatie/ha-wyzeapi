@@ -10,12 +10,12 @@ SPDX-License-Identifier: Apache-2.0
 
 | Version | Supported |
 |--|--------------------|
-| 0.1.0 | :white_check_mark: |
+| 0.1.X | :white_check_mark: |
 | all_other_versions | :x: |
 
 ## Reporting a Vulnerability
 
-Please send an email to `josh.mulliken (at) hey (dot) com` with the title `[vulnerability][ha-wyzeapi] <Title of Issue>`
+Please send an email to `joshua (at) mulliken (dot) com` with the title `[vulnerability][ha-wyzeapi] <Title of Issue>`
 .
 
 ### Email Contents
