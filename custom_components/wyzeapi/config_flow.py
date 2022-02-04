@@ -12,7 +12,11 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
-from .const import DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, BULB_LOCAL_CONTROL
+from .const import (
+    DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN,
+    REFRESH_TIME, BULB_LOCAL_CONTROL, 
+    DEFAULT_LOCAL_CONTROL
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,7 +144,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, True)
+                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)
                 ): bool
             }
         )
