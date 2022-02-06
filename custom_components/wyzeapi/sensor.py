@@ -80,11 +80,11 @@ class WyzeLockBatterySensor(SensorEntity):
 
     @callback
     def handle_lock_update(self, lock: Lock) -> None:
-      """
-      Helper function to
-        Enable lock when Keypad has battery and
-        Make it avaliable when either the lock battery or keypad battery exists
-      """
+        """
+            Helper function to
+            Enable lock when Keypad has battery and
+            Make it avaliable when either the lock battery or keypad battery exists
+        """
         self._lock = lock
         if self._lock.raw_dict.get("power") and self._battery_type == self.LOCK_BATTERY:
             self._available = True
