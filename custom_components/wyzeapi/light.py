@@ -176,6 +176,12 @@ class WyzeLight(LightEntity):
             "mac": self.unique_id
         }
 
+        if (
+            self._device_type is DeviceTypes.MESH_LIGHT
+            or self._device_type is DeviceTypes.LIGHTSTRIP
+        ):
+            dev_info["Cloud"] = self._bulb.cloud_fallback
+
         # noinspection DuplicatedCode
         if self._bulb.device_params.get("ip"):
             dev_info["IP"] = str(self._bulb.device_params.get("ip"))
@@ -249,4 +255,4 @@ class WyzeLight(LightEntity):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
-        self._bulb_service.unregister_updater()
+        self._bulb_service.unregister_updater(self._bulb)
