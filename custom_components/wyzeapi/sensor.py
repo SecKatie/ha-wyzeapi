@@ -68,17 +68,23 @@ class WyzeLockBatterySensor(SensorEntity):
     _attr_device_class = DEVICE_CLASS_BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
-    # make the battery unavailable by default, this will be toggled after the first upate from the battery entity that
-    # has battery data.
-    _available = False
+    
 
     def __init__(self, lock, battery_type):
         self._enabled = None
         self._lock = lock
         self._battery_type = battery_type
+        # make the battery unavailable by default, this will be toggled after the first update from the battery entity that
+        # has battery data.
+        self._available = False
 
     @callback
     def handle_lock_update(self, lock: Lock) -> None:
+        """
+            Helper function to
+            Enable lock when Keypad has battery and
+            Make it avaliable when either the lock battery or keypad battery exists
+        """
         self._lock = lock
         if self._lock.raw_dict.get("power") and self._battery_type == self.LOCK_BATTERY:
             self._available = True
