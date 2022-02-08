@@ -176,7 +176,7 @@ class WyzeLight(LightEntity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "state": self.is_on,
             "available": self.available,
-            "device model": self._bulb.product_model,
+            "device_model": self._bulb.product_model,
             "mac": self.unique_id
         }
 
@@ -192,7 +192,7 @@ class WyzeLight(LightEntity):
             self._device_type is DeviceTypes.MESH_LIGHT
             or self._device_type is DeviceTypes.LIGHTSTRIP
         ):
-            dev_info["Local Control"] = (
+            dev_info["local_control"] = (
                 self._local_control
                 and not self._bulb.cloud_fallback
             )
