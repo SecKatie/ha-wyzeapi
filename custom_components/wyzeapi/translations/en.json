@@ -36,6 +36,11 @@
             "unknown": "Unexpected error"
         },
         "step": {
+            "init":{
+                "data":{
+                  "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
+                }
+              },
             "user": {
                 "title": "Enter Wyze Login Credentials",
                 "data": {
