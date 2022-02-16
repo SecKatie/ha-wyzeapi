@@ -132,7 +132,7 @@ class WyzeLight(LightEntity):
 
             self._bulb.color = color
 
-        _LOGGER.debug("Turning on light using %s", self._local_control)
+        _LOGGER.debug("Turning on light")
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
         loop = asyncio.get_event_loop()
         loop.create_task(self._bulb_service.turn_on(self._bulb, self._local_control, options))
