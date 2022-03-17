@@ -15,17 +15,20 @@ from homeassistant.components.light import (
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR_TEMP,
     SUPPORT_COLOR,
+    COLOR_MODE_ONOFF,
     LightEntity
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
-from wyzeapy import Wyzeapy, BulbService
+from wyzeapy import Wyzeapy, BulbService, CameraService
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes, PropertyIDs
 from wyzeapy.utils import create_pid_pair
+from wyzeapy.services.camera_service import Camera
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import DOMAIN, CONF_CLIENT, BULB_LOCAL_CONTROL
+from .const import DOMAIN, CONF_CLIENT, BULB_LOCAL_CONTROL, CAMERA_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,11 +49,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
-
+    camera_service = await client.camera_service
+    
     bulb_service = await client.bulb_service
 
     lights = [WyzeLight(bulb_service, light, config_entry) for light in await bulb_service.get_bulbs()]
-
+    
+    
+    for camera in await camera_service.get_cameras():
+        # Only model that I know of that has a floodlight
+        if camera.product_model == "WYZE_CAKP2JFUS":
+            lights.append(WyzeCamerafloodlight(camera, camera_service))
+        
     async_add_entities(lights, True)
 
 
@@ -264,3 +274,94 @@ class WyzeLight(LightEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         self._bulb_service.unregister_updater(self._bulb)
+
+class WyzeCamerafloodlight(LightEntity):
+    """Representation of a Wyze Camera floodlight."""
+    _available: bool
+    _just_updated = False
+
+    def __init__(self, camera: Camera, camera_service: CameraService) -> None:
+        self._device = camera
+        self._service = camera_service
+        self._is_on = False
+        
+    @token_exception_handler
+    async def async_turn_on(self, **kwargs) -> None:
+        """Turn the floodlight on."""
+        await self._service.floodlight_on(self._device)
+
+        self._is_on = True
+        self._just_updated = True
+        self.async_schedule_update_ha_state()
+
+    @token_exception_handler
+    async def async_turn_off(self, **kwargs):
+        """Turn the floodlight off."""
+        await self._service.floodlight_off(self._device)
+
+        self._is_on = False
+        self._just_updated = True
+        self.async_schedule_update_ha_state()
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
+    def is_on(self):
+        """Return true if floodlight is on."""
+        return self._is_on
+
+    @property
+    def name(self) -> str:
+        return f"{self._device.nickname} floodlight"
+
+    @property
+    def unique_id(self):
+        return f"{self._device.mac}-floodlight"
+
+    @property
+    def extra_state_attributes(self):
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "state": self.is_on,
+            "available": self.available,
+            "device model": f"{self._device.product_model}.floodlight",
+            "mac": self.unique_id
+        }
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self._device.mac)
+            },
+            "name": self.name,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model
+        }
+
+    @callback
+    def handle_camera_update(self, camera: Camera) -> None:
+        """Update the camera object whenever there is an update"""
+        self._device = camera
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{CAMERA_UPDATED}-{self._device.mac}",
+                self.handle_camera_update,
+            )
+        )
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:track-light"
+    
+    @property
+    def color_mode(self):
+        return COLOR_MODE_ONOFF
+
