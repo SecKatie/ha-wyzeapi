@@ -11,11 +11,13 @@ import homeassistant.util.color as color_util
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
+    ATTR_EFFECT,
     ATTR_HS_COLOR,
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR_TEMP,
     SUPPORT_COLOR,
     COLOR_MODE_ONOFF,
+    SUPPORT_EFFECT,
     LightEntity
 )
 from homeassistant.config_entries import ConfigEntry
@@ -34,6 +36,7 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
+EFFECT_MUSIC_MODE = "music mode"
 
 
 @token_exception_handler
@@ -141,6 +144,12 @@ class WyzeLight(LightEntity):
             options.append(create_pid_pair(PropertyIDs.COLOR, str(color)))
 
             self._bulb.color = color
+        if (
+            kwargs.get(ATTR_EFFECT) == EFFECT_MUSIC_MODE
+            and self._device_type is DeviceTypes.LIGHTSTRIP
+        ):
+            _LOGGER.debug("Setting Music Mode")
+            options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(3)))
 
         _LOGGER.debug("Turning on light")
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
@@ -207,6 +216,13 @@ class WyzeLight(LightEntity):
                 and not self._bulb.cloud_fallback
             )
 
+            if self._bulb.color_mode == '1':
+                dev_info["mode"] = "Color"
+            elif self._bulb.color_mode == '2':
+                dev_info["mode"] = "White"
+            elif self._bulb.color_mode == '3':
+                dev_info["mode"] = "Music"
+
         return dev_info
 
     @property
@@ -234,17 +250,20 @@ class WyzeLight(LightEntity):
         return color_util.color_temperature_kelvin_to_mired(6500) + 1
 
     @property
+    def effect_list(self):
+        return [EFFECT_MUSIC_MODE]
+
+    @property
     def is_on(self):
         """Return true if light is on."""
         return self._bulb.on
 
     @property
     def supported_features(self):
-        if (
-            self._bulb.type is DeviceTypes.MESH_LIGHT
-            or self._bulb.type is DeviceTypes.LIGHTSTRIP
-        ):
+        if self._bulb.type is DeviceTypes.MESH_LIGHT:
             return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
+        elif self._bulb.type is DeviceTypes.LIGHTSTRIP:
+            return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR | SUPPORT_EFFECT
         return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
 
     @token_exception_handler
