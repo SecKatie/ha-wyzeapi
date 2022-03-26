@@ -13,7 +13,11 @@ from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
 
-from .const import DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE
+from .const import (
+    DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN,
+    REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE, BULB_LOCAL_CONTROL,
+    DEFAULT_LOCAL_CONTROL
+)
 from .token_manager import TokenManager
 
 PLATFORMS = [
@@ -22,7 +26,8 @@ PLATFORMS = [
     "lock",
     "climate",
     "alarm_control_panel",
-    "sensor"
+    "sensor",
+    "siren"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,6 +109,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
+
+    options_dict = {BULB_LOCAL_CONTROL: config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)}
+    hass.config_entries.async_update_entry(config_entry, options=options_dict)
 
     for platform in PLATFORMS:
         hass.create_task(

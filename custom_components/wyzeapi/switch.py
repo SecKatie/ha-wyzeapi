@@ -281,4 +281,4 @@ class WyzeSwitch(SwitchEntity):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
-        self._service.unregister_updater()
+        self._service.unregister_updater(self._device)

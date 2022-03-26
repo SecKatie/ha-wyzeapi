@@ -1,0 +1,54 @@
+{
+    "title": "Integração Wyze para Home Assistant",
+    "config": {
+        "abort": {
+            "already_configured": "O dispositivo já está configurado",
+            "reauth_successful": "Reautenticação bem-sucedida"
+        },
+        "error": {
+            "cannot_connect": "Falhou ao conectar",
+            "invalid_auth": "Autenticação inválida",
+            "unknown": "Erro inesperado"
+        },
+        "step": {
+            "user": {
+                "title": "Coloque as credenciais de login do Wyze",
+                "data": {
+                    "password": "Senha",
+                    "username": "Nome de usuário"
+                }
+            },
+            "2fa": {
+                "title": "Insira o código de verificação Wyze 2FA",
+                "data": {
+                    "verification_code": "Código de verificação 2FA"
+                }
+            }
+        }
+    },
+    "options": {
+        "abort": {
+            "already_configured": "O dispositivo já está configurado"
+        },
+        "error": {
+            "cannot_connect": "Falhou ao conectar",
+            "invalid_auth": "Autenticação inválida",
+            "unknown": "Erro inesperado"
+        },
+        "step": {
+            "user": {
+                "title": "Coloque as credenciais de login do Wyze",
+                "data": {
+                    "password": "Senha",
+                    "username": "Nome de usuário"
+                }
+            },
+            "2fa": {
+                "title": "Insira o código de verificação Wyze 2FA",
+                "data": {
+                    "verification_code": "Código de verificação 2FA"
+                }
+            }
+        }
+    }
+}

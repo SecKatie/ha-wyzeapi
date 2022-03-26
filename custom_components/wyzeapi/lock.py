@@ -129,11 +129,11 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
 
         # Add the lock battery value if it exists
         if self._lock.raw_dict.get("power"):
-            dev_info["lock battery"] = str(self._lock.raw_dict.get("power")) + "%"
+            dev_info["lock battery"] = str(self._lock.raw_dict.get("power"))
 
         # Add the keypad's battery value if it exists
         if self._lock.raw_dict.get("keypad", {}).get("power"):
-            dev_info["keypad battery"] = str(self._lock.raw_dict.get("keypad", {}).get("power")) + "%"
+            dev_info["keypad battery"] = str(self._lock.raw_dict.get("keypad", {}).get("power"))
 
         return dev_info
 
@@ -172,4 +172,4 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
-        self._lock_service.unregister_updater()
+        self._lock_service.unregister_updater(self._lock)
