@@ -329,7 +329,8 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def is_on(self):
         """Return true if floodlight is on."""
-        return self._is_on
+        """Get info from camera service"""
+        return self._device.floodlight
 
     @property
     def name(self) -> str:
@@ -383,4 +384,3 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def color_mode(self):
         return COLOR_MODE_ONOFF
-
