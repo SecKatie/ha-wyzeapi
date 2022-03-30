@@ -113,7 +113,7 @@ class WyzeCameraSiren(SirenEntity):
             "identifiers": {
                 (DOMAIN, self._device.mac)
             },
-            "name": self.name,
+            "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
             "model": self._device.product_model
         }
