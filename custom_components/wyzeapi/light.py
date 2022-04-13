@@ -127,12 +127,10 @@ class WyzeLight(LightEntity):
             _LOGGER.debug("Setting color temp")
             color_temp = color_util.color_temperature_mired_to_kelvin(kwargs.get(ATTR_COLOR_TEMP))
 
-            options.extend(
-                [
-                    create_pid_pair(PropertyIDs.COLOR_TEMP, str(color_temp)),
-                    create_pid_pair(PropertyIDs.COLOR_MODE, str(2))  # Put bulb in White Mode
-                ]
-            )
+            options.append(create_pid_pair(PropertyIDs.COLOR_TEMP, str(color_temp)))
+
+            if self._device_type in [DeviceTypes.MESH_LIGHT, DeviceTypes.LIGHTSTRIP]:
+                options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(2)))  # Put bulb in White Mode)
 
             self._bulb.color_temp = color_temp
             self._bulb.color = color_util.color_rgb_to_hex(*color_util.color_temperature_to_rgb(color_temp))
