@@ -89,6 +89,11 @@ class WyzeCameraSiren(SirenEntity):
         return self._device.siren
 
     @property
+    def available(self):
+        """Return the connection status of this switch"""
+        return self._device.available
+
+    @property
     def name(self) -> str:
         return f"{self._device.nickname} Siren"
 
