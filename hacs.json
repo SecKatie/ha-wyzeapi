@@ -1,10 +1,4 @@
 {
   "name": "Wyze",
-  "domains": [
-    "switch",
-    "light",
-    "lock",
-    "binary_sensor"
-  ],
   "iot_class": "cloud_poll"
 }
