@@ -127,7 +127,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if hms_id is not None:
         mac_addresses.add(hms_id)
 
-    device_registry = await dr.async_get_registry(hass)
+    device_registry = dr.async_get(hass)
     for device in dr.async_entries_for_config_entry(
             device_registry, config_entry.entry_id
     ):
