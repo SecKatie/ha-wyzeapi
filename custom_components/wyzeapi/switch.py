@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send, async_dispatcher_connect
-from wyzeapy import CameraService, SwitchService, Wyzeapy
+from wyzeapy import CameraService, SwitchService, WallSwitchService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device, Event
@@ -41,10 +41,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     _LOGGER.debug("""Creating new WyzeApi light component""")
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     switch_service = await client.switch_service
+    wall_switch_service = await client.wall_switch_service
     camera_service = await client.camera_service
 
     switches: List[SwitchEntity] = [WyzeSwitch(switch_service, switch) for switch in
                                     await switch_service.get_switches()]
+    
+    switches.extend(WyzeSwitch(wall_switch_service, switch) for switch in
+                    await wall_switch_service.get_switches())
 
     camera_switches = await camera_service.get_cameras()
     for switch in camera_switches:
