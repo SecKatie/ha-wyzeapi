@@ -106,11 +106,16 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def temperature_unit(self) -> str:
+        #if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
+        return TEMP_FAHRENHEIT
+        #return TEMP_CELSIUS
+
+    @property
+    def unit_of_measurement(self) -> str:
         if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
             return TEMP_FAHRENHEIT
-
-        return TEMP_CELSIUS
-
+        return TEMP_CELSIUS    
+        
     @property
     def hvac_mode(self) -> str:
         # pylint: disable=R1705
