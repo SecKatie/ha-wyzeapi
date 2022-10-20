@@ -10,8 +10,8 @@ authors = ["Joshua Mulliken <joshua@mulliken.net>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-homeassistant = "^2021.11.5"
+python = "^3.10"
+homeassistant = "^2022"
 wyzeapy = "0.5.13"
 
 [tool.poetry.dev-dependencies]
