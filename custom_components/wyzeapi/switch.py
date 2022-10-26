@@ -391,7 +391,7 @@ class WzyeLightstripSwitch(SwitchEntity):
     """Music Mode Switch for Wyze Light Strip."""
 
     def __init__(self, service: BulbService, device: Device) -> None:
-        """Initialize a Wyze Notification Switch."""
+        """Initialize a Wyze Music Mode Switch."""
         self._service = service
         self._device = Bulb(device.raw_dict)
 
