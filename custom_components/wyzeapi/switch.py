@@ -63,7 +63,6 @@ async def async_setup_entry(
     for switch in camera_switches:
         switches.extend([WyzeSwitch(camera_service, switch)])
         switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
-        switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
 
     switches.append(WyzeNotifications(client))
 
