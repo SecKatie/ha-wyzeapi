@@ -452,7 +452,7 @@ class WzyeLightstripSwitch(SwitchEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """Listen for camera updates."""
+        """Listen for light updates."""
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
