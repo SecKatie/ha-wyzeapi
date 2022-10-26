@@ -178,12 +178,15 @@ class WyzeLight(LightEntity):
                 if kwargs.get(ATTR_EFFECT) == EFFECT_SHADOW:
                     _LOGGER.debug("Setting Shadow Effect")
                     options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(1)))
+                    self._bulb.effects = "1"
                 elif kwargs.get(ATTR_EFFECT) == EFFECT_LEAP:
                     _LOGGER.debug("Setting Leap Effect")
                     options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(2)))
+                    self._bulb.effects = "2"
                 elif kwargs.get(ATTR_EFFECT) == EFFECT_FLICKER:
                     _LOGGER.debug("Setting Flicker Effect")
                     options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(3)))
+                    self._bulb.effects = "3"
 
         _LOGGER.debug("Turning on light")
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
@@ -241,6 +244,10 @@ class WyzeLight(LightEntity):
         if self._bulb.device_params.get("ssid"):
             dev_info["SSID"] = str(self._bulb.device_params.get("ssid"))
         dev_info["Sun Match"] = self._bulb.sun_match
+        dev_info["local_control"] = (
+            self._local_control
+            and not self._bulb.cloud_fallback
+        )
 
         if (
             self._device_type is DeviceTypes.LIGHTSTRIP
@@ -257,10 +264,6 @@ class WyzeLight(LightEntity):
             self._device_type is DeviceTypes.MESH_LIGHT
             or self._device_type is DeviceTypes.LIGHTSTRIP
         ):
-            dev_info["local_control"] = (
-                self._local_control
-                and not self._bulb.cloud_fallback
-            )
 
             if self._bulb.color_mode == '1':
                 dev_info["mode"] = "Color"
