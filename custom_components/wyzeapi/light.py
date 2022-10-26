@@ -28,16 +28,19 @@ from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes, PropertyIDs
 from wyzeapy.utils import create_pid_pair
 from wyzeapy.services.camera_service import Camera
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 
-from .const import DOMAIN, CONF_CLIENT, BULB_LOCAL_CONTROL, CAMERA_UPDATED
+from .const import DOMAIN, CONF_CLIENT, BULB_LOCAL_CONTROL, CAMERA_UPDATED, LIGHT_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-EFFECT_MUSIC_MODE = "music mode"
+EFFECT_MODE = "effects mode"
 EFFECT_SUN_MATCH = "sun match"
+EFFECT_SHADOW = "shadow"
+EFFECT_LEAP = "leap"
+EFFECT_FLICKER = "flicker"
 
 
 @token_exception_handler
@@ -164,18 +167,23 @@ class WyzeLight(LightEntity):
             self._bulb.color = color
             self._bulb.color_mode = '1'
 
-        if (
-            kwargs.get(ATTR_EFFECT) == EFFECT_MUSIC_MODE
-            and self._device_type is DeviceTypes.LIGHTSTRIP
-        ):
-            _LOGGER.debug("Setting Music Mode")
-            options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(3)))
-            self._bulb.color_mode = '3'
-
-        if kwargs.get(ATTR_EFFECT) == EFFECT_SUN_MATCH:
-            _LOGGER.debug("Setting Sun Match")
-            options.append(create_pid_pair(PropertyIDs.SUN_MATCH, str(1)))
-            self._bulb.sun_match = True
+        if kwargs.get(ATTR_EFFECT) is not None:
+            if kwargs.get(ATTR_EFFECT) == EFFECT_SUN_MATCH:
+                _LOGGER.debug("Setting Sun Match")
+                options.append(create_pid_pair(PropertyIDs.SUN_MATCH, str(1)))
+                self._bulb.sun_match = True
+            else:
+                options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(3)))
+                self._bulb.color_mode = "3"
+                if kwargs.get(ATTR_EFFECT) == EFFECT_SHADOW:
+                    _LOGGER.debug("Setting Shadow Effect")
+                    options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(1)))
+                elif kwargs.get(ATTR_EFFECT) == EFFECT_LEAP:
+                    _LOGGER.debug("Setting Leap Effect")
+                    options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(2)))
+                elif kwargs.get(ATTR_EFFECT) == EFFECT_FLICKER:
+                    _LOGGER.debug("Setting Flicker Effect")
+                    options.append(create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(3)))
 
         _LOGGER.debug("Turning on light")
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
@@ -235,6 +243,17 @@ class WyzeLight(LightEntity):
         dev_info["Sun Match"] = self._bulb.sun_match
 
         if (
+            self._device_type is DeviceTypes.LIGHTSTRIP
+            and self._bulb.color_mode == "3"
+        ):
+            if self._bulb.effects == "1":
+                dev_info["effect_mode"] = "Shadow"
+            elif self._bulb.effects == "2":
+                dev_info["effect_mode"] = "Leap"
+            elif self._bulb.effects == "3":
+                dev_info["effect_mode"] = "Flicker"
+
+        if (
             self._device_type is DeviceTypes.MESH_LIGHT
             or self._device_type is DeviceTypes.LIGHTSTRIP
         ):
@@ -248,7 +267,7 @@ class WyzeLight(LightEntity):
             elif self._bulb.color_mode == '2':
                 dev_info["mode"] = "White"
             elif self._bulb.color_mode == '3':
-                dev_info["mode"] = "Music"
+                dev_info["mode"] = "Effect"
 
         return dev_info
 
@@ -279,7 +298,7 @@ class WyzeLight(LightEntity):
     @property
     def effect_list(self):
         if self._device_type is DeviceTypes.LIGHTSTRIP:
-            return [EFFECT_MUSIC_MODE, EFFECT_SUN_MATCH]
+            return [EFFECT_SHADOW, EFFECT_LEAP, EFFECT_FLICKER, EFFECT_SUN_MATCH]
         else:
             return [EFFECT_SUN_MATCH]
 
@@ -311,6 +330,11 @@ class WyzeLight(LightEntity):
         """Update the bulb's state."""
         self._bulb = bulb
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
+        async_dispatcher_send(
+            self.hass,
+            f"{LIGHT_UPDATED}-{self._bulb.mac}",
+            bulb
+        )
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
