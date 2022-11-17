@@ -41,8 +41,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     camera_service = await client.camera_service
     sirens = []
     for camera in await camera_service.get_cameras():
-        # The Campan is the only model that I know of that doesn't have a siren
-        if camera.product_model != "WYZECP1_JEF":
+        # The Campan and V2 cameras don't have a siren
+        if camera.product_model not in ["WYZECP1_JEF", "WYZEC1-JZ"]:
             sirens.append(WyzeCameraSiren(camera, camera_service))
 
     async_add_entities(sirens, True)
