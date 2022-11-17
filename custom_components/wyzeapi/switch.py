@@ -63,6 +63,7 @@ async def async_setup_entry(
     for switch in camera_switches:
         switches.extend([WyzeSwitch(camera_service, switch)])
         switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
+        switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
 
     switches.append(WyzeNotifications(client))
 
@@ -369,6 +370,82 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
     def unique_id(self):
         """Add a unique ID to the switch."""
         return "{}-notification_switch".format(self._device.mac)
+
+    @callback
+    def handle_camera_update(self, camera: Camera) -> None:
+        """Update the switch whenever there is an update."""
+        self._device = camera
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Listen for camera updates."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{CAMERA_UPDATED}-{self._device.mac}",
+                self.handle_camera_update,
+            )
+        )
+
+
+class WyzeCameraMotionSwitch(SwitchEntity):
+    """Representation of a Wyze Camera Motion Detection Switch."""
+
+    _available: bool
+
+    def __init__(self, service: CameraService, device: Device) -> None:
+        """Initialize a Wyze Notification Switch."""
+        self._service = service
+        self._device = Camera(device.raw_dict)
+
+    @property
+    def device_info(self):
+        """Return the device info."""
+        return {
+            "identifiers": {(DOMAIN, self._device.mac)},
+            "name": self._device.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model,
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        """No polling needed."""
+        return False
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the switch."""
+        await self._service.turn_on_motion_detection(self._device)
+
+        self._device.motion = True
+        self.async_schedule_update_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the switch."""
+        await self._service.turn_off_motion_detection(self._device)
+
+        self._device.motion = False
+        self.async_schedule_update_ha_state()
+
+    @property
+    def name(self):
+        """Return the display name of this switch."""
+        return f"{self._device.nickname} Motion Detection"
+
+    @property
+    def available(self):
+        """Return the connection status of this switch."""
+        return self._device.available
+
+    @property
+    def is_on(self):
+        """Return true if switch is on."""
+        return self._device.motion
+
+    @property
+    def unique_id(self):
+        """Add a unique ID to the switch."""
+        return "{}-motion_switch".format(self._device.mac)
 
     @callback
     def handle_camera_update(self, camera: Camera) -> None:
