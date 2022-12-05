@@ -117,6 +117,7 @@ class WyzeLight(LightEntity):
     @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
         options = []
+        self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
 
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
             brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100)
@@ -173,6 +174,8 @@ class WyzeLight(LightEntity):
                 options.append(create_pid_pair(PropertyIDs.SUN_MATCH, str(1)))
                 self._bulb.sun_match = True
             else:
+                if self._bulb.type is DeviceTypes.MESH_LIGHT: # Handle mesh light effects
+                    self._local_control = False
                 options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(3)))
                 self._bulb.color_mode = "3"
                 if kwargs.get(ATTR_EFFECT) == EFFECT_SHADOW:
@@ -189,7 +192,6 @@ class WyzeLight(LightEntity):
                     self._bulb.effects = "3"
 
         _LOGGER.debug("Turning on light")
-        self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
         loop = asyncio.get_event_loop()
         loop.create_task(self._bulb_service.turn_on(self._bulb, self._local_control, options))
 
@@ -302,8 +304,7 @@ class WyzeLight(LightEntity):
     def effect_list(self):
         if self._device_type is DeviceTypes.LIGHTSTRIP:
             return [EFFECT_SHADOW, EFFECT_LEAP, EFFECT_FLICKER, EFFECT_SUN_MATCH]
-        else:
-            return [EFFECT_SUN_MATCH]
+        return [EFFECT_SUN_MATCH]
 
     @property
     def is_on(self):
