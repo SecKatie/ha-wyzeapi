@@ -9,9 +9,9 @@ from wyzeapy import Wyzeapy
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.lock_service import Lock
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION, DEVICE_CLASS_BATTERY, PERCENTAGE
+from homeassistant.const import ATTR_ATTRIBUTION, PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -65,7 +65,7 @@ class WyzeLockBatterySensor(SensorEntity):
     LOCK_BATTERY = "lock_battery"
     KEYPAD_BATTERY = "keypad_battery"
 
-    _attr_device_class = DEVICE_CLASS_BATTERY
+    _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
     
@@ -163,7 +163,7 @@ class WyzeLockBatterySensor(SensorEntity):
 
 class WyzeCameraBatterySensor(SensorEntity):
     """Representation of a Wyze Camera Battery"""
-    _attr_device_class = DEVICE_CLASS_BATTERY
+    _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, camera):
