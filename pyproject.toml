@@ -12,7 +12,7 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.10"
 homeassistant = "^2022"
-wyzeapy = "0.5.14"
+wyzeapy = "0.5.15"
 
 [tool.poetry.dev-dependencies]
 
