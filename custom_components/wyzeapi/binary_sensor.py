@@ -8,8 +8,7 @@ from typing import Callable, List, Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
-    DEVICE_CLASS_MOTION,
-    DEVICE_CLASS_DOOR
+    BinarySensorDeviceClass
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -126,9 +125,9 @@ class WyzeSensor(BinarySensorEntity):
     def device_class(self):
         # pylint: disable=R1705
         if self._sensor.type is DeviceTypes.MOTION_SENSOR:
-            return DEVICE_CLASS_MOTION
+            return BinarySensorDeviceClass.MOTION
         elif self._sensor.type is DeviceTypes.CONTACT_SENSOR:
-            return DEVICE_CLASS_DOOR
+            return BinarySensorDeviceClass.DOOR
         else:
             raise RuntimeError(
                 f"The device type {self._sensor.type} is not supported by this class")
@@ -191,7 +190,7 @@ class WyzeCameraMotion(BinarySensorEntity):
 
     @property
     def device_class(self):
-        return DEVICE_CLASS_MOTION
+        return BinarySensorDeviceClass.MOTION
 
     async def async_added_to_hass(self) -> None:
         await self._camera_service.register_for_updates(self._camera, self.process_update)
