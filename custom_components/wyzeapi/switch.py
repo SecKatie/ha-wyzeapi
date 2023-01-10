@@ -24,7 +24,7 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-
+MOTION_SWITCH_UNSUPPORTED = ["GW_BE1"]
 
 # noinspection DuplicatedCode
 @token_exception_handler
@@ -63,7 +63,8 @@ async def async_setup_entry(
     for switch in camera_switches:
         switches.extend([WyzeSwitch(camera_service, switch)])
         switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
-        switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
+        if switch.product_model not in MOTION_SWITCH_UNSUPPORTED:
+            switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
 
     switches.append(WyzeNotifications(client))
 
