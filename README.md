@@ -59,9 +59,8 @@ After you have done that if you feel like my work has been valuable to you I wel
 
 ## Contributing
 
-* To help with testing please join our Matrix https://matrix.to/#/%23wyzeapi-testers:one.ems.host
 * For development contributions please join our IRC channel #wyzeapi on Libre.Chat
-* For instructions on intercepting data from the Wyze app see: https://mulliken.net/blog/intercepting-ssl-pinned-connections-on-android
+* For instructions on intercepting data from the Wyze app see: https://mulliken.net/p/intercepting-pinned-tls-connections-on-android/
 
 ## Support
 
