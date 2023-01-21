@@ -7,6 +7,7 @@ from typing import List, Optional, Callable, Any
 from homeassistant.components.climate import (
     ClimateEntity,
     SUPPORT_TARGET_TEMPERATURE_RANGE,
+    SUPPORT_PRESET_MODE,
     SUPPORT_FAN_MODE
 )
 from homeassistant.components.climate.const import (
@@ -142,11 +143,17 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def preset_mode(self) -> Optional[str]:
-        raise NotImplementedError
+        # pylint: disable=R1705
+        if self._thermostat.preset == Preset.HOME:
+            return PRESET_HOME
+        elif self._thermostat.preset == Preset.AWAY:
+            return PRESET_AWAY
+        else:
+            return PRESET_SLEEP
 
     @property
     def preset_modes(self) -> Optional[List[str]]:
-        raise NotImplementedError
+        return [PRESET_HOME, PRESET_AWAY, PRESET_SLEEP]
 
     @property
     def is_aux_heat(self) -> Optional[bool]:
@@ -257,7 +264,7 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def supported_features(self) -> int:
-        return SUPPORT_TARGET_TEMPERATURE_RANGE | SUPPORT_FAN_MODE
+        return SUPPORT_TARGET_TEMPERATURE_RANGE | SUPPORT_FAN_MODE | SUPPORT_PRESET_MODE
 
     @property
     def device_info(self) -> dict:
