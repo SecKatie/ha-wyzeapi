@@ -143,13 +143,15 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def preset_mode(self) -> Optional[str]:
-        # pylint: disable=R1705
-        if self._thermostat.preset == Preset.HOME:
-            return PRESET_HOME
-        elif self._thermostat.preset == Preset.AWAY:
-            return PRESET_AWAY
-        else:
-            return PRESET_SLEEP
+        match self._thermostat.preset:
+            case Preset.HOME:
+                return PRESET_HOME
+            case Preset.AWAY:
+                return PRESET_AWAY
+            case Preset.SLEEP:
+                return PRESET_SLEEP
+            case _:
+                raise NotImplementedError
 
     @property
     def preset_modes(self) -> Optional[List[str]]:
