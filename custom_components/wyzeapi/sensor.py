@@ -20,8 +20,7 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-CAMERAS_WITH_BATTERIES = ["WVOD1"]
-
+CAMERAS_WITH_BATTERIES = ["WVOD1", "WVOD2", "WVDPC"]
 
 @token_exception_handler
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
@@ -68,7 +67,7 @@ class WyzeLockBatterySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
-    
+
 
     def __init__(self, lock, battery_type):
         self._enabled = None
