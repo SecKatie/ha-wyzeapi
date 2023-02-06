@@ -1,5 +1,4 @@
 {
-  "domain": "wyzeapi",
   "version": "0.1.18b1",
   "name": "Wyze",
   "config_flow": true,
