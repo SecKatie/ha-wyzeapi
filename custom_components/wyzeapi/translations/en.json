@@ -15,7 +15,8 @@
                 "title": "Enter Wyze Login Credentials",
                 "data": {
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "api_key": "API Key"  // Add this line for the new API key field
                 }
             },
             "2fa": {
@@ -36,16 +37,17 @@
             "unknown": "Unexpected error"
         },
         "step": {
-            "init":{
-                "data":{
-                  "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
+            "init": {
+                "data": {
+                    "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
                 }
-              },
+            },
             "user": {
                 "title": "Enter Wyze Login Credentials",
                 "data": {
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "api_key": "API Key"  // Add this line for the new API key field
                 }
             },
             "2fa": {

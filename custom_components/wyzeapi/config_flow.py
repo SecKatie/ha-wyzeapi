@@ -14,13 +14,18 @@ from wyzeapy import Wyzeapy, exceptions
 
 from .const import (
     DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN,
-    REFRESH_TIME, BULB_LOCAL_CONTROL, 
-    DEFAULT_LOCAL_CONTROL
+    REFRESH_TIME, BULB_LOCAL_CONTROL,
+    DEFAULT_LOCAL_CONTROL, CONF_API_KEY
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str})
+STEP_USER_DATA_SCHEMA = vol.Schema({
+    vol.Required(CONF_USERNAME): str,
+    vol.Required(CONF_PASSWORD): str,
+    vol.Required(CONF_API_KEY): str,
+})
+
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
 
 
@@ -54,7 +59,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
 
-        # noinspection PyBroadException
         try:
             await self.client.login(
                 user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
@@ -66,6 +70,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except exceptions.TwoFactorAuthenticationEnabled:
             self.user_params[CONF_USERNAME] = user_input[CONF_USERNAME]
             self.user_params[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+            self.user_params[CONF_API_KEY] = user_input[CONF_API_KEY]
             return await self.async_step_2fa()
         else:
             if self.hass.config_entries.async_entries(DOMAIN):
@@ -87,8 +92,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         try:
-            token = await self.client.login_with_2fa(
-                user_input[CONF_ACCESS_TOKEN],
+            token = await self.client.login_with_api_key(
+                user_input[CONF_API_KEY],
             )
         except exceptions.LoginError:
             errors["base"] = "invalid_auth"

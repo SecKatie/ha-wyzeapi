@@ -2,7 +2,7 @@ import logging
 from inspect import iscoroutinefunction
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_API_KEY
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from wyzeapy.exceptions import AccessTokenError, LoginError
@@ -11,7 +11,6 @@ from wyzeapy.wyze_auth_lib import Token
 from .const import DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class TokenManager:
     hass: HomeAssistant = None
@@ -31,6 +30,7 @@ class TokenManager:
                     data={
                         CONF_USERNAME: entry.data.get(CONF_USERNAME),
                         CONF_PASSWORD: entry.data.get(CONF_PASSWORD),
+                        CONF_API_KEY: entry.data.get(CONF_API_KEY),
                         ACCESS_TOKEN: token.access_token,
                         REFRESH_TOKEN: token.refresh_token,
                         REFRESH_TIME: str(token.refresh_time),
