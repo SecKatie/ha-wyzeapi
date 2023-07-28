@@ -6,7 +6,8 @@ CONF_CLIENT = "wyzeapi_client"
 ACCESS_TOKEN = "access_token"
 REFRESH_TOKEN = "refresh_token"
 REFRESH_TIME = "refresh_time"
-CONF_API_KEY = "api_key"  # Add this constant for the API key configuration option
+KEY_ID = "key_id"
+API_KEY = "api_key"
 
 WYZE_NOTIFICATION_TOGGLE = f"{DOMAIN}.wyze.notification.toggle"
 

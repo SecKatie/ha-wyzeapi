@@ -16,7 +16,7 @@ from wyzeapy.wyze_auth_lib import Token
 from .const import (
     DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN,
     REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE, BULB_LOCAL_CONTROL,
-    DEFAULT_LOCAL_CONTROL, CONF_API_KEY
+    DEFAULT_LOCAL_CONTROL, KEY_ID, API_KEY
 )
 from .token_manager import TokenManager
 
@@ -30,12 +30,6 @@ PLATFORMS = [
     "siren"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
-
-STEP_USER_DATA_SCHEMA = vol.Schema({
-    vol.Required(CONF_USERNAME): str,
-    vol.Required(CONF_PASSWORD): str,
-    vol.Required(CONF_API_KEY): str,
-})
 
 
 # noinspection PyUnusedLocal
@@ -76,7 +70,11 @@ async def async_setup(
                 data={
                     CONF_USERNAME: domainconfig[CONF_USERNAME],
                     CONF_PASSWORD: domainconfig[CONF_PASSWORD],
-                    CONF_API_KEY: domainconfig[CONF_API_KEY],
+                    ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
+                    REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
+                    REFRESH_TIME: domainconfig[REFRESH_TIME],
+                    KEY_ID: domainconfig[KEY_ID],
+                    API_KEY: domainconfig[API_KEY]
                 },
             )
         )
@@ -89,29 +87,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.data.setdefault(DOMAIN, {})
 
+    key_id = config_entry.data.get(KEY_ID)
+    api_key = config_entry.data.get(API_KEY)
+
     client = await Wyzeapy.create()
-    api_key = config_entry.data.get(CONF_API_KEY)
-
-    # The following block of code handles the authentication process using the API key
-    access_token = None
-    refresh_token = None
-    refresh_time = None
-
-    try:
-        access_token, refresh_token, refresh_time = await client.login_with_api_key(api_key)
-    except exceptions.LoginError as e:
-        _LOGGER.error("Wyzeapi: Could not login. Please check your API key and try again.")
-        _LOGGER.error(e)
-        raise ConfigEntryAuthFailed("Unable to login. Please check your API key.") from None
-
+    token = None
+    if config_entry.data.get(ACCESS_TOKEN):
+        token = Token(
+            config_entry.data.get(ACCESS_TOKEN),
+            config_entry.data.get(REFRESH_TOKEN),
+            float(config_entry.data.get(REFRESH_TIME)),
+        )
     a_tkn_manager = TokenManager(hass, config_entry)
     client.register_for_token_callback(a_tkn_manager.token_callback)
-
-    token = Token(access_token, refresh_token, refresh_time)
+    # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get
+    # a login with the token
     try:
         await client.login(
             config_entry.data.get(CONF_USERNAME),
             config_entry.data.get(CONF_PASSWORD),
+            key_id,
+            api_key,
             token,
         )
     except Exception as e:
@@ -119,10 +115,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         _LOGGER.error(e)
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
-    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
+    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client, "key_id": KEY_ID, "api_key": API_KEY}
 
     options_dict = {BULB_LOCAL_CONTROL: config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)}
     hass.config_entries.async_update_entry(config_entry, options=options_dict)
+
+    for platform in PLATFORMS:
+        hass.create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, platform)
+        )
 
     mac_addresses = await client.unique_device_ids
 
