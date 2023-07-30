@@ -44,7 +44,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.client = await Wyzeapy.create()
 
     async def async_step_user(
-        self, user_input: Dict[str, Any] = None
+            self, user_input: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """Handle the initial step."""
         await self.get_client()
