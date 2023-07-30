@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
-from wyzeapy import Wyzeapy, exceptions
+from wyzeapy import Wyzeapy
 from wyzeapy.wyze_auth_lib import Token
 
 from .const import (
