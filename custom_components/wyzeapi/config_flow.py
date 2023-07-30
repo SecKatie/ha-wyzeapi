@@ -151,7 +151,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
+                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)
                 ): bool
             }
         )
