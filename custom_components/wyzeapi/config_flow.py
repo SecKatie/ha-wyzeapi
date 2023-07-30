@@ -13,23 +13,16 @@ from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
 from .const import (
-    DOMAIN,
-    ACCESS_TOKEN,
-    REFRESH_TOKEN,
-    REFRESH_TIME,
-    BULB_LOCAL_CONTROL,
+    DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, 
+    REFRESH_TIME, BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
-    KEY_ID,
-    API_KEY
+    KEY_ID, API_KEY
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {CONF_USERNAME: str, CONF_PASSWORD: str, KEY_ID: str, API_KEY: str}
-)
+STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str, KEY_ID: str, API_KEY: str})
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
-
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wyze Home Assistant Integration."""
@@ -112,9 +105,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.user_params[REFRESH_TIME] = token.refresh_time
             if self.hass.config_entries.async_entries(DOMAIN):
                 for entry in self.hass.config_entries.async_entries(DOMAIN):
-                    self.hass.config_entries.async_update_entry(
-                        entry, data=self.user_params
-                    )
+                    self.hass.config_entries.async_update_entry(entry, data=self.user_params)
                     await self.hass.config_entries.async_reload(entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
             else:
@@ -160,9 +151,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(
-                        BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
-                    ),
+                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
                 ): bool
             }
         )
