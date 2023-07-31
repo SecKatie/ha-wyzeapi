@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: ha-wyzeapi
-Upstream-Contact: Joshua Mulliken <joshua@mulliken.net>
+Upstream-Contact: Katie Mulliken <katie@mulliken.net>
 Source: https://github.com/JoshuaMulliken/ha-wyzeapi
 
 # Sample paragraph, commented out:
@@ -10,9 +10,9 @@ Source: https://github.com/JoshuaMulliken/ha-wyzeapi
 # License: ...
 
 Files: custom_components/*
-Copyright: 2021 Joshua Mulliken <joshua@mulliken.net>
+Copyright: 2021 Katie Mulliken <katie@mulliken.net>
 License: Apache-2.0
 
 Files: .github/*
-Copyright: 2021 Joshua Mulliken <joshua@mulliken.net>
+Copyright: 2021 Katie Mulliken <katie@mulliken.net>
 License: Apache-2.0
