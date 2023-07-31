@@ -13,16 +13,16 @@ from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
 from .const import (
-    DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN,
-    REFRESH_TIME, BULB_LOCAL_CONTROL, 
-    DEFAULT_LOCAL_CONTROL
+    DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, 
+    REFRESH_TIME, BULB_LOCAL_CONTROL,
+    DEFAULT_LOCAL_CONTROL,
+    KEY_ID, API_KEY
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str})
+STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str, KEY_ID: str, API_KEY: str})
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
-
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wyze Home Assistant Integration."""
@@ -36,6 +36,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize."""
         self.email = None
         self.password = None
+        self.key_id = None
+        self.api_key = None
 
     async def get_client(self):
         if not self.client:
@@ -57,7 +59,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # noinspection PyBroadException
         try:
             await self.client.login(
-                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+                user_input[CONF_USERNAME],
+                user_input[CONF_PASSWORD],
+                user_input[KEY_ID],
+                user_input[API_KEY],
             )
         except CannotConnect:
             errors["base"] = "cannot_connect"
@@ -66,6 +71,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except exceptions.TwoFactorAuthenticationEnabled:
             self.user_params[CONF_USERNAME] = user_input[CONF_USERNAME]
             self.user_params[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+            self.user_params[KEY_ID] = user_input[KEY_ID]
+            self.user_params[API_KEY] = user_input[API_KEY]
             return await self.async_step_2fa()
         else:
             if self.hass.config_entries.async_entries(DOMAIN):

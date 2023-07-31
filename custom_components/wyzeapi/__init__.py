@@ -16,7 +16,7 @@ from wyzeapy.wyze_auth_lib import Token
 from .const import (
     DOMAIN, CONF_CLIENT, ACCESS_TOKEN, REFRESH_TOKEN,
     REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE, BULB_LOCAL_CONTROL,
-    DEFAULT_LOCAL_CONTROL
+    DEFAULT_LOCAL_CONTROL, KEY_ID, API_KEY
 )
 from .token_manager import TokenManager
 
@@ -73,6 +73,8 @@ async def async_setup(
                     ACCESS_TOKEN: domainconfig[ACCESS_TOKEN],
                     REFRESH_TOKEN: domainconfig[REFRESH_TOKEN],
                     REFRESH_TIME: domainconfig[REFRESH_TIME],
+                    KEY_ID: domainconfig[KEY_ID],
+                    API_KEY: domainconfig[API_KEY]
                 },
             )
         )
@@ -84,6 +86,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up Wyze Home Assistant Integration from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
+
+    key_id = config_entry.data.get(KEY_ID)
+    api_key = config_entry.data.get(API_KEY)
 
     client = await Wyzeapy.create()
     token = None
@@ -101,6 +106,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         await client.login(
             config_entry.data.get(CONF_USERNAME),
             config_entry.data.get(CONF_PASSWORD),
+            key_id,
+            api_key,
             token,
         )
     except Exception as e:
@@ -108,7 +115,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         _LOGGER.error(e)
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
-    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client}
+    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client, "key_id": KEY_ID, "api_key": API_KEY}
 
     options_dict = {BULB_LOCAL_CONTROL: config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)}
     hass.config_entries.async_update_entry(config_entry, options=options_dict)

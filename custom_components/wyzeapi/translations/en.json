@@ -14,8 +14,10 @@
             "user": {
                 "title": "Enter Wyze Login Credentials",
                 "data": {
+                    "username": "Email",
                     "password": "Password",
-                    "username": "Username"
+                    "key_id": "Keyid",
+                    "api_key": "Apikey"
                 }
             },
             "2fa": {
@@ -27,25 +29,19 @@
         }
     },
     "options": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
         "step": {
-            "init":{
-                "data":{
-                  "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
+            "init": {
+                "data": {
+                    "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
                 }
-              },
+            },
             "user": {
                 "title": "Enter Wyze Login Credentials",
                 "data": {
+                    "username": "Email",
                     "password": "Password",
-                    "username": "Username"
+                    "key_id": "Keyid",
+                    "api_key": "Apikey"
                 }
             },
             "2fa": {
@@ -54,6 +50,15 @@
                     "verification_code": "2FA Verification Code"
                 }
             }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "abort": {
+            "already_configured": "Device is already configured",
+            "reauth_successful": "Reauthentication Successful"
         }
     }
 }

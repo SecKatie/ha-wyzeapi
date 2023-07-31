@@ -6,7 +6,9 @@
         "title": "[%key:common::config_flow::data::title%]",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "[%key:common::config_flow::data::password%]",
+          "keyid": "[%key:common::config_flow::data::key_id%]",
+          "apikey": "[%key:common::config_flow::data::api_key%]"
         }
       },
       "2fa": {
@@ -36,7 +38,9 @@
         "title": "[%key:common::config_flow::data::title%]",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "[%key:common::config_flow::data::password%]",
+          "keyid": "[%key:common::config_flow::data::key_id%]",
+          "apikey": "[%key:common::config_flow::data::api_key%]"
         }
       },
       "2fa": {
