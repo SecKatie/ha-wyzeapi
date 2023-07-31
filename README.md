@@ -38,7 +38,7 @@ After you have done that if you feel like my work has been valuable to you I wel
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
-2. Add [https://github.com/JoshuaMulliken/ha-wyzeapi](https://github.com/JoshuaMulliken/ha-wyzeapi) as a custom
+2. Add [https://github.com/SecKatie/ha-wyzeapi](https://github.com/SecKatie/ha-wyzeapi) as a custom
    repository as Type: Integration
 3. Click install under "Wyze Bulb and Switch Api Integration" in the Integration tab
 4. Restart HA
@@ -46,8 +46,9 @@ After you have done that if you feel like my work has been valuable to you I wel
 6. Click _ADD INTEGRATION_
 7. Search for _Wyze Home Assistant Integration_
    **NOTE:** If _Wyze Home Assistant Integration_ does not appear, hard refresh the browser (ctrl+F5) and search again
-8. Put the email for wyze in the first box and your password in the second
-9. Click _SUBMIT_ and profit!
+9. Enter your email, password, keyid & apikey when prompted.
+   **NOTE:** If you do not know how to generate your keyid & apikey, please see the following official Wyze documentation: [Creating an API Key](https://support.wyze.com/hc/en-us/articles/16129834216731-Creating-an-API-Key)
+10. Click _SUBMIT_ and profit!
 
 ## Usage
 
