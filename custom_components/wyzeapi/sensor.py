@@ -134,8 +134,7 @@ class WyzeLockBatterySensor(SensorEntity):
             "identifiers": {
                 (DOMAIN, self._lock.mac)
             },
-            "name": f"{self._lock.nickname}.{self._battery_type}",
-            "type": f"lock.{self._battery_type}"
+            "name": f"{self._lock.nickname}.{self._battery_type}"
         }
 
     @property
@@ -201,8 +200,7 @@ class WyzeCameraBatterySensor(SensorEntity):
             "identifiers": {
                 (DOMAIN, self._camera.mac)
             },
-            "name": f"{self._camera.nickname}.battery",
-            "type": "camera.battery"
+            "name": f"{self._camera.nickname}.battery"
         }
 
     @property
