@@ -18,7 +18,8 @@ from homeassistant.components.light import (
     SUPPORT_COLOR,
     COLOR_MODE_ONOFF,
     SUPPORT_EFFECT,
-    LightEntity
+    LightEntity,
+    ColorMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -208,6 +209,16 @@ class WyzeLight(LightEntity):
         self._bulb.on = False
         self._just_updated = True
         self.async_schedule_update_ha_state()
+
+    @property
+    def supported_color_modes(self):
+        if self._bulb.type in [DeviceTypes.MESH_LIGHT, DeviceTypes.LIGHTSTRIP]:
+            return {ColorMode.COLOR_TEMP, ColorMode.HS}
+        return {ColorMode.COLOR_TEMP}
+
+    @property
+    def color_mode(self):
+        return ColorMode.COLOR_TEMP if self._bulb.color_mode == "2" else ColorMode.HS
 
     @property
     def name(self):
