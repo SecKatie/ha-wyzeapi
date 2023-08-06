@@ -218,6 +218,8 @@ class WyzeLight(LightEntity):
 
     @property
     def color_mode(self):
+        if self._bulb.type is DeviceTypes.LIGHT:
+            return ColorMode.COLOR_TEMP
         return ColorMode.COLOR_TEMP if self._bulb.color_mode == "2" else ColorMode.HS
 
     @property
