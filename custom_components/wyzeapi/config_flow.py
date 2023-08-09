@@ -21,7 +21,14 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({CONF_USERNAME: str, CONF_PASSWORD: str, KEY_ID: str, API_KEY: str})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+        vol.Required(KEY_ID): str,
+        vol.Required(API_KEY): str,
+    }
+)
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -66,7 +73,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         except CannotConnect:
             errors["base"] = "cannot_connect"
-        except InvalidAuth:
+        except exceptions.AccessTokenError:
             errors["base"] = "invalid_auth"
         except exceptions.TwoFactorAuthenticationEnabled:
             self.user_params[CONF_USERNAME] = user_input[CONF_USERNAME]
