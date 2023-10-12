@@ -24,7 +24,7 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-MOTION_SWITCH_UNSUPPORTED = ["GW_BE1"]
+MOTION_SWITCH_UNSUPPORTED = ["GW_BE1", "LD_CFP"]  # Doorbell Cam, Floodlight Pro
 
 # noinspection DuplicatedCode
 @token_exception_handler
