@@ -25,8 +25,11 @@ from homeassistant.const import (
     UnitOfEnergy,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+)
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
+from homeassistant.helpers.entity_registry import async_get
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
 from .token_manager import token_exception_handler
@@ -75,7 +78,8 @@ async def async_setup_entry(
     plugs = await switch_usage_service.get_switches()
     for plug in plugs:
         if plug.product_model in OUTDOOR_PLUGS:
-            sensors.append(WyzePlugPowerSensor(plug, switch_usage_service))
+            sensors.append(WyzePlugEnergySensor(plug, switch_usage_service))
+            sensors.append(WyzePlugDailyEnergySensor(plug))
 
     async_add_entities(sensors, True)
 
@@ -256,23 +260,24 @@ class WyzeCameraBatterySensor(SensorEntity):
         return self._camera.device_params.get("electricity")
 
 
-class WyzePlugPowerSensor(RestoreSensor):
-    """Respresents an Outdoor Plug Total Power Sensor."""
+class WyzePlugEnergySensor(RestoreSensor):
+    """Respresents an Outdoor Plug Total Energy Sensor."""
 
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 3
     _previous_hour = None
     _previous_value = None
     _past_hours_previous_value = None
     _current_value = 0
     _past_hours_value = 0
-    _hourly_power_usage_added = 0
+    _hourly_energy_usage_added = 0
 
     def __init__(
         self, switch: Switch, switch_usage_service: SwitchUsageService
     ) -> None:
-        """Initialize a power sensor."""
+        """Initialize an energy sensor."""
         self._switch = switch
         self._switch_usage_service = switch_usage_service
         self._switch.usage_history = None
@@ -280,12 +285,12 @@ class WyzePlugPowerSensor(RestoreSensor):
     @property
     def name(self) -> str:
         """Get the name of the sensor."""
-        return "Total Power Usage"
+        return "Total Energy Usage"
 
     @property
     def unique_id(self):
         """Get the unique ID of the sensor."""
-        return f"{self._switch.nickname}.power-{self._switch.mac}"
+        return f"{self._switch.nickname}.energy-{self._switch.mac}"
 
     @property
     def should_poll(self) -> bool:
@@ -300,10 +305,10 @@ class WyzePlugPowerSensor(RestoreSensor):
             "name": self._switch.nickname,
         }
 
-    def update_power(self):
-        """Update the power sensor."""
+    def update_energy(self):
+        """Update the energy sensor."""
         _now = int(datetime.utcnow().hour)
-        self._hourly_power_usage_added = 0
+        self._hourly_energy_usage_added = 0
 
         if self._switch.usage_history:
             _raw_data = self._switch.usage_history
@@ -333,23 +338,23 @@ class WyzePlugPowerSensor(RestoreSensor):
 
                 if _now != self._previous_hour:  # New Hour
                     if self._past_hours_value > self._previous_value:
-                        self._hourly_power_usage_added = (
+                        self._hourly_energy_usage_added = (
                             self._past_hours_value - self._previous_value
                         )
-                    self._hourly_power_usage_added += self._current_value
+                    self._hourly_energy_usage_added += self._current_value
                     self._previous_value = self._current_value
                     self._previous_hour = _now
                     self._past_hours_previous_value = self._past_hours_value
 
                 else:  # Current Hour
                     if self._current_value > self._previous_value:
-                        self._hourly_power_usage_added += round(
+                        self._hourly_energy_usage_added += round(
                             self._current_value - self._previous_value, 3
                         )
                         self._previous_value = self._current_value
 
                     if self._past_hours_value > self._past_hours_previous_value:
-                        self._hourly_power_usage_added += round(
+                        self._hourly_energy_usage_added += round(
                             self._past_hours_value - self._past_hours_previous_value, 3
                         )
                         self._past_hours_previous_value = self._past_hours_value
@@ -357,17 +362,17 @@ class WyzePlugPowerSensor(RestoreSensor):
                 _LOGGER.debug(
                     "Total Value Added to device %s is %s",
                     self._switch.mac,
-                    self._hourly_power_usage_added,
+                    self._hourly_energy_usage_added,
                 )
 
-        return self._hourly_power_usage_added
+        return self._hourly_energy_usage_added
 
     @callback
     def async_update_callback(self, switch: Switch):
         """Update the sensor's state."""
         self._switch = switch
-        self.update_power()
-        self._attr_native_value += self._hourly_power_usage_added
+        self.update_energy()
+        self._attr_native_value += self._hourly_energy_usage_added
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -382,8 +387,90 @@ class WyzePlugPowerSensor(RestoreSensor):
             self._switch, 120
         )  # Every 2 minutes seems to work fine, probably could be longer
         await self._switch_usage_service.start_update_manager()
-        return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove updater."""
         self._switch_usage_service.unregister_updater(self._switch)
+
+
+class WyzePlugDailyEnergySensor(RestoreSensor):
+    """Respresents an Outdoor Plug Daily Energy Sensor."""
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 3
+
+    def __init__(self, switch: Switch) -> None:
+        """Initialize a daily energy sensor."""
+        self._switch = switch
+
+    @property
+    def name(self) -> str:
+        """Get the name of the sensor."""
+        return "Daily Energy Usage"
+
+    @property
+    def unique_id(self):
+        """Get the unique ID of the sensor."""
+        return f"{self._switch.nickname}.daily_energy-{self._switch.mac}"
+
+    @property
+    def should_poll(self) -> bool:
+        """No polling needed."""
+        return False
+
+    @property
+    def device_info(self):
+        """Return the device info."""
+        return {
+            "identifiers": {(DOMAIN, self._switch.mac)},
+            "name": self._switch.nickname,
+        }
+
+    def _update_daily_sensor(self, event):
+        """Update the sensor when the total sensor updates."""
+        event_data = event.data
+        new_state = event_data["new_state"]
+        old_state = event_data["old_state"]
+
+        if not old_state:
+            return
+
+        updated_energy = (float(new_state.state) - float(old_state.state))
+        self._attr_native_value += updated_energy
+        self.async_write_ha_state()
+
+    async def _async_reset_at_midnight(self, now: datetime):
+        """Reset the daily sensor."""
+        self._attr_native_value = 0
+        _LOGGER.debug("Resetting daily energy sensor %s to 0", self._switch.mac)
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Get previous data and add listeners."""
+
+        state = await self.async_get_last_sensor_data()
+        if state:
+            self._attr_native_value = state.native_value
+        else:
+            self._attr_native_value = 0
+
+        registry = async_get(self.hass)
+        entity_id_total_sensor = registry.async_get_entity_id("sensor", DOMAIN, f"{self._switch.nickname}.energy-{self._switch.mac}")
+
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [entity_id_total_sensor],
+                self._update_daily_sensor
+            )
+        )
+
+        self.async_on_remove(
+            async_track_time_change(
+                self.hass,
+                self._async_reset_at_midnight,
+                hour=0, minute=0, second=0
+            )
+        )
