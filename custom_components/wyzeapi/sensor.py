@@ -434,7 +434,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
         new_state = event_data["new_state"]
         old_state = event_data["old_state"]
 
-        if not old_state:
+        if not old_state or not new_state:
             return
 
         updated_energy = (float(new_state.state) - float(old_state.state))
