@@ -8,8 +8,7 @@ from typing import Optional, Callable, List, Any
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
-    SUPPORT_ALARM_ARM_HOME,
-    SUPPORT_ALARM_ARM_AWAY
+    AlarmControlPanelEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -103,7 +102,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
 
     @property
     def supported_features(self) -> int:
-        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY
+        return AlarmControlPanelEntityFeature.ARM_HOME | AlarmControlPanelEntityFeature.ARM_AWAY
 
     @property
     def device_info(self):

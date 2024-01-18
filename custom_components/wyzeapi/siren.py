@@ -8,9 +8,8 @@ from wyzeapy import CameraService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
 
 from homeassistant.components.siren import (
-    SUPPORT_TURN_OFF,
-    SUPPORT_TURN_ON,
     SirenEntity,
+    SirenEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -58,7 +57,7 @@ class WyzeCameraSiren(SirenEntity):
         self._service = camera_service
 
         self._attr_supported_features = (
-            SUPPORT_TURN_OFF | SUPPORT_TURN_ON
+            SirenEntityFeature.TURN_OFF | SirenEntityFeature.TURN_ON
         )
 
     @token_exception_handler
