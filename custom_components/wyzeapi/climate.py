@@ -6,27 +6,19 @@ from typing import List, Optional, Callable, Any
 
 from homeassistant.components.climate import (
     ClimateEntity,
-    SUPPORT_TARGET_TEMPERATURE_RANGE,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_FAN_MODE
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
 from homeassistant.components.climate.const import (
-    HVAC_MODE_AUTO,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_COOL,
-    HVAC_MODE_OFF,
     FAN_AUTO,
     FAN_ON,
     PRESET_HOME,
     PRESET_AWAY,
     PRESET_SLEEP,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_OFF
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION, TEMP_FAHRENHEIT, TEMP_CELSIUS
+from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, HVACMode, Preset, FanMode, HVACState
@@ -108,30 +100,30 @@ class WyzeThermostat(ClimateEntity):
     @property
     def temperature_unit(self) -> str:
         #if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
-        return TEMP_FAHRENHEIT
+        return UnitOfTemperature.FAHRENHEIT
         #return TEMP_CELSIUS
 
     @property
     def unit_of_measurement(self) -> str:
         if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
-            return TEMP_FAHRENHEIT
-        return TEMP_CELSIUS    
-        
+            return UnitOfTemperature.FAHRENHEIT
+        return UnitOfTemperature.CELSIUS
+
     @property
     def hvac_mode(self) -> str:
         # pylint: disable=R1705
         if self._thermostat.hvac_mode == HVACMode.AUTO:
-            return HVAC_MODE_AUTO
+            return HVACMode.AUTO
         elif self._thermostat.hvac_mode == HVACMode.HEAT:
-            return HVAC_MODE_HEAT
+            return HVACMode.HEAT
         elif self._thermostat.hvac_mode == HVACMode.COOL:
-            return HVAC_MODE_COOL
+            return HVACMode.COOL
         else:
-            return HVAC_MODE_OFF
+            return HVACMode.OFF
 
     @property
     def hvac_modes(self) -> List[str]:
-        return [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF]
+        return [HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
 
     @property
     def target_temperature_high(self) -> Optional[float]:
@@ -184,13 +176,13 @@ class WyzeThermostat(ClimateEntity):
     def hvac_action(self) -> str:
         # pylint: disable=R1705
         if self._thermostat.hvac_state == HVACState.IDLE:
-            return CURRENT_HVAC_IDLE
+            return HVACAction.IDLE
         elif self._thermostat.hvac_state == HVACState.HEATING:
-            return CURRENT_HVAC_HEAT
+            return HVACAction.HEATING
         elif self._thermostat.hvac_state == HVACState.COOLING:
-            return CURRENT_HVAC_COOL
+            return HVACAction.COOLING
         else:
-            return CURRENT_HVAC_OFF
+            return HVACAction.OFF
 
     @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
@@ -224,16 +216,16 @@ class WyzeThermostat(ClimateEntity):
 
     @token_exception_handler
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        if hvac_mode == HVAC_MODE_OFF:
+        if hvac_mode == HVACMode.OFF:
             await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.OFF)
             self._thermostat.hvac_mode = HVACMode.OFF
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.HEAT)
             self._thermostat.hvac_mode = HVACMode.HEAT
-        elif hvac_mode == HVAC_MODE_COOL:
+        elif hvac_mode == HVACMode.COOL:
             await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.COOL)
             self._thermostat.hvac_mode = HVACMode.COOL
-        elif hvac_mode == HVAC_MODE_AUTO:
+        elif hvac_mode == HVACMode.AUTO:
             await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.AUTO)
             self._thermostat.hvac_mode = HVACMode.AUTO
 
@@ -266,7 +258,7 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def supported_features(self) -> int:
-        return SUPPORT_TARGET_TEMPERATURE_RANGE | SUPPORT_FAN_MODE | SUPPORT_PRESET_MODE
+        return ClimateEntityFeature.TARGET_TEMPERATURE_RANGE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
 
     @property
     def device_info(self) -> dict:

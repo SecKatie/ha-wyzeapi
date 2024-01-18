@@ -13,12 +13,8 @@ from homeassistant.components.light import (
     ATTR_COLOR_TEMP,
     ATTR_EFFECT,
     ATTR_HS_COLOR,
-    SUPPORT_BRIGHTNESS,
-    SUPPORT_COLOR_TEMP,
-    SUPPORT_COLOR,
-    COLOR_MODE_ONOFF,
-    SUPPORT_EFFECT,
     LightEntity,
+    LightEntityFeature,
     ColorMode,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -327,9 +323,7 @@ class WyzeLight(LightEntity):
     @property
     def supported_features(self):
         if self._bulb.type in [DeviceTypes.MESH_LIGHT, DeviceTypes.LIGHTSTRIP]:
-            return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR | SUPPORT_EFFECT
-        else:
-            return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_EFFECT
+            return LightEntityFeature.EFFECT
 
     @token_exception_handler
     async def async_update(self):
@@ -454,4 +448,4 @@ class WyzeCamerafloodlight(LightEntity):
 
     @property
     def color_mode(self):
-        return COLOR_MODE_ONOFF
+        return ColorMode.ONOFF
