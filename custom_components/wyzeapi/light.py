@@ -324,7 +324,6 @@ class WyzeLight(LightEntity):
     def supported_features(self):
         return LightEntityFeature.EFFECT
 
-
     @token_exception_handler
     async def async_update(self):
         """
