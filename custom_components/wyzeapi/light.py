@@ -322,8 +322,7 @@ class WyzeLight(LightEntity):
 
     @property
     def supported_features(self):
-        if self._bulb.type in [DeviceTypes.MESH_LIGHT, DeviceTypes.LIGHTSTRIP]:
-            return LightEntityFeature.EFFECT
+        return LightEntityFeature.EFFECT
 
     @token_exception_handler
     async def async_update(self):
