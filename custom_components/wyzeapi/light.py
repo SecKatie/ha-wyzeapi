@@ -102,7 +102,7 @@ class WyzeLight(LightEntity):
             "identifiers": {
                 (DOMAIN, self._bulb.mac)
             },
-            "name": self.name,
+            "name": self._bulb.nickname,
             "manufacturer": "WyzeLabs",
             "model": self._bulb.product_model
         }
