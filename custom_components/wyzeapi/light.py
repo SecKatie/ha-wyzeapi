@@ -241,8 +241,6 @@ class WyzeLight(LightEntity):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "device_model": self._bulb.product_model,
             "mac": self.unique_id
         }
@@ -408,8 +406,6 @@ class WyzeCamerafloodlight(LightEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "device model": f"{self._device.product_model}.floodlight",
             "mac": self.unique_id
         }

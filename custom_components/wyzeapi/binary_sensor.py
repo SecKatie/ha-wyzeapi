@@ -115,8 +115,6 @@ class WyzeSensor(BinarySensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "device model": self._sensor.product_model,
             "mac": self.unique_id
         }
@@ -182,8 +180,6 @@ class WyzeCameraMotion(BinarySensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "device model": self._camera.product_model,
             "mac": self.unique_id
         }

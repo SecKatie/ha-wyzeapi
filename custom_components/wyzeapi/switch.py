@@ -141,8 +141,6 @@ class WyzeNotifications(SwitchEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "mac": self.unique_id
         }
 
@@ -235,8 +233,6 @@ class WyzeSwitch(SwitchEntity):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
             "device model": self._device.product_model,
             "mac": self.unique_id
         }

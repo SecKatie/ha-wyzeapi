@@ -120,8 +120,6 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.state,
-            "available": self.available,
             "door_open": self._lock.door_open,
             "device_model": self._lock.product_model,
             "mac": self.unique_id

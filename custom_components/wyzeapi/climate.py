@@ -294,8 +294,6 @@ class WyzeThermostat(ClimateEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.state,
-            "available": self.available,
             "device_model": self._thermostat.product_model,
             "mac": self.unique_id
         }

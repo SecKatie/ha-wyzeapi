@@ -68,7 +68,7 @@ class WyzeLockBatterySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
-    
+
 
     def __init__(self, lock, battery_type):
         self._enabled = None
@@ -142,7 +142,6 @@ class WyzeLockBatterySensor(SensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "available": self.available,
             "device model": f"{self._lock.product_model}.{self._battery_type}",
         }
 
@@ -208,7 +207,6 @@ class WyzeCameraBatterySensor(SensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "available": self.available,
             "device model": f"{self._camera.product_model}.battery",
         }
 
