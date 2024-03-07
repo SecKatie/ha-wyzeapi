@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
 from .token_manager import token_exception_handler
@@ -134,6 +135,12 @@ class WyzeLockBatterySensor(SensorEntity):
             "identifiers": {
                 (DOMAIN, self._lock.mac)
             },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._lock.mac,
+                )
+            },
             "name": f"{self._lock.nickname}.{self._battery_type}"
         }
 
@@ -198,6 +205,12 @@ class WyzeCameraBatterySensor(SensorEntity):
         return {
             "identifiers": {
                 (DOMAIN, self._camera.mac)
+            },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._camera.mac,
+                )
             },
             "name": f"{self._camera.nickname}.battery"
         }

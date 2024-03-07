@@ -101,15 +101,6 @@ class WyzeCameraSiren(SirenEntity):
         return f"{self._device.mac}-siren"
 
     @property
-    def extra_state_attributes(self):
-        """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "device model": f"{self._device.product_model}.siren",
-            "mac": self.unique_id
-        }
-
-    @property
     def device_info(self):
         return {
             "identifiers": {
