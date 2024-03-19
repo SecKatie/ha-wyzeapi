@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
 from .token_manager import token_exception_handler
@@ -68,7 +69,7 @@ class WyzeLockBatterySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
-    
+
 
     def __init__(self, lock, battery_type):
         self._enabled = None
@@ -134,6 +135,12 @@ class WyzeLockBatterySensor(SensorEntity):
             "identifiers": {
                 (DOMAIN, self._lock.mac)
             },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._lock.mac,
+                )
+            },
             "name": f"{self._lock.nickname}.{self._battery_type}"
         }
 
@@ -142,7 +149,6 @@ class WyzeLockBatterySensor(SensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "available": self.available,
             "device model": f"{self._lock.product_model}.{self._battery_type}",
         }
 
@@ -200,6 +206,12 @@ class WyzeCameraBatterySensor(SensorEntity):
             "identifiers": {
                 (DOMAIN, self._camera.mac)
             },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._camera.mac,
+                )
+            },
             "name": f"{self._camera.nickname}.battery"
         }
 
@@ -208,7 +220,6 @@ class WyzeCameraBatterySensor(SensorEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "available": self.available,
             "device model": f"{self._camera.product_model}.battery",
         }
 

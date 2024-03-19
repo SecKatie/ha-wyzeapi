@@ -20,6 +20,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, BulbService, CameraService
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import DeviceTypes, PropertyIDs
@@ -101,6 +102,12 @@ class WyzeLight(LightEntity):
         return {
             "identifiers": {
                 (DOMAIN, self._bulb.mac)
+            },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._bulb.mac,
+                )
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",
@@ -239,13 +246,7 @@ class WyzeLight(LightEntity):
     @property
     def extra_state_attributes(self):
         """Return device attributes of the entity."""
-        dev_info = {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
-            "device_model": self._bulb.product_model,
-            "mac": self.unique_id
-        }
+        dev_info = {}
 
         # noinspection DuplicatedCode
         if self._bulb.device_params.get("ip"):
@@ -404,21 +405,16 @@ class WyzeCamerafloodlight(LightEntity):
         return f"{self._device.mac}-floodlight"
 
     @property
-    def extra_state_attributes(self):
-        """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
-            "device model": f"{self._device.product_model}.floodlight",
-            "mac": self.unique_id
-        }
-
-    @property
     def device_info(self):
         return {
             "identifiers": {
                 (DOMAIN, self._device.mac)
+            },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._device.mac,
+                )
             },
             "name": self.name,
             "manufacturer": "WyzeLabs",

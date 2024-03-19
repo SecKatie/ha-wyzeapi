@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send, async_dispatcher_connect
+from homeassistant.helpers import device_registry as dr
 from wyzeapy import CameraService, SwitchService, WallSwitchService, Wyzeapy, BulbService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
@@ -136,16 +137,6 @@ class WyzeNotifications(SwitchEntity):
     def unique_id(self):
         return self._uid
 
-    @property
-    def extra_state_attributes(self):
-        """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
-            "mac": self.unique_id
-        }
-
     async def async_update(self):
         if not self._just_updated:
             self._is_on = await self._client.notifications_are_on
@@ -182,6 +173,12 @@ class WyzeSwitch(SwitchEntity):
         return {
             "identifiers": {
                 (DOMAIN, self._device.mac)
+            },
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._device.mac,
+                )
             },
             "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
@@ -233,13 +230,7 @@ class WyzeSwitch(SwitchEntity):
     @property
     def extra_state_attributes(self):
         """Return device attributes of the entity."""
-        dev_info = {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.is_on,
-            "available": self.available,
-            "device model": self._device.product_model,
-            "mac": self.unique_id
-        }
+        dev_info = {}
 
         if self._device.device_params.get("electricity"):
             dev_info["Battery"] = str(self._device.device_params.get("electricity") + "%")

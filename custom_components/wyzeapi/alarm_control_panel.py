@@ -128,8 +128,6 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.state,
-            "available": self.AVAILABLE,
             "device model": self.DEVICE_MODEL,
             "mac": self.unique_id
         }
