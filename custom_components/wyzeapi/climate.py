@@ -267,13 +267,13 @@ class WyzeThermostat(ClimateEntity):
             "identifiers": {
                 (DOMAIN, self._thermostat.mac)
             },
+            "name": self._thermostat.nickname,
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self._thermostat.mac,
                 )
             },
-            "name": self.name,
             "manufacturer": "WyzeLabs",
             "model": self._thermostat.product_model
         }

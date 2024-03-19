@@ -103,13 +103,13 @@ class WyzeLight(LightEntity):
             "identifiers": {
                 (DOMAIN, self._bulb.mac)
             },
+            "name": self._bulb.nickname,
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self._bulb.mac,
                 )
             },
-            "name": self.name,
             "manufacturer": "WyzeLabs",
             "model": self._bulb.product_model
         }
@@ -410,13 +410,13 @@ class WyzeCamerafloodlight(LightEntity):
             "identifiers": {
                 (DOMAIN, self._device.mac)
             },
+            "name": self._device.nickname,
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self._device.mac,
                 )
             },
-            "name": self.name,
             "manufacturer": "WyzeLabs",
             "model": self._device.product_model
         }

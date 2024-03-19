@@ -68,13 +68,13 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             "identifiers": {
                 (DOMAIN, self._lock.mac)
             },
+            "name": self._lock.nickname,
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self._lock.mac,
                 )
             },
-            "name": self.name,
             "manufacturer": "WyzeLabs",
             "model": self._lock.product_model
         }
