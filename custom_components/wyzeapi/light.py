@@ -110,7 +110,6 @@ class WyzeLight(LightEntity):
                     self._bulb.mac,
                 )
             },
-            "name": self.name,
             "manufacturer": "WyzeLabs",
             "model": self._bulb.product_model
         }
