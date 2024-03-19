@@ -15,6 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
 from .token_manager import token_exception_handler
@@ -68,6 +69,12 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
                 (DOMAIN, self._lock.mac)
             },
             "name": self._lock.nickname,
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._lock.mac,
+                )
+            },
             "manufacturer": "WyzeLabs",
             "model": self._lock.product_model
         }
@@ -120,11 +127,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         """Return device attributes of the entity."""
         dev_info = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.state,
-            "available": self.available,
             "door_open": self._lock.door_open,
-            "device_model": self._lock.product_model,
-            "mac": self.unique_id
         }
 
         # Add the lock battery value if it exists

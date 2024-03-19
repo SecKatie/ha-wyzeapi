@@ -20,6 +20,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, HVACMode, Preset, FanMode, HVACState
 from .token_manager import token_exception_handler
@@ -267,6 +268,12 @@ class WyzeThermostat(ClimateEntity):
                 (DOMAIN, self._thermostat.mac)
             },
             "name": self._thermostat.nickname,
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._thermostat.mac,
+                )
+            },
             "manufacturer": "WyzeLabs",
             "model": self._thermostat.product_model
         }
@@ -288,17 +295,6 @@ class WyzeThermostat(ClimateEntity):
     def available(self) -> bool:
         """Return the connection status of this light"""
         return self._thermostat.available
-
-    @property
-    def extra_state_attributes(self):
-        """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "state": self.state,
-            "available": self.available,
-            "device_model": self._thermostat.product_model,
-            "mac": self.unique_id
-        }
 
     @token_exception_handler
     async def async_update(self) -> None:
