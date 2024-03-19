@@ -334,14 +334,14 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
         await self._service.turn_on_notifications(self._device)
 
         self._device.notify = True
-        self.async_schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""
         await self._service.turn_off_notifications(self._device)
 
         self._device.notify = False
-        self.async_schedule_update_ha_state()
+        self.async_write_ha_state()
 
     @property
     def name(self):
@@ -410,14 +410,14 @@ class WyzeCameraMotionSwitch(SwitchEntity):
         await self._service.turn_on_motion_detection(self._device)
 
         self._device.motion = True
-        self.async_schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""
         await self._service.turn_off_motion_detection(self._device)
 
         self._device.motion = False
-        self.async_schedule_update_ha_state()
+        self.async_write_ha_state()
 
     @property
     def name(self):
