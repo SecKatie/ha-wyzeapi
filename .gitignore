@@ -142,3 +142,4 @@ wyzeconfig.ini
 .test/
 workflow/
 .dccache
+.vscode/
