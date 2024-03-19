@@ -447,4 +447,10 @@ class WyzeCamerafloodlight(LightEntity):
 
     @property
     def color_mode(self):
+        """Return the color mode."""
+        return ColorMode.ONOFF
+
+    @property
+    def supported_color_modes(self):
+        """Return the supported color mode."""
         return ColorMode.ONOFF
