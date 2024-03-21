@@ -310,54 +310,52 @@ class WyzePlugEnergySensor(RestoreSensor):
         _now = int(datetime.utcnow().hour)
         self._hourly_energy_usage_added = 0
 
-        if self._switch.usage_history:
+        if self._switch.usage_history and len(self._switch.usage_history) > 0:  # Confirm there is data
             _raw_data = self._switch.usage_history
             _LOGGER.debug(_raw_data)
             _current_day_list = json.loads(_raw_data[0]["data"])
-
-            if len(_raw_data) > 0:  # Confirm there is data
-                if _now == 0:  # Handle rolling to the next UTC day
-                    self._past_hours_value = _current_day_list[23] / 1000
-                    if len(_raw_data) > 1:  # New Day's value
-                        _next_day_list = json.loads(_raw_data[1]["data"])
-                        self._current_value = _next_day_list[_now] / 1000
-                    else:
-                        self._current_value = 0
+            if _now == 0:  # Handle rolling to the next UTC day
+                self._past_hours_value = _current_day_list[23] / 1000
+                if len(_raw_data) > 1:  # New Day's value
+                    _next_day_list = json.loads(_raw_data[1]["data"])
+                    self._current_value = _next_day_list[_now] / 1000
                 else:
-                    self._past_hours_value = _current_day_list[_now - 1] / 1000
-                    self._current_value = _current_day_list[_now] / 1000
+                    self._current_value = 0
+            else:
+                self._past_hours_value = _current_day_list[_now - 1] / 1000
+                self._current_value = _current_day_list[_now] / 1000
 
-                # Set inital values to current values on startup.
-                # Has to be done after we check for current or next UTC day
-                if self._previous_hour is None:
-                    self._previous_hour = _now
-                if self._past_hours_previous_value is None:
-                    self._past_hours_previous_value = self._past_hours_value
-                if self._previous_value is None:
+            # Set inital values to current values on startup.
+            # Has to be done after we check for current or next UTC day
+            if self._previous_hour is None:
+                self._previous_hour = _now
+            if self._past_hours_previous_value is None:
+                self._past_hours_previous_value = self._past_hours_value
+            if self._previous_value is None:
+                self._previous_value = self._current_value
+
+            if _now != self._previous_hour:  # New Hour
+                if self._past_hours_value > self._previous_value:
+                    self._hourly_energy_usage_added = (
+                        self._past_hours_value - self._previous_value
+                    )
+                self._hourly_energy_usage_added += self._current_value
+                self._previous_value = self._current_value
+                self._previous_hour = _now
+                self._past_hours_previous_value = self._past_hours_value
+
+            else:  # Current Hour
+                if self._current_value > self._previous_value:
+                    self._hourly_energy_usage_added += round(
+                        self._current_value - self._previous_value, 3
+                    )
                     self._previous_value = self._current_value
 
-                if _now != self._previous_hour:  # New Hour
-                    if self._past_hours_value > self._previous_value:
-                        self._hourly_energy_usage_added = (
-                            self._past_hours_value - self._previous_value
-                        )
-                    self._hourly_energy_usage_added += self._current_value
-                    self._previous_value = self._current_value
-                    self._previous_hour = _now
+                if self._past_hours_value > self._past_hours_previous_value:
+                    self._hourly_energy_usage_added += round(
+                        self._past_hours_value - self._past_hours_previous_value, 3
+                    )
                     self._past_hours_previous_value = self._past_hours_value
-
-                else:  # Current Hour
-                    if self._current_value > self._previous_value:
-                        self._hourly_energy_usage_added += round(
-                            self._current_value - self._previous_value, 3
-                        )
-                        self._previous_value = self._current_value
-
-                    if self._past_hours_value > self._past_hours_previous_value:
-                        self._hourly_energy_usage_added += round(
-                            self._past_hours_value - self._past_hours_previous_value, 3
-                        )
-                        self._past_hours_previous_value = self._past_hours_value
 
                 _LOGGER.debug(
                     "Total Value Added to device %s is %s",
