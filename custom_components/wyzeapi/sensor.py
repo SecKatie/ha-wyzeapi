@@ -357,11 +357,11 @@ class WyzePlugEnergySensor(RestoreSensor):
                     )
                     self._past_hours_previous_value = self._past_hours_value
 
-                _LOGGER.debug(
-                    "Total Value Added to device %s is %s",
-                    self._switch.mac,
-                    self._hourly_energy_usage_added,
-                )
+            _LOGGER.debug(
+                "Total Value Added to device %s is %s",
+                self._switch.mac,
+                self._hourly_energy_usage_added,
+            )
 
         return self._hourly_energy_usage_added
 
