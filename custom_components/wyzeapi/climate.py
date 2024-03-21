@@ -22,7 +22,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
-from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, WyzeHVACMode, Preset, FanMode, HVACState
+from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, Preset, FanMode, HVACState, HVACMode as WyzeHVACMode
 from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
