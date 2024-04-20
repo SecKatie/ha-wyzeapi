@@ -22,7 +22,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
-from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, HVACMode, Preset, FanMode, HVACState
+from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, Preset, FanMode, HVACState, HVACMode as WyzeHVACMode
 from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
@@ -113,11 +113,11 @@ class WyzeThermostat(ClimateEntity):
     @property
     def hvac_mode(self) -> str:
         # pylint: disable=R1705
-        if self._thermostat.hvac_mode == HVACMode.AUTO:
+        if self._thermostat.hvac_mode == WyzeHVACMode.AUTO:
             return HVACMode.AUTO
-        elif self._thermostat.hvac_mode == HVACMode.HEAT:
+        elif self._thermostat.hvac_mode == WyzeHVACMode.HEAT:
             return HVACMode.HEAT
-        elif self._thermostat.hvac_mode == HVACMode.COOL:
+        elif self._thermostat.hvac_mode == WyzeHVACMode.COOL:
             return HVACMode.COOL
         else:
             return HVACMode.OFF
@@ -218,16 +218,16 @@ class WyzeThermostat(ClimateEntity):
     @token_exception_handler
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         if hvac_mode == HVACMode.OFF:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.OFF)
+            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.OFF)
             self._thermostat.hvac_mode = HVACMode.OFF
         elif hvac_mode == HVACMode.HEAT:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.HEAT)
+            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.HEAT)
             self._thermostat.hvac_mode = HVACMode.HEAT
         elif hvac_mode == HVACMode.COOL:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.COOL)
+            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.COOL)
             self._thermostat.hvac_mode = HVACMode.COOL
         elif hvac_mode == HVACMode.AUTO:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, HVACMode.AUTO)
+            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.AUTO)
             self._thermostat.hvac_mode = HVACMode.AUTO
 
         self._server_out_of_sync = True
