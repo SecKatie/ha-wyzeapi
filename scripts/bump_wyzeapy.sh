@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2024 Katie Mulliken <katie@mulliken.net>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 TARGET_VERSION=$1
 
 if [ -z "$TARGET_VERSION" ]; then
