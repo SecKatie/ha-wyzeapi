@@ -30,6 +30,7 @@ from homeassistant.helpers.dispatcher import (
 )
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.entity_registry import async_get
+from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
 from .token_manager import token_exception_handler
