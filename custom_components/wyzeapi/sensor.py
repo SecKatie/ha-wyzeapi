@@ -25,6 +25,7 @@ from homeassistant.const import (
     UnitOfEnergy,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
 )
@@ -426,6 +427,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
             "name": self._switch.nickname,
         }
 
+    @callback
     def _update_daily_sensor(self, event):
         """Update the sensor when the total sensor updates."""
         event_data = event.data
