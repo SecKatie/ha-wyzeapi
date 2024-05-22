@@ -4,9 +4,8 @@ SPDX-FileCopyrightText: 2021 Katie Mulliken <katie@mulliken.net>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<a href="https://www.buymeacoffee.com/joshmulliken"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=joshmulliken&button_colour=FFDD00&font_colour=000000&font_family=Poppins&outline_colour=000000&coffee_colour=ffffff"></a> 
+<a href="https://www.buymeacoffee.com/seckatie"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=seckatie&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" /></a>
 
-[![Visit our IRC channel](https://kiwiirc.com/buttons/irc.libera.chat/wyzeapi.png)](https://kiwiirc.com/client/irc.libera.chat/#wyzeapi) 
 
 # Home Assistant - Wyze Integration
 
@@ -70,7 +69,7 @@ If you need help with anything then please connect with the community!
 * Visit us on IRC at librechat in the #wyzeapi channel!
 * Visit the discussions tab on this repo
 * For bugs or feature requests create an issue
-* Check out the [wiki](https://github.com/JoshuaMulliken/ha-wyzeapi/wiki)!
+* Check out the [wiki](https://github.com/SecKatie/ha-wyzeapi/wiki)!
 
 ## Reporting an Issue
 
