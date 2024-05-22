@@ -11,5 +11,5 @@
   "requirements": [
     "wyzeapy>=0.5.22,<0.5.23"
   ],
-  "version": "0.1.25"
+  "version": "0.1.26"
 }
