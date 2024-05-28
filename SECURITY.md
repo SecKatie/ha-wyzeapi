@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Reporting a Vulnerability
 
-Please send an email to `joshua (at) mulliken (dot) com` with the title `[vulnerability][ha-wyzeapi] <Title of Issue>`
+Please send an email to `katie (at) mulliken (dot) net` with the title `[vulnerability][ha-wyzeapi] <Title of Issue>`
 .
 
 ### Email Contents
