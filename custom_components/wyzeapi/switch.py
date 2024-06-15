@@ -25,7 +25,8 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-MOTION_SWITCH_UNSUPPORTED = ["GW_BE1", "LD_CFP"]  # Doorbell Cam, Floodlight Pro
+MOTION_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro
+POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
 
 # noinspection DuplicatedCode
 @token_exception_handler
@@ -62,8 +63,15 @@ async def async_setup_entry(
 
     camera_switches = await camera_service.get_cameras()
     for switch in camera_switches:
-        switches.extend([WyzeSwitch(camera_service, switch)])
+
+        # Notification toggle switch
         switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
+
+        # IoT Power switch
+        if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
+            switches.extend([WyzeSwitch(camera_service, switch)])
+        
+        # Motion toggle switch
         if switch.product_model not in MOTION_SWITCH_UNSUPPORTED:
             switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
 
@@ -307,18 +315,16 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
 
     _available: bool
 
-    def __init__(self, service: CameraService, device: Device):
+    def __init__(self, service: CameraService, device: Camera):
         """Initialize a Wyze Notification Switch."""
         self._service = service
-        self._device = Camera(device.raw_dict)
+        self._device = device
 
     @property
     def device_info(self):
         """Return the device info."""
         return {
-            "identifiers": {
-                (DOMAIN, self._device.mac)
-            },
+            "identifiers": {(DOMAIN, self._device.mac)},
             "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
             "model": self._device.product_model
@@ -385,10 +391,10 @@ class WyzeCameraMotionSwitch(SwitchEntity):
 
     _available: bool
 
-    def __init__(self, service: CameraService, device: Device) -> None:
+    def __init__(self, service: CameraService, device: Camera) -> None:
         """Initialize a Wyze Notification Switch."""
         self._service = service
-        self._device = Camera(device.raw_dict)
+        self._device = device
 
     @property
     def device_info(self):
