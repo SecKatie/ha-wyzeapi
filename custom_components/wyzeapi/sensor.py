@@ -37,7 +37,7 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
-CAMERAS_WITH_BATTERIES = ["WVOD1"]
+CAMERAS_WITH_BATTERIES = ["WVOD1", "HL_WCO2", "AN_RSCW", "GW_BE1"]
 OUTDOOR_PLUGS = ["WLPPO"]
 
 
