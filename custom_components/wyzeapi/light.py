@@ -63,7 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     for camera in await camera_service.get_cameras():
         # Only model that I know of that has a floodlight
-        if camera.product_model == "WYZE_CAKP2JFUS":
+        if camera.product_model == "WYZE_CAKP2JFUS" or camera.product_model == "HL_CFL2":
             lights.append(WyzeCamerafloodlight(camera, camera_service))
 
     async_add_entities(lights, True)
