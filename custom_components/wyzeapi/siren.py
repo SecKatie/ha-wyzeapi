@@ -40,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     camera_service = await client.camera_service
     sirens = []
     for camera in await camera_service.get_cameras():
-        # The campan (v1 and 2), v2 camera, and video doorbell pro don't have sirens
+        # The campan v1, v2 camera, and video doorbell pro don't have sirens
         if camera.product_model not in ["WYZECP1_JEF", "WYZEC1-JZ", "GW_BE1"]:
             sirens.append(WyzeCameraSiren(camera, camera_service))
 
