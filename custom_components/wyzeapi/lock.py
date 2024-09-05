@@ -9,6 +9,7 @@ from typing import Any, Callable, List
 from wyzeapy import LockService, Wyzeapy
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.types import DeviceTypes
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry
@@ -16,6 +17,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers import device_registry as dr
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
 from .token_manager import token_exception_handler
@@ -92,17 +94,23 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     @token_exception_handler
     async def async_lock(self, **kwargs):
         _LOGGER.debug("Turning on lock")
-        await self._lock_service.lock(self._lock)
-
-        self._lock.unlocked = False
-        self.async_schedule_update_ha_state()
+        try:
+            await self._lock_service.lock(self._lock)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._lock.unlocked = False
+            self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_unlock(self, **kwargs):
-        await self._lock_service.unlock(self._lock)
-
-        self._lock.unlocked = True
-        self.async_schedule_update_ha_state()
+        try:
+            await self._lock_service.unlock(self._lock)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._lock.unlocked = True
+            self.async_schedule_update_ha_state()
 
     @property
     def is_locked(self):

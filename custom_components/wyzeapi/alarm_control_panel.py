@@ -13,8 +13,10 @@ from homeassistant.components.alarm_control_panel import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, HMSService
 from wyzeapy.services.hms_service import HMSMode
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
@@ -63,33 +65,36 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     def state(self):
         return self._state
 
-    def alarm_disarm(self, code: Optional[str] = None) -> None:
-        raise NotImplementedError
-
-    def alarm_arm_home(self, code: Optional[str] = None) -> None:
-        raise NotImplementedError
-
-    def alarm_arm_away(self, code: Optional[str] = None) -> None:
-        raise NotImplementedError
-
     @token_exception_handler
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
-        await self._hms_service.set_mode(HMSMode.DISARMED)
-        self._state = "disarmed"
-        self._server_out_of_sync = True
+        try:
+            await self._hms_service.set_mode(HMSMode.DISARMED)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._state = "disarmed"
+            self._server_out_of_sync = True
 
     @token_exception_handler
     async def async_alarm_arm_home(self, code=None):
-        await self._hms_service.set_mode(HMSMode.HOME)
-        self._state = "armed_home"
-        self._server_out_of_sync = True
+        try:
+            await self._hms_service.set_mode(HMSMode.HOME)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._state = "armed_home"
+            self._server_out_of_sync = True
 
     @token_exception_handler
     async def async_alarm_arm_away(self, code=None):
-        await self._hms_service.set_mode(HMSMode.AWAY)
-        self._state = "armed_away"
-        self._server_out_of_sync = True
+        try:
+            await self._hms_service.set_mode(HMSMode.AWAY)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._state = "armed_away"
+            self._server_out_of_sync = True
 
     def alarm_arm_night(self, code=None):
         raise NotImplementedError

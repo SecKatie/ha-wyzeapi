@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from wyzeapy import CameraService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 
 from homeassistant.components.siren import (
     SirenEntity,
@@ -14,6 +15,7 @@ from homeassistant.components.siren import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
@@ -63,20 +65,26 @@ class WyzeCameraSiren(SirenEntity):
     @token_exception_handler
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the siren on."""
-        await self._service.siren_on(self._device)
-
-        self._device.siren = True
-        self._just_updated = True
-        self.async_schedule_update_ha_state()
+        try:
+            await self._service.siren_on(self._device)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._device.siren = True
+            self._just_updated = True
+            self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_turn_off(self, **kwargs):
         """Turn the siren off."""
-        await self._service.siren_off(self._device)
-
-        self._device.siren = False
-        self._just_updated = True
-        self.async_schedule_update_ha_state()
+        try:
+            await self._service.siren_off(self._device)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        else:
+            self._device.siren = False
+            self._just_updated = True
+            self.async_schedule_update_ha_state()
 
     @property
     def should_poll(self) -> bool:
