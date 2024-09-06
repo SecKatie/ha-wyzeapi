@@ -3,6 +3,7 @@
 """Platform for siren integration."""
 import logging
 from typing import Any, Callable
+from aiohttp.client_exceptions import ClientConnectionError
 
 from wyzeapy import CameraService, Wyzeapy
 from wyzeapy.services.camera_service import Camera
@@ -69,6 +70,8 @@ class WyzeCameraSiren(SirenEntity):
             await self._service.siren_on(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.siren = True
             self._just_updated = True
@@ -81,6 +84,8 @@ class WyzeCameraSiren(SirenEntity):
             await self._service.siren_off(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.siren = False
             self._just_updated = True

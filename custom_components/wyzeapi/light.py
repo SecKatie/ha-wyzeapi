@@ -5,6 +5,7 @@ import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
 from typing import Any, Callable, List
+from aiohttp.client_exceptions import ClientConnectionError
 
 import homeassistant.util.color as color_util
 from homeassistant.components.light import (
@@ -195,6 +196,8 @@ class WyzeLight(LightEntity):
             await self._bulb_service.turn_on(self._bulb, self._local_control, options)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._bulb.on = True
             self._just_updated = True
@@ -207,6 +210,8 @@ class WyzeLight(LightEntity):
             await self._bulb_service.turn_off(self._bulb, self._local_control)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._bulb.on = False
             self._just_updated = True
@@ -374,6 +379,8 @@ class WyzeCamerafloodlight(LightEntity):
             await self._service.floodlight_on(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._is_on = True
             self._just_updated = True
@@ -386,6 +393,8 @@ class WyzeCamerafloodlight(LightEntity):
             await self._service.floodlight_off(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._is_on = False
             self._just_updated = True

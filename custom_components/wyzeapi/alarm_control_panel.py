@@ -5,6 +5,7 @@ This module handles the Wyze Home Monitoring system
 import logging
 from datetime import timedelta
 from typing import Optional, Callable, List, Any
+from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -72,6 +73,8 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             await self._hms_service.set_mode(HMSMode.DISARMED)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._state = "disarmed"
             self._server_out_of_sync = True
@@ -82,6 +85,8 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             await self._hms_service.set_mode(HMSMode.HOME)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._state = "armed_home"
             self._server_out_of_sync = True
@@ -92,6 +97,8 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             await self._hms_service.set_mode(HMSMode.AWAY)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._state = "armed_away"
             self._server_out_of_sync = True

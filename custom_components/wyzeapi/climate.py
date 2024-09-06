@@ -3,6 +3,7 @@ import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
 from typing import List, Optional, Callable, Any
+from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -201,6 +202,8 @@ class WyzeThermostat(ClimateEntity):
                 self._thermostat.cool_set_point = int(target_temp_high)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._server_out_of_sync = True
             self.async_schedule_update_ha_state()
@@ -219,6 +222,8 @@ class WyzeThermostat(ClimateEntity):
                 self._thermostat.fan_mode = FanMode.AUTO
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._server_out_of_sync = True
             self.async_schedule_update_ha_state()
@@ -240,6 +245,8 @@ class WyzeThermostat(ClimateEntity):
                 self._thermostat.hvac_mode = HVACMode.AUTO
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._server_out_of_sync = True
             self.async_schedule_update_ha_state()
@@ -261,6 +268,8 @@ class WyzeThermostat(ClimateEntity):
                 self._thermostat.preset = Preset.HOME
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._server_out_of_sync = True
             self.async_schedule_update_ha_state()

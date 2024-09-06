@@ -3,8 +3,8 @@
 """Platform for switch integration."""
 import logging
 from datetime import timedelta
-# Import the device class from the component that you want to support
 from typing import Any, Callable, List, Union
+from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -116,6 +116,8 @@ class WyzeNotifications(SwitchEntity):
             await self._client.enable_notifications()
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._is_on = True
             self._just_updated = True
@@ -126,6 +128,8 @@ class WyzeNotifications(SwitchEntity):
             await self._client.disable_notifications()
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._is_on = False
             self._just_updated = True
@@ -197,6 +201,8 @@ class WyzeSwitch(SwitchEntity):
             await self._service.turn_on(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.on = True
             self._just_updated = True
@@ -208,6 +214,8 @@ class WyzeSwitch(SwitchEntity):
             await self._service.turn_off(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.on = False
             self._just_updated = True
@@ -340,6 +348,8 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
             await self._service.turn_on_notifications(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.notify = True
             self.async_write_ha_state()
@@ -351,6 +361,8 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
             await self._service.turn_off_notifications(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.notify = False
             self.async_write_ha_state()
@@ -423,6 +435,8 @@ class WyzeCameraMotionSwitch(SwitchEntity):
             await self._service.turn_on_motion_detection(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.motion = True
             self.async_write_ha_state()
@@ -433,6 +447,8 @@ class WyzeCameraMotionSwitch(SwitchEntity):
             await self._service.turn_off_motion_detection(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.motion = False
             self.async_write_ha_state()
@@ -503,6 +519,8 @@ class WzyeLightstripSwitch(SwitchEntity):
             await self._service.music_mode_on(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.music_mode = True
             self.async_schedule_update_ha_state()
@@ -513,6 +531,8 @@ class WzyeLightstripSwitch(SwitchEntity):
             await self._service.music_mode_off(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._device.music_mode = False
             self.async_schedule_update_ha_state()

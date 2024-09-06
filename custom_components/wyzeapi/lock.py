@@ -5,6 +5,7 @@ from abc import ABC
 from datetime import timedelta
 import logging
 from typing import Any, Callable, List
+from aiohttp.client_exceptions import ClientConnectionError
 
 from wyzeapy import LockService, Wyzeapy
 from wyzeapy.services.lock_service import Lock
@@ -98,6 +99,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             await self._lock_service.lock(self._lock)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._lock.unlocked = False
             self.async_schedule_update_ha_state()
@@ -108,6 +111,8 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
             await self._lock_service.unlock(self._lock)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
         else:
             self._lock.unlocked = True
             self.async_schedule_update_ha_state()
