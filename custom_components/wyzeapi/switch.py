@@ -25,7 +25,7 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-MOTION_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro
+MOTION_SWITCH_UNSUPPORTED = ["GW_BE1", "GW_GC1", "GW_GC2"]  # Video doorbell pro, OG, OG 3x Telephoto
 POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
 
 # noinspection DuplicatedCode
