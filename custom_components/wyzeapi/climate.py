@@ -3,6 +3,7 @@ import logging
 # Import the device class from the component that you want to support
 from datetime import timedelta
 from typing import List, Optional, Callable, Any
+from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -20,8 +21,10 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, Preset, FanMode, HVACState, HVACMode as WyzeHVACMode
 from .token_manager import token_exception_handler
 
@@ -190,66 +193,86 @@ class WyzeThermostat(ClimateEntity):
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
 
-        if target_temp_low != self._thermostat.heat_set_point:
-            await self._thermostat_service.set_heat_point(self._thermostat, int(target_temp_low))
-            self._thermostat.heat_set_point = int(target_temp_low)
-        if target_temp_high != self._thermostat.cool_set_point:
-            await self._thermostat_service.set_cool_point(self._thermostat, int(target_temp_high))
-            self._thermostat.cool_set_point = int(target_temp_high)
-
-        self._server_out_of_sync = True
-        self.async_schedule_update_ha_state()
+        try:
+            if target_temp_low != self._thermostat.heat_set_point:
+                await self._thermostat_service.set_heat_point(self._thermostat, int(target_temp_low))
+                self._thermostat.heat_set_point = int(target_temp_low)
+            if target_temp_high != self._thermostat.cool_set_point:
+                await self._thermostat_service.set_cool_point(self._thermostat, int(target_temp_high))
+                self._thermostat.cool_set_point = int(target_temp_high)
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
+        else:
+            self._server_out_of_sync = True
+            self.async_schedule_update_ha_state()
 
     async def async_set_humidity(self, humidity: int) -> None:
         raise NotImplementedError
 
     @token_exception_handler
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        if fan_mode == FAN_ON:
-            await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.ON)
-            self._thermostat.fan_mode = FanMode.ON
-        elif fan_mode == FAN_AUTO:
-            await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.AUTO)
-            self._thermostat.fan_mode = FanMode.AUTO
-
-        self._server_out_of_sync = True
-        self.async_schedule_update_ha_state()
+        try:
+            if fan_mode == FAN_ON:
+                await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.ON)
+                self._thermostat.fan_mode = FanMode.ON
+            elif fan_mode == FAN_AUTO:
+                await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.AUTO)
+                self._thermostat.fan_mode = FanMode.AUTO
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
+        else:
+            self._server_out_of_sync = True
+            self.async_schedule_update_ha_state()
 
     @token_exception_handler
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        if hvac_mode == HVACMode.OFF:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.OFF)
-            self._thermostat.hvac_mode = HVACMode.OFF
-        elif hvac_mode == HVACMode.HEAT:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.HEAT)
-            self._thermostat.hvac_mode = HVACMode.HEAT
-        elif hvac_mode == HVACMode.COOL:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.COOL)
-            self._thermostat.hvac_mode = HVACMode.COOL
-        elif hvac_mode == HVACMode.AUTO:
-            await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.AUTO)
-            self._thermostat.hvac_mode = HVACMode.AUTO
-
-        self._server_out_of_sync = True
-        self.async_schedule_update_ha_state()
+        try:
+            if hvac_mode == HVACMode.OFF:
+                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.OFF)
+                self._thermostat.hvac_mode = HVACMode.OFF
+            elif hvac_mode == HVACMode.HEAT:
+                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.HEAT)
+                self._thermostat.hvac_mode = HVACMode.HEAT
+            elif hvac_mode == HVACMode.COOL:
+                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.COOL)
+                self._thermostat.hvac_mode = HVACMode.COOL
+            elif hvac_mode == HVACMode.AUTO:
+                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.AUTO)
+                self._thermostat.hvac_mode = HVACMode.AUTO
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
+        else:
+            self._server_out_of_sync = True
+            self.async_schedule_update_ha_state()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         raise NotImplementedError
 
     @token_exception_handler
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        if preset_mode == PRESET_SLEEP:
-            await self._thermostat_service.set_preset(self._thermostat, Preset.SLEEP)
-            self._thermostat.preset = Preset.SLEEP
-        elif preset_mode == PRESET_AWAY:
-            await self._thermostat_service.set_preset(self._thermostat, Preset.AWAY)
-            self._thermostat.preset = Preset.AWAY
-        elif preset_mode == PRESET_HOME:
-            await self._thermostat_service.set_preset(self._thermostat, Preset.HOME)
-            self._thermostat.preset = Preset.HOME
-
-        self._server_out_of_sync = True
-        self.async_schedule_update_ha_state()
+        try:
+            if preset_mode == PRESET_SLEEP:
+                await self._thermostat_service.set_preset(self._thermostat, Preset.SLEEP)
+                self._thermostat.preset = Preset.SLEEP
+            elif preset_mode == PRESET_AWAY:
+                await self._thermostat_service.set_preset(self._thermostat, Preset.AWAY)
+                self._thermostat.preset = Preset.AWAY
+            elif preset_mode == PRESET_HOME:
+                await self._thermostat_service.set_preset(self._thermostat, Preset.HOME)
+                self._thermostat.preset = Preset.HOME
+        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+            raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
+        except ClientConnectionError as err:
+            raise HomeAssistantError(err) from err
+        else:
+            self._server_out_of_sync = True
+            self.async_schedule_update_ha_state()
 
     async def async_turn_aux_heat_on(self) -> None:
         raise NotImplementedError
