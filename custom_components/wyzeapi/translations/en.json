@@ -18,7 +18,11 @@
                     "password": "Password",
                     "key_id": "Keyid",
                     "api_key": "Apikey"
-                }
+                },
+                "data_description": {
+                    "username": "Wyze or 3rd party OAuth email address",
+                    "password": "Wyze or 3rd party OAuth password"
+                  }
             },
             "2fa": {
                 "title": "Enter Wyze 2FA Verification Code",
