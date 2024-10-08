@@ -235,6 +235,7 @@ class WyzeCameraBatterySensor(SensorEntity):
 
     @property
     def device_info(self):
+        """Return the device info."""
         return {
             "identifiers": {
                 (DOMAIN, self._camera.mac)
@@ -245,7 +246,9 @@ class WyzeCameraBatterySensor(SensorEntity):
                     self._camera.mac,
                 )
             },
-            "name": f"{self._camera.nickname}.battery"
+            "name": self._camera.nickname,
+            "model": self._camera.product_model,
+            "manufacturer": "WyzeLabs"
         }
 
     @property
