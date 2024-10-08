@@ -62,9 +62,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
 
     for camera in await camera_service.get_cameras():
-        # Only model that I know of that has a floodlight
-        if camera.product_model == "WYZE_CAKP2JFUS" or camera.product_model == "HL_CFL2":
-            lights.append(WyzeCamerafloodlight(camera, camera_service))
+        if (
+            (camera.product_model == "WYZE_CAKP2JFUS" and camera.device_params['dongle_product_model'] == "HL_CFL") or # Cam v3 with floodlight accessory
+            (camera.product_model == "LD_CFP") or # Floodlight Pro
+            (camera.product_model == "HL_CFL2") # Floodlight v2
+            ):
+            lights.append(WyzeCamerafloodlight(camera, camera_service, "floodlight"))
+        
+        elif ((camera.product_model == "WYZE_CAKP2JFUS" or camera.product_model == "HL_CAM4") and camera.device_params['dongle_product_model'] == "HL_CAM3SS"): # Cam v3 with lamp socket accessory
+            lights.append(WyzeCamerafloodlight(camera, camera_service, "lampsocket"))
+        
+        elif (camera.product_model == "AN_RSCW"): # Battery cam pro (integrated spotlight)
+            lights.append(WyzeCamerafloodlight(camera, camera_service, "spotlight"))
 
     async_add_entities(lights, True)
 
@@ -363,17 +372,17 @@ class WyzeCamerafloodlight(LightEntity):
     _available: bool
     _just_updated = False
 
-    def __init__(self, camera: Camera, camera_service: CameraService) -> None:
+    def __init__(self, camera: Camera, camera_service: CameraService, light_type: str) -> None:
         self._device = camera
         self._service = camera_service
-        self._is_on = False
+        self._light_type = light_type
 
     @token_exception_handler
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the floodlight on."""
         await self._service.floodlight_on(self._device)
 
-        self._is_on = True
+        self._device.floodlight = True
         self._just_updated = True
         self.async_schedule_update_ha_state()
 
@@ -382,7 +391,7 @@ class WyzeCamerafloodlight(LightEntity):
         """Turn the floodlight off."""
         await self._service.floodlight_off(self._device)
 
-        self._is_on = False
+        self._device.floodlight = False
         self._just_updated = True
         self.async_schedule_update_ha_state()
 
@@ -398,11 +407,11 @@ class WyzeCamerafloodlight(LightEntity):
 
     @property
     def name(self) -> str:
-        return f"{self._device.nickname} floodlight"
+        return f"{self._device.nickname} {"Lamp Socket" if self._light_type == "lampsocket" else ("Floodlight" if self._light_type == "floodlight" else "Spotlight")}"
 
     @property
     def unique_id(self):
-        return f"{self._device.mac}-floodlight"
+        return f"{self._device.mac}-{self._light_type}"
 
     @property
     def device_info(self):
@@ -439,7 +448,8 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        return "mdi:track-light"
+        
+        return "mdi:lightbulb" if self._light_type == "lampsocket" else ("mdi:track-light" if self._light_type == "floodlight" else "mdi:spotlight")
 
     @property
     def color_mode(self):
