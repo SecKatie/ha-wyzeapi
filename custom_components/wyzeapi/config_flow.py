@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Optional
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -45,8 +45,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.client = await Wyzeapy.create()
 
     async def async_step_user(
-            self, user_input: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+            self, user_input: Optional[dict[str, any]] = None
+    ) -> dict[str, Any]:
         """Handle the initial step."""
         await self.get_client()
 
@@ -88,7 +88,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_2fa(self, user_input: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def async_step_2fa(self, user_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         if user_input is None:
             return self.async_show_form(step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA)
 
@@ -138,11 +138,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an option flow for Wyze."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
         if user_input is not None:
