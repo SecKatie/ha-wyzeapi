@@ -65,9 +65,9 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         self._hms_service = hms_service
         self._state = AlarmControlPanelState.DISARMED
         self._server_out_of_sync = False
-
+    
     @property
-    def state(self):
+    def alarm_state(self) -> str:
         return self._state
 
     # NotImplemented Methods
@@ -151,13 +151,13 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         if not self._server_out_of_sync:
             state = await self._hms_service.update(self._hms_service.hms_id)
             if state is HMSMode.DISARMED:
-                self._state = "disarmed"
+                self._state = AlarmControlPanelState.DISARMED
             elif state is HMSMode.AWAY:
-                self._state = "armed_away"
+                self._state = AlarmControlPanelState.ARMED_AWAY
             elif state is HMSMode.HOME:
-                self._state = "armed_home"
+                self._state = AlarmControlPanelState.ARMED_HOME
             elif state is HMSMode.CHANGING:
-                self._state = "disarmed"
+                self._state = AlarmControlPanelState.DISARMED
             else:
                 _LOGGER.warning(f"Received {state} from server")
 

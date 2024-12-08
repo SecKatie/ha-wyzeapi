@@ -88,7 +88,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_2fa(self, user_input: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def async_step_2fa(self, user_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         if user_input is None:
             return self.async_show_form(step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA)
 
