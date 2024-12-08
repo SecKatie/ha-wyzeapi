@@ -4,10 +4,11 @@ This module handles the Wyze Home Monitoring system
 
 import logging
 from datetime import timedelta
-from typing import Optional, Callable, List, Any
+from typing import Optional, Callable, List, Any, cast
 from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.alarm_control_panel import (
+    AlarmControlPanelState,
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
 )
@@ -19,6 +20,7 @@ from wyzeapy import Wyzeapy, HMSService
 from wyzeapy.services.hms_service import HMSMode
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 from .token_manager import token_exception_handler
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN, CONF_CLIENT
 
@@ -51,23 +53,39 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     A representation of the Wyze Home Monitoring system that works for wyze
     """
     DEVICE_MODEL = "HMS"
+    MANUFACTURER = "WyzeLabs"
     NAME = "Wyze Home Monitoring System"
     AVAILABLE = True
-    _state = "disarmed"
-    _server_out_of_sync = False
-
+    _attr_has_entity_name = True
+    _attr_name = None
+    
     def __init__(self, hms_service: HMSService):
-        self._hms_service = hms_service
+        self._attr_unique_id = hms_service.hms_id
 
-    def alarm_arm_vacation(self, code: Optional[str] = None) -> None:
-        raise NotImplementedError
+        self._hms_service = hms_service
+        self._state = AlarmControlPanelState.DISARMED
+        self._server_out_of_sync = False
 
     @property
     def state(self):
         return self._state
 
+    # NotImplemented Methods
+    def alarm_arm_vacation(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    def alarm_arm_night(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    def alarm_trigger(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    def alarm_arm_custom_bypass(self, code: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    # Implemented Methods
     @token_exception_handler
-    async def async_alarm_disarm(self, code=None) -> None:
+    async def async_alarm_disarm(self, code: Optional[str] = None) -> None:
         """Send disarm command."""
         try:
             await self._hms_service.set_mode(HMSMode.DISARMED)
@@ -80,7 +98,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             self._server_out_of_sync = True
 
     @token_exception_handler
-    async def async_alarm_arm_home(self, code=None):
+    async def async_alarm_arm_home(self, code: Optional[str] = None) -> None:
         try:
             await self._hms_service.set_mode(HMSMode.HOME)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -92,7 +110,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             self._server_out_of_sync = True
 
     @token_exception_handler
-    async def async_alarm_arm_away(self, code=None):
+    async def async_alarm_arm_away(self, code: Optional[str] = None) -> None:
         try:
             await self._hms_service.set_mode(HMSMode.AWAY)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -103,49 +121,31 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
             self._state = "armed_away"
             self._server_out_of_sync = True
 
-    def alarm_arm_night(self, code=None):
-        raise NotImplementedError
-
-    def alarm_trigger(self, code=None):
-        raise NotImplementedError
-
-    def alarm_arm_custom_bypass(self, code=None):
-        raise NotImplementedError
-
     @property
     def supported_features(self) -> int:
         return AlarmControlPanelEntityFeature.ARM_HOME | AlarmControlPanelEntityFeature.ARM_AWAY
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={
                 (DOMAIN, self.unique_id)
             },
-            "name": self.NAME,
-            "manufacturer": "WyzeLabs",
-            "model": self.DEVICE_MODEL
-        }
+            name=self.NAME,
+            manufacturer=self.MANUFACTURER,
+            model=self.DEVICE_MODEL,
+        )
 
     @property
-    def name(self) -> str:
-        return self.NAME
-
-    @property
-    def unique_id(self):
-        return self._hms_service.hms_id
-
-    @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict | None:
         """Return device attributes of the entity."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
-            "device model": self.DEVICE_MODEL,
             "mac": self.unique_id
         }
 
     @token_exception_handler
-    async def async_update(self):
+    async def async_update(self) -> None:
         """Update the entity with data from the Wyze servers"""
 
         if not self._server_out_of_sync:
