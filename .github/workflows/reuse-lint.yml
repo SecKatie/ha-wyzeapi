@@ -2,7 +2,11 @@ name: Reuse Lint
 
 on:
   push:
+    branches:
+      - master
   pull_request:
+    branches:
+      - master
 
 jobs:
   reuse:
