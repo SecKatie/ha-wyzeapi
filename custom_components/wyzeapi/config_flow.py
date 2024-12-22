@@ -134,7 +134,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry
         ) -> OptionsFlowHandler:
-        """Create the Wyze options flow ."""
+        """Create the Wyze options flow."""
         return OptionsFlowHandler()
 
 
