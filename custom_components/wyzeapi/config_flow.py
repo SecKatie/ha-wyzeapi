@@ -131,13 +131,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
-        """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry
+        ) -> OptionsFlowHandler:
+        """Create the Wyze options flow ."""
+        return OptionsFlowHandler()
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an option flow for Wyze."""
+
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
         if user_input is not None:
