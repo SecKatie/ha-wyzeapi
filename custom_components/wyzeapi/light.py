@@ -114,7 +114,9 @@ class WyzeLight(LightEntity):
 
         self._bulb_service = bulb_service
         self._attr_min_color_temp_kelvin = (
-            1800 if self._device_type is DeviceTypes.MESH_LIGHT else 2700
+            1800
+            if self._device_type in [DeviceTypes.MESH_LIGHT, DeviceTypes.LIGHTSTRIP]
+            else 2700
         )
         self._attr_max_color_temp_kelvin = 6500
         self._attr_name = self._bulb.nickname
