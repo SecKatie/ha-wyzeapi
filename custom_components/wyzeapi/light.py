@@ -244,7 +244,7 @@ class WyzeLight(LightEntity):
 
     @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn of the light."""
+        """Turn off the light."""
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
         try:
             await self._bulb_service.turn_off(self._bulb, self._local_control)
@@ -386,6 +386,7 @@ class WyzeCamerafloodlight(LightEntity):
         self._service = camera_service
         self._light_type = light_type
         self._attr_unique_id = f"{self._device.mac}-{self._light_type}"
+        self._is_on = self._device.floodlight
 
     @token_exception_handler
     async def async_turn_on(self, **kwargs) -> None:
