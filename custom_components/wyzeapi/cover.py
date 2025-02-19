@@ -129,11 +129,6 @@ class WyzeGarageDoor(homeassistant.components.cover.CoverEntity, ABC):
     def available(self):
         """Return the connection status of this cover."""
         return self._camera.available
-    
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
                 
     @property
     def unique_id(self):
