@@ -54,10 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 class WyzeGarageDoor(homeassistant.components.cover.CoverEntity, ABC):
     """Representation of a Wyze Garage Door."""
     _attr_device_class = CoverDeviceClass.GARAGE
-    _attr_supported_features = (
-        CoverEntityFeature.OPEN,
-        CoverEntityFeature.CLOSE
-    )
+    _attr_supported_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
     _attr_has_entity_name = True
 
 
