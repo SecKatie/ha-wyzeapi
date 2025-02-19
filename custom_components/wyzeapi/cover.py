@@ -146,13 +146,13 @@ class WyzeGarageDoor(homeassistant.components.cover.CoverEntity, ABC):
     @property
     def name(self):
         """Return the name of the garage door."""
-        return f"{self._camera.nickname} Garage Door"
+        return f"Garage Door"
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
-                f"{CAMERA_UPDATED}-{self._device.mac}",
+                f"{CAMERA_UPDATED}-{self._camera.mac}",
                 self.handle_camera_update,
             )
         )
