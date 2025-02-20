@@ -14,6 +14,7 @@ WYZE_NOTIFICATION_TOGGLE = f"{DOMAIN}.wyze.notification.toggle"
 LOCK_UPDATED = f"{DOMAIN}.lock_updated"
 CAMERA_UPDATED = f"{DOMAIN}.camera_updated"
 LIGHT_UPDATED = f"{DOMAIN}.light_updated"
+COVER_UPDATED = f"{DOMAIN}.cover_updated"
 # EVENT NAMES
 WYZE_CAMERA_EVENT = "wyze_camera_event"
 
