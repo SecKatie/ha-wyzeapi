@@ -4,18 +4,18 @@
 
 [tool.poetry]
 name = "ha-wyzeapi"
-version = "0.1.30"
+version = "0.1.31"
 description = "A Home Assistant integration for Wyze devices"
 authors = ["Katie Mulliken <katie@mulliken.net>"]
 license = "Apache-2.0"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.12.0,<3.13"
-homeassistant = ">=2024"
-wyzeapy = "^0.5.26"
+python = ">=3.13.0,<3.14"
+homeassistant = ">=2025.2.0"
+wyzeapy = "^0.5.27"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
