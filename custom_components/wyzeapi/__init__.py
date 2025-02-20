@@ -27,7 +27,8 @@ PLATFORMS = [
     "climate",
     "alarm_control_panel",
     "sensor",
-    "siren"
+    "siren",
+    "cover"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
