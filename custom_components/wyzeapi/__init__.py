@@ -18,6 +18,7 @@ from .const import (
     REFRESH_TIME, WYZE_NOTIFICATION_TOGGLE, BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL, KEY_ID, API_KEY
 )
+from .coordinator import WyzeLockBoltCoordinator
 from .token_manager import TokenManager
 
 PLATFORMS = [
@@ -117,6 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
     hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client, "key_id": KEY_ID, "api_key": API_KEY}
+    await setup_coordinators(hass, config_entry, client)
 
     options_dict = {BULB_LOCAL_CONTROL: config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)}
     hass.config_entries.async_update_entry(config_entry, options=options_dict)
@@ -166,3 +168,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+async def setup_coordinators(hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy):
+    lock_service = await client.lock_service
+    for lock in await lock_service.get_locks():
+        if lock.product_model == "YD_BT1":
+            coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault("coordinators", {})
+            coordinators[lock.mac] = WyzeLockBoltCoordinator(hass, lock_service, lock)
+            await coordinators[lock.mac].update_lock_info()

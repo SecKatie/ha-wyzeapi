@@ -5,6 +5,7 @@
     "@SecKatie"
   ],
   "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
   "documentation": "https://github.com/SecKatie/ha-wyzeapi#readme",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/SecKatie/ha-wyzeapi/issues",

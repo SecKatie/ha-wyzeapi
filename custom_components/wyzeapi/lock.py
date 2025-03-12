@@ -17,6 +17,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
 
@@ -45,9 +46,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     lock_service = await client.lock_service
 
-    locks = [WyzeLock(lock_service, lock) for lock in await lock_service.get_locks()]
+    locks = [WyzeLock(lock_service, lock) for lock in await lock_service.get_locks()
+             if lock.product_model != "YD_BT1"]
+    lock_bolts = []
+    for lock in await lock_service.get_locks():
+        if lock.product_model == "YD_BT1":
+            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][lock.mac]
+            lock_bolts.append(WyzeLockBolt(coordinator))
 
-    async_add_entities(locks, True)
+    async_add_entities(locks + lock_bolts, True)
 
 
 class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
@@ -189,3 +196,64 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
 
     async def async_will_remove_from_hass(self) -> None:
         self._lock_service.unregister_updater(self._lock)
+
+
+
+class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._lock = coordinator._lock
+
+    @property
+    def name(self):
+        """Return the display name of this lock."""
+        return self._lock.nickname
+
+    @property
+    def unique_id(self):
+        return self._lock.mac
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self._lock.mac)
+            },
+            "name": self._lock.nickname,
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self.coordinator._mac,
+                ),
+                (
+                    "uuid",
+                    self.coordinator._uuid
+                ),
+                (
+                    "serial_number",
+                    self._lock.raw_dict["hardware_info"]["sn"]
+                )
+            },
+            "manufacturer": "WyzeLabs",
+            "model": self._lock.product_model
+        }
+
+    @property
+    def is_locked(self):
+        return self.coordinator.data["state"] == 1
+
+    @property
+    def is_open(self):
+        return self.coordinator.data["state"] == 2
+
+    async def async_lock(self, **kwargs):
+        return await self.coordinator.lock_unlock(command="lock")
+    
+    async def async_unlock(self, **kwargs):
+        return await self.coordinator.lock_unlock(command="unlock")
+
+    @property
+    def state_attributes(self):
+        return {
+            "last_operated": self.coordinator.data["timestamp"]
+        }
