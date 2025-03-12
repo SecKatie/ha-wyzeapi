@@ -89,7 +89,6 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             "state": data[0],
             "timestamp": datetime.fromtimestamp(int.from_bytes(data[1:5]))
         }
-        _LOGGER.warning("State: %s, Timestamp: %s", result["state"], result["timestamp"])
         return result
 
     async def _handle_uart_rx(self, sender, data: bytearray, client: BleakClient, context: Dict):
