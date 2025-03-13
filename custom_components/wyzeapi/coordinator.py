@@ -11,7 +11,7 @@ from homeassistant.components import bluetooth
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import YD_LOCK_STATE_UUID, YD_UART_RX_UUID, YD_UART_TX_UUID
+from .const import YDBLE_LOCK_STATE_UUID, YDBLE_UART_RX_UUID, YDBLE_UART_TX_UUID
 from .ydble_utils import decrypt_ecb, pack_l1, pack_l2_dict, pack_l2_lock_unlock, parse_l1, parse_l2_dict
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         """Fetch the latest data from BLE device."""
         client = await self._get_ble_client()
         try:
-            value = await client.read_gatt_char(YD_LOCK_STATE_UUID)
+            value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
             return self._parse_state(value)
         finally:
             await self._disconnect()
@@ -61,23 +61,23 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         async def _handle_uart_rx_context(sender, data):
             await self._handle_uart_rx(sender, data, client, context)
 
-        await client.start_notify(YD_UART_RX_UUID, _handle_uart_rx_context)
-        await client.start_notify(YD_LOCK_STATE_UUID, self._handle_state)
+        await client.start_notify(YDBLE_UART_RX_UUID, _handle_uart_rx_context)
+        await client.start_notify(YDBLE_LOCK_STATE_UUID, self._handle_state)
         await self._request_challenge(client)
 
     async def _request_challenge(self, client: BleakClient):
         l2_content = pack_l2_dict(0x91, 0, {10: b'\x27'})
         req = pack_l1(0, 1, l2_content)
-        await client.write_gatt_char(YD_UART_TX_UUID, req, response=False)
+        await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
     async def _send_lock_unlock(self, client: BleakClient, challenge, command):
         l2_content = pack_l2_lock_unlock(self._lock.ble_id, self._lock.ble_token, challenge, command)
         req = pack_l1(0, 2, l2_content)
-        await client.write_gatt_char(YD_UART_TX_UUID, req, response=False)
+        await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
     async def _send_ack(self, client:BleakClient, seq_no: int):
         req = pack_l1(0x08, seq_no, b'')
-        await client.write_gatt_char(YD_UART_TX_UUID, req, response=False)
+        await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
     async def _handle_state(self, sender, data: bytearray):
         self.data = self._parse_state(data)
