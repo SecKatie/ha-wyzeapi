@@ -242,10 +242,6 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
     def is_locked(self):
         return self.coordinator.data["state"] == 1
 
-    @property
-    def is_open(self):
-        return self.coordinator.data["state"] == 2
-
     async def async_lock(self, **kwargs):
         return await self.coordinator.lock_unlock(command="lock")
     
