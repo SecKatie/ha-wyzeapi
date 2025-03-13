@@ -35,6 +35,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self._uuid = lock.mac
         self._mac = None
         self._bleak_client = None
+        self._current_command = None
         
     async def update_lock_info(self):
         self._lock = await self._lock_service.update(self._lock)
@@ -44,6 +45,10 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch the latest data from BLE device."""
+        # Skip if running a command
+        if self._current_command:
+            return self.data
+
         client = await self._get_ble_client()
         try:
             value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
@@ -52,6 +57,8 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             await self._disconnect()
 
     async def lock_unlock(self, command="lock"):
+        self._current_command = command
+        self.async_update_listeners()
         client = await self._get_ble_client()
 
         # disconnect in 10 seconds in case of error
@@ -81,7 +88,8 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
 
     async def _handle_state(self, sender, data: bytearray):
         self.data = self._parse_state(data)
-        await self.async_request_refresh()
+        self._current_command = None
+        self.async_update_listeners()
 
     def _parse_state(self, state_data):
         data = decrypt_ecb(self._uuid[-16:].lower(), state_data)
@@ -148,3 +156,4 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         await asyncio.sleep(delay)
         if self._bleak_client and self._bleak_client.is_connected:
             await self._bleak_client.disconnect()
+        self._current_command = None

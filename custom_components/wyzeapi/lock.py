@@ -249,6 +249,14 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
         return await self.coordinator.lock_unlock(command="unlock")
 
     @property
+    def is_locking(self, **kwargs):
+        return self.coordinator._current_command == "lock"
+
+    @property
+    def is_unlocking(self, **kwargs):
+        return self.coordinator._current_command == "unlock"
+
+    @property
     def state_attributes(self):
         return {
             "last_operated": self.coordinator.data["timestamp"]
