@@ -57,6 +57,9 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             await self._disconnect()
 
     async def lock_unlock(self, command="lock"):
+        if self._current_command:
+            self.async_update_listeners()
+            raise Exception(f"Waiting for {self._current_command} command to complete")
         self._current_command = command
         self.async_update_listeners()
         client = await self._get_ble_client()
@@ -157,3 +160,4 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         if self._bleak_client and self._bleak_client.is_connected:
             await self._bleak_client.disconnect()
         self._current_command = None
+        self.async_update_listeners()
