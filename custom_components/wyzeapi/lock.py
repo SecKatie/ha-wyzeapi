@@ -46,10 +46,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     lock_service = await client.lock_service
 
-    locks = [WyzeLock(lock_service, lock) for lock in await lock_service.get_locks()
+    all_locks = await lock_service.get_locks()
+
+    locks = [WyzeLock(lock_service, lock) for lock in all_locks
              if lock.product_model != "YD_BT1"]
     lock_bolts = []
-    for lock in await lock_service.get_locks():
+    for lock in all_locks:
         if lock.product_model == "YD_BT1":
             coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][lock.mac]
             lock_bolts.append(WyzeLockBolt(coordinator))

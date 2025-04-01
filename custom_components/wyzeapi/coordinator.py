@@ -12,6 +12,7 @@ from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import YDBLE_LOCK_STATE_UUID, YDBLE_UART_RX_UUID, YDBLE_UART_TX_UUID
+from .token_manager import token_exception_handler
 from .ydble_utils import decrypt_ecb, pack_l1, pack_l2_dict, pack_l2_lock_unlock, parse_l1, parse_l2_dict
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self._bleak_client = None
         self._current_command = None
         
+    @token_exception_handler
     async def update_lock_info(self):
         self._lock = await self._lock_service.update(self._lock)
         mac = self._lock.raw_dict["hardware_info"]["mac"]
