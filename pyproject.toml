@@ -13,7 +13,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = ">=3.13.0,<3.14"
 homeassistant = ">=2025.2.0"
-wyzeapy = "^0.5.27"
+wyzeapy = "^0.5.28"
 
 [tool.poetry.group.dev.dependencies]
 

@@ -20,3 +20,8 @@ WYZE_CAMERA_EVENT = "wyze_camera_event"
 
 BULB_LOCAL_CONTROL = "bulb_local_control"
 DEFAULT_LOCAL_CONTROL = True
+
+# Yunding (YD) is the provider for Wyze Lock Bolt
+YDBLE_LOCK_STATE_UUID = "00002220-0000-6b63-6f6c-2e6b636f6f6c"
+YDBLE_UART_RX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+YDBLE_UART_TX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
