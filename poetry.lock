@@ -3283,14 +3283,14 @@ all = ["winrt-Windows.Foundation.Collections[all] (==2.3.0)", "winrt-Windows.Fou
 
 [[package]]
 name = "wyzeapy"
-version = "0.5.27"
+version = "0.5.28"
 description = "A library for interacting with Wyze devices"
 optional = false
 python-versions = ">=3.11.0"
 groups = ["main"]
 files = [
-    {file = "wyzeapy-0.5.27-py3-none-any.whl", hash = "sha256:b2f04e26c267a0312b5463dd4e0d96cb7d8fa2dbd5a025560b716d26c8fe7f77"},
-    {file = "wyzeapy-0.5.27.tar.gz", hash = "sha256:d20857fa0c3d4ac25f570068a2ce68eadf763998bccd04d93b49395d6d0609d1"},
+    {file = "wyzeapy-0.5.28-py3-none-any.whl", hash = "sha256:1896b7563ac604dd81374db00d54472cecb98158442ec7c1fec232e8e673feec"},
+    {file = "wyzeapy-0.5.28.tar.gz", hash = "sha256:3e3f4f5f41f0a8881c0ea030b7017e90a026b07ef15d228f3f6d4a2be4eb8a8d"},
 ]
 
 [package.dependencies]
@@ -3485,4 +3485,4 @@ ifaddr = ">=0.1.7"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13.0,<3.14"
-content-hash = "a7bbe84929d6fe93be9b62a7efe8714ad5c12be38b10abf12b3f7d525e3f14a5"
+content-hash = "4101fd9ec92c51ad4d2cf3be41df7c3f1064a04cdabd92f516736fad8be5d85f"
