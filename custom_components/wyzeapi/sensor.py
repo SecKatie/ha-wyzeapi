@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 """Platform for sensor integration."""
 
 import logging
@@ -11,6 +9,7 @@ from wyzeapy import Wyzeapy
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.services.switch_service import Switch, SwitchUsageService
+from wyzeapy.services.irrigation_service import IrrigationService, IrrigationDevice
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -31,6 +30,7 @@ from homeassistant.helpers.dispatcher import (
 )
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.entity_registry import async_get
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
 from .token_manager import token_exception_handler
@@ -62,6 +62,7 @@ async def async_setup_entry(
     lock_service = await client.lock_service
     camera_service = await client.camera_service
     switch_usage_service = await client.switch_usage_service
+    irrigation_service = await client.irrigation_service
 
     locks = await lock_service.get_locks()
     sensors = []
@@ -81,6 +82,22 @@ async def async_setup_entry(
         if plug.product_model in OUTDOOR_PLUGS:
             sensors.append(WyzePlugEnergySensor(plug, switch_usage_service))
             sensors.append(WyzePlugDailyEnergySensor(plug))
+
+    # Get all irrigation devices
+    irrigation_devices = await irrigation_service.get_irrigations()
+    
+    # Create sensor entities for each irrigation device
+    for device in irrigation_devices:
+        # Update the device to get its properties
+        device = await irrigation_service.update(device)
+        sensors.extend([
+            WyzeIrrigationRSSI(irrigation_service, device),
+            WyzeIrrigationAppVersion(irrigation_service, device),
+            WyzeIrrigationIP(irrigation_service, device),
+            WyzeIrrigationWiFiMAC(irrigation_service, device),
+            WyzeIrrigationSerialNumber(irrigation_service, device),
+            WyzeIrrigationSSID(irrigation_service, device),
+        ])
 
     async_add_entities(sensors, True)
 
@@ -477,3 +494,157 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
                 hour=0, minute=0, second=0
             )
         )
+
+
+class WyzeIrrigationBaseSensor(SensorEntity):
+    """Base class for Wyze Irrigation sensors."""
+
+    def __init__(self, service: IrrigationService, device: IrrigationDevice) -> None:
+        """Initialize the base sensor."""
+        self._service = service
+        self._device = device
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device.mac)},
+            name=self._device.nickname,
+            manufacturer="WyzeLabs",
+            model=self._device.product_model,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to updates."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{DOMAIN}-irrigation-{self._device.mac}",
+                self._handle_update,
+            )
+        )
+
+    @callback
+    def _handle_update(self, device: IrrigationDevice) -> None:
+        """Handle updates to the device."""
+        self._device = device
+        self.async_write_ha_state()
+
+
+class WyzeIrrigationRSSI(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation RSSI sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} RSSI"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-rssi"
+
+    @property
+    def native_value(self) -> int:
+        """Return the RSSI value."""
+        return self._device.RSSI
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit of measurement."""
+        return "dBm"
+
+
+class WyzeIrrigationAppVersion(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation App Version sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} App Version"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-app-version"
+
+    @property
+    def native_value(self) -> str:
+        """Return the app version."""
+        return self._device.app_version
+
+
+class WyzeIrrigationIP(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation IP sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} IP Address"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-ip"
+
+    @property
+    def native_value(self) -> str:
+        """Return the IP address."""
+        return self._device.IP
+
+
+class WyzeIrrigationWiFiMAC(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation WiFi MAC sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} WiFi MAC"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-wifi-mac"
+
+    @property
+    def native_value(self) -> str:
+        """Return the WiFi MAC address."""
+        return self._device.wifi_mac
+
+
+class WyzeIrrigationSerialNumber(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation Serial Number sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} Serial Number"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-serial-number"
+
+    @property
+    def native_value(self) -> str:
+        """Return the serial number."""
+        return self._device.sn
+
+
+class WyzeIrrigationSSID(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation SSID sensor."""
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._device.nickname} SSID"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._device.mac}-ssid"
+
+    @property
+    def native_value(self) -> str:
+        """Return the SSID."""
+        return self._device.ssid
