@@ -22,6 +22,7 @@ from homeassistant.const import (
     ATTR_ATTRIBUTION,
     PERCENTAGE,
     UnitOfEnergy,
+    EntityCategory,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -92,11 +93,9 @@ async def async_setup_entry(
         device = await irrigation_service.update(device)
         sensors.extend([
             WyzeIrrigationRSSI(irrigation_service, device),
-            WyzeIrrigationAppVersion(irrigation_service, device),
             WyzeIrrigationIP(irrigation_service, device),
-            WyzeIrrigationWiFiMAC(irrigation_service, device),
-            WyzeIrrigationSerialNumber(irrigation_service, device),
             WyzeIrrigationSSID(irrigation_service, device),
+            WyzeIrrigationSerialNumber(irrigation_service, device),
         ])
 
     async_add_entities(sensors, True)
@@ -499,55 +498,62 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
 class WyzeIrrigationBaseSensor(SensorEntity):
     """Base class for Wyze Irrigation sensors."""
 
-    def __init__(self, service: IrrigationService, device: IrrigationDevice) -> None:
-        """Initialize the base sensor."""
-        self._service = service
-        self._device = device
+    _attr_should_poll = False
+
+    def __init__(self, irrigation_service: IrrigationService, irrigation: IrrigationDevice) -> None:
+        """Initialize the irrigation base sensor."""
+        self._irrigation_service = irrigation_service
+        self._irrigation = irrigation
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information about this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._device.mac)},
-            name=self._device.nickname,
+            identifiers={(DOMAIN, self._irrigation.mac)},
+            name=self._irrigation.nickname,
             manufacturer="WyzeLabs",
-            model=self._device.product_model,
-        )
-
-    async def async_added_to_hass(self) -> None:
-        """Subscribe to updates."""
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                f"{DOMAIN}-irrigation-{self._device.mac}",
-                self._handle_update,
-            )
+            model=self._irrigation.product_model,
+            connections={(dr.CONNECTION_NETWORK_MAC, self._irrigation.mac)},
         )
 
     @callback
-    def _handle_update(self, device: IrrigationDevice) -> None:
-        """Handle updates to the device."""
-        self._device = device
-        self.async_write_ha_state()
+    def async_update_callback(self, irrigation: IrrigationDevice) -> None:
+        """Update the irrigation's state."""
+        self._irrigation = self._irrigation_service.update_device_props(irrigation)
+        self.async_schedule_update_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to updates."""
+        self._irrigation.callback_function = self.async_update_callback
+        self._irrigation_service.register_updater(self._irrigation, 30)
+        await self._irrigation_service.start_update_manager()
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up when removed."""
+        self._irrigation_service.unregister_updater(self._irrigation)
 
 
 class WyzeIrrigationRSSI(WyzeIrrigationBaseSensor):
     """Representation of a Wyze Irrigation RSSI sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self._device.nickname} RSSI"
+        return f"{self._irrigation.nickname} RSSI"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-rssi"
+        return f"{self._irrigation.mac}-rssi"
 
     @property
     def native_value(self) -> int:
         """Return the RSSI value."""
-        return self._device.RSSI
+        return self._irrigation.RSSI
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -555,96 +561,67 @@ class WyzeIrrigationRSSI(WyzeIrrigationBaseSensor):
         return "dBm"
 
 
-class WyzeIrrigationAppVersion(WyzeIrrigationBaseSensor):
-    """Representation of a Wyze Irrigation App Version sensor."""
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._device.nickname} App Version"
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-app-version"
-
-    @property
-    def native_value(self) -> str:
-        """Return the app version."""
-        return self._device.app_version
-
-
 class WyzeIrrigationIP(WyzeIrrigationBaseSensor):
     """Representation of a Wyze Irrigation IP sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self._device.nickname} IP Address"
+        return f"{self._irrigation.nickname} IP Address"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-ip"
+        return f"{self._irrigation.mac}-ip"
 
     @property
     def native_value(self) -> str:
         """Return the IP address."""
-        return self._device.IP
-
-
-class WyzeIrrigationWiFiMAC(WyzeIrrigationBaseSensor):
-    """Representation of a Wyze Irrigation WiFi MAC sensor."""
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._device.nickname} WiFi MAC"
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-wifi-mac"
-
-    @property
-    def native_value(self) -> str:
-        """Return the WiFi MAC address."""
-        return self._device.wifi_mac
-
-
-class WyzeIrrigationSerialNumber(WyzeIrrigationBaseSensor):
-    """Representation of a Wyze Irrigation Serial Number sensor."""
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._device.nickname} Serial Number"
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-serial-number"
-
-    @property
-    def native_value(self) -> str:
-        """Return the serial number."""
-        return self._device.sn
+        return self._irrigation.IP
 
 
 class WyzeIrrigationSSID(WyzeIrrigationBaseSensor):
     """Representation of a Wyze Irrigation SSID sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self._device.nickname} SSID"
+        return f"{self._irrigation.nickname} SSID"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the sensor."""
-        return f"{self._device.mac}-ssid"
+        return f"{self._irrigation.mac}-ssid"
 
     @property
     def native_value(self) -> str:
         """Return the SSID."""
-        return self._device.ssid
+        return self._irrigation.ssid
+
+
+class WyzeIrrigationSerialNumber(WyzeIrrigationBaseSensor):
+    """Representation of a Wyze Irrigation Serial Number sensor."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return f"{self._irrigation.nickname} Serial Number"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._irrigation.mac}-serial-number"
+
+    @property
+    def native_value(self) -> str:
+        """Return the serial number."""
+        return self._irrigation.sn

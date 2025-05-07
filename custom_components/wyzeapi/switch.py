@@ -19,7 +19,6 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.services.bulb_service import Bulb
 from wyzeapy.types import Device, Event, DeviceTypes
-from wyzeapy.services.irrigation_service import IrrigationService, IrrigationDevice, Zone
 
 from .const import CAMERA_UPDATED, LIGHT_UPDATED
 from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
@@ -53,7 +52,6 @@ async def async_setup_entry(
     wall_switch_service = await client.wall_switch_service
     camera_service = await client.camera_service
     bulb_service = await client.bulb_service
-    irrigation_service = await client.irrigation_service
 
     switches: List[SwitchEntity] = [
         WyzeSwitch(switch_service, switch)
@@ -85,16 +83,6 @@ async def async_setup_entry(
     for bulb in bulb_switches:
         if bulb.type is DeviceTypes.LIGHTSTRIP:
             switches.extend([WzyeLightstripSwitch(bulb_service, bulb)])
-
-    # Get all irrigation devices
-    irrigation_devices = await irrigation_service.get_irrigations()
-    
-    # Create a switch entity for each zone in each irrigation device
-    for device in irrigation_devices:
-        # Update the device to get its zones
-        device = await irrigation_service.update(device)
-        for zone in device.zones:
-            switches.append(WyzeIrrigationZone(irrigation_service, device, zone))
 
     async_add_entities(switches, True)
 
@@ -590,86 +578,3 @@ class WzyeLightstripSwitch(SwitchEntity):
                 self.handle_light_update,
             )
         )
-
-
-class WyzeIrrigationZone(SwitchEntity):
-    """Representation of a Wyze Irrigation Zone."""
-
-    def __init__(self, service: IrrigationService, device: IrrigationDevice, zone: Zone) -> None:
-        """Initialize the irrigation zone."""
-        self._service = service
-        self._device = device
-        self._zone = zone
-        self._is_running = False
-
-    @property
-    def name(self) -> str:
-        """Return the name of the zone."""
-        return f"{self._device.nickname} - {self._zone.name}"
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if the zone is running."""
-        return self._is_running
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for the zone."""
-        return f"{self._device.mac}-zone-{self._zone.zone_number}"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information about this entity."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device.mac)},
-            name=self._device.nickname,
-            manufacturer="WyzeLabs",
-            model=self._device.product_model,
-        )
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity specific state attributes."""
-        return {
-            "zone_number": self._zone.zone_number,
-            "zone_id": self._zone.zone_id,
-            "enabled": self._zone.enabled,
-            "quickrun_duration": self._zone.quickrun_duration,
-        }
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the zone on."""
-        await self._service._irrigation_start_zone(
-            self._device,
-            self._zone.zone_number,
-            self._zone.quickrun_duration
-        )
-        self._is_running = True
-        self.async_write_ha_state()
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the zone off."""
-        await self._service._irrigation_stop_running_schedule(self._device)
-        self._is_running = False
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Subscribe to updates."""
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                f"{DOMAIN}-irrigation-{self._device.mac}",
-                self._handle_update,
-            )
-        )
-
-    @callback
-    def _handle_update(self, device: IrrigationDevice) -> None:
-        """Handle updates to the device."""
-        self._device = device
-        # Find the updated zone
-        for zone in device.zones:
-            if zone.zone_number == self._zone.zone_number:
-                self._zone = zone
-                break
-        self.async_write_ha_state()
