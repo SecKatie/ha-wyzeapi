@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Callable, List
 
-from homeassistant.components.number import NumberEntity
+from homeassistant.components.number import NumberEntity, RestoreNumber
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_send
 )
 from wyzeapy import Wyzeapy
-from wyzeapy.services.irrigation_service import IrrigationService, IrrigationDevice, Zone
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
 
 from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
@@ -40,37 +40,39 @@ async def async_setup_entry(
         # Update the device to get its zones
         device = await irrigation_service.update(device)
         for zone in device.zones:
-            entities.append(WyzeIrrigationQuickrunDuration(irrigation_service, device, zone))
+            if zone.enabled:
+                entities.append(WyzeIrrigationQuickrunDuration(irrigation_service, device, zone))
 
     async_add_entities(entities, True)
 
-class WyzeIrrigationQuickrunDuration(NumberEntity):
+class WyzeIrrigationQuickrunDuration(RestoreNumber):
     """Representation of a Wyze Irrigation Zone Quickrun Duration."""
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: IrrigationDevice, zone: Zone) -> None:
+    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
         """Initialize the irrigation zone quickrun duration."""
         self._irrigation_service = irrigation_service
-        self._irrigation = irrigation
+        self._device = irrigation
         self._zone = zone
 
     @property
     def name(self) -> str:
         """Return the name of the zone quickrun duration."""
-        return f"{self._irrigation.nickname} - {self._zone.name} Quickrun Duration"
+        return f" {self._zone.name}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the zone quickrun duration."""
-        return f"{self._irrigation.mac}-zone-{self._zone.zone_number}-quickrun-duration"
+        return f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information about this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._irrigation.mac)},
-            name=self._irrigation.nickname,
+            identifiers={(DOMAIN, self._device.mac)},
+            name=self._device.nickname,
             manufacturer="WyzeLabs",
-            model=self._irrigation.product_model,
+            model=self._device.product_model,
+            serial_number=self._device.sn,
             connections={(dr.CONNECTION_NETWORK_MAC, self._device.mac)},
         )
 
@@ -104,35 +106,71 @@ class WyzeIrrigationQuickrunDuration(NumberEntity):
         """Return the unit of measurement."""
         return "s"
 
+    @property
+    def icon(self) -> str:
+        """Return the icon for the quickrun duration number."""
+        return "mdi:timer"
+
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
         await self._irrigation_service.set_zone_quickrun_duration(
-            self._irrigation,
+            self._device,
             self._zone.zone_number,
             int(value)
         )
         self._zone.quickrun_duration = int(value)
         self.async_write_ha_state()
 
+    async def _async_load_value(self) -> None:
+        """Load the value from Home Assistant state or update from irrigation service."""
+        # Try to get the last number data from Home Assistant
+        state = await self.async_get_last_number_data()
+        if state and state.native_value is not None:
+            try:
+                self._zone.quickrun_duration = int(state.native_value)
+                return
+            except (ValueError, TypeError):
+                pass
+        
+        # If no valid state exists, update from irrigation service
+        self._device = await self._irrigation_service.update(self._device)
+        for zone in self._device.zones:
+            if zone.zone_number == self._zone.zone_number:
+                self._zone = zone
+                break
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to updates."""
+        await self.async_get_last_number_data()
+        await self._async_load_value()
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up when removed."""
+        pass
+
+'''
     @callback
-    def async_update_callback(self, irrigation: IrrigationDevice) -> None:
+    def async_update_callback(self, irrigation: Irrigation) -> None:
         """Update the number's state."""
-        self._irrigation = irrigation
+        self._device = irrigation
         # Find the updated zone
         for zone in irrigation.zones:
             if zone.zone_number == self._zone.zone_number:
                 self._zone = zone
                 break
-        async_dispatcher_send(self.hass, f"{DOMAIN}-irrigation-{self._irrigation.mac}", irrigation)
+        async_dispatcher_send(self.hass, f"{DOMAIN}-irrigation-{self._device.mac}", irrigation)
         self.schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
-        self._irrigation.callback_function = self.async_update_callback
-        self._irrigation_service.register_updater(self._irrigation, 30)
+        
+        self._device.callback_function = self.async_update_callback
+        self._irrigation_service.register_updater(self._device, 30)
         await self._irrigation_service.start_update_manager()
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up when removed."""
-        self._irrigation_service.unregister_updater(self._irrigation) 
+        self._irrigation_service.unregister_updater(self._device)
+'''

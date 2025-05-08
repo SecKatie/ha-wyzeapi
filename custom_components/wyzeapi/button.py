@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 """Platform for button integration."""
 import logging
 from typing import Any, Callable, List
@@ -10,11 +8,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.dispatcher import async_dispatcher_send, async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy
-from wyzeapy.services.irrigation_service import IrrigationService, IrrigationDevice, Zone
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
 from wyzeapy.types import Device, Event, DeviceTypes
 
 from .const import DOMAIN, CONF_CLIENT
@@ -51,7 +48,10 @@ async def async_setup_entry(
         # Update the device to get its zones
         device = await irrigation_service.update(device)
         for zone in device.zones:
-            buttons.append(WyzeIrrigationZoneButton(irrigation_service, device, zone))
+            if zone.enabled:
+                buttons.append(WyzeIrrigationZoneButton(irrigation_service, device, zone))
+        # Add a stop all schedules button for each irrigation device, not each zone
+        buttons.append(WyzeIrrigationStopAllButton(irrigation_service, device))
 
     async_add_entities(buttons, True)
 
@@ -59,30 +59,30 @@ async def async_setup_entry(
 class WyzeIrrigationZoneButton(ButtonEntity):
     """Representation of a Wyze Irrigation Zone Button."""
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: IrrigationDevice, zone: Zone) -> None:
+    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
         """Initialize the irrigation zone button."""
         self._irrigation_service = irrigation_service
-        self._irrigation = irrigation
+        self._device = irrigation
         self._zone = zone
 
     @property
     def name(self) -> str:
         """Return the name of the zone."""
-        return f"{self._irrigation.nickname} - {self._zone.name}"
+        return f"{self._zone.name}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the zone."""
-        return f"{self._irrigation.mac}-zone-{self._zone.zone_number}"
+        return f"Start {self._device.mac}-zone-{self._zone.zone_number}"
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information about this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._irrigation.mac)},
-            name=self._irrigation.nickname,
+            identifiers={(DOMAIN, self._device.mac)},
+            name=self._device.nickname,
             manufacturer="WyzeLabs",
-            model=self._irrigation.product_model,
+            model=self._device.product_model,
             connections={(dr.CONNECTION_NETWORK_MAC, self._device.mac)},
         )
 
@@ -90,6 +90,11 @@ class WyzeIrrigationZoneButton(ButtonEntity):
     def device_class(self) -> str:
         """Return the device class of the button."""
         return ButtonDeviceClass.RESTART
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the zone start button."""
+        return "mdi:sprinkler"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -112,7 +117,7 @@ class WyzeIrrigationZoneButton(ButtonEntity):
         """
         try:
             await self._irrigation_service.start_zone(
-                self._irrigation,
+                self._device,
                 self._zone.zone_number,
                 self._zone.quickrun_duration
             )
@@ -122,24 +127,60 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             _LOGGER.error("Error starting zone: %s", err)
             raise HomeAssistantError(f"Failed to start zone: {err}") from err
 
-    @callback
-    def async_update_callback(self, irrigation: IrrigationDevice) -> None:
-        """Update the button's state."""
-        self._irrigation = irrigation
-        # Find the updated zone
-        for zone in irrigation.zones:
-            if zone.zone_number == self._zone.zone_number:
-                self._zone = zone
-                break
-        self.schedule_update_ha_state()
 
-    async def async_added_to_hass(self) -> None:
-        """Subscribe to updates."""
-        self._irrigation.callback_function = self.async_update_callback
-        self._irrigation_service.register_updater(self._irrigation, 30)
-        await self._irrigation_service.start_update_manager()
-        return await super().async_added_to_hass()
+class WyzeIrrigationStopAllButton(ButtonEntity):
+    """Representation of a Wyze Irrigation Stop All Schedules Button."""
 
-    async def async_will_remove_from_hass(self) -> None:
-        """Clean up when removed."""
-        self._irrigation_service.unregister_updater(self._irrigation) 
+    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:
+        """Initialize the irrigation stop all button."""
+        self._irrigation_service = irrigation_service
+        self._device = irrigation
+
+    @property
+    def name(self) -> str:
+        """Return the name of the button."""
+        return f"Stop All Zones"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the button."""
+        return f"Stop All {self._device.mac}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device.mac)},
+            name=self._device.nickname,
+            manufacturer="WyzeLabs",
+            model=self._device.product_model,
+            serial_number=self._device.sn,
+            connections={(dr.CONNECTION_NETWORK_MAC, self._device.mac)},
+        )
+
+    @property
+    def device_class(self) -> str:
+        """Return the device class of the button."""
+        return ButtonDeviceClass.RESTART
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the stop allbutton."""
+        return "mdi:octagon"
+
+    async def async_press(self) -> None:
+        """Stop all running irrigation schedules.
+        
+        This method is called when the button is pressed in Home Assistant.
+        It will stop all running irrigation schedules for the device.
+        
+        Raises:
+            HomeAssistantError: If the schedules cannot be stopped.
+        """
+        try:
+            await self._irrigation_service.stop_running_schedule(self._device)
+        except ClientConnectionError as err:
+            raise HomeAssistantError(f"Failed to stop schedules: {err}") from err
+        except Exception as err:
+            _LOGGER.error("Error stopping schedules: %s", err)
+            raise HomeAssistantError(f"Failed to stop schedules: {err}") from err
