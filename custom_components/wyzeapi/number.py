@@ -142,4 +142,3 @@ class WyzeIrrigationQuickrunDuration(RestoreNumber):
         """Subscribe to updates."""
         await self._async_load_value()
         return await super().async_added_to_hass()
-

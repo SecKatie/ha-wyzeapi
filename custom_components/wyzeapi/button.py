@@ -1,4 +1,5 @@
 """Platform for button integration."""
+
 import logging
 from typing import Any, Callable, List
 from aiohttp.client_exceptions import ClientConnectionError
@@ -116,10 +117,31 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             HomeAssistantError: If the zone cannot be started.
         """
         try:
+            # This quickduration field doesnt exist in the Wyze API
+            # It has been created in Home Assistant as a number entity
+            # to conveniently trigger a zone start with a specific duration
+        
+            # Get the number entity ID for this zone's quickrun duration
+            # Convert to lowercase, replace spaces and special chars with underscores, remove any non-alphanumeric chars
+            sanitized_name = ''.join(c if c.isalnum() else '_' for c in self._zone.name.lower())
+            # Remove consecutive underscores and ensure it starts with a letter
+            sanitized_name = '_'.join(filter(None, sanitized_name.split('_')))
+            if not sanitized_name[0].isalpha():
+                sanitized_name = 'zone_' + sanitized_name
+            number_entity_id = f"number.{sanitized_name}"
+            
+            # Get the current state of the number entity
+            state = self.hass.states.get(number_entity_id)
+            if state is None:
+                raise HomeAssistantError(f"Could not find number entity {number_entity_id}")
+            
+            # Get the duration value from the state
+            duration = int(float(state.state))
+            
             await self._irrigation_service.start_zone(
                 self._device,
                 self._zone.zone_number,
-                self._zone.quickrun_duration
+                duration
             )
         except ClientConnectionError as err:
             raise HomeAssistantError(f"Failed to start zone: {err}") from err
