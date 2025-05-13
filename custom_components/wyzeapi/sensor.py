@@ -497,6 +497,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
 class WyzeIrrigationBaseSensor(SensorEntity):
     """Base class for Wyze Irrigation sensors."""
 
+    _attr_has_entity_name = True
     _attr_should_poll = False
 
     def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:

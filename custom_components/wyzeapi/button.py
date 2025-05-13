@@ -10,7 +10,8 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.entity_registry import async_get
 from wyzeapy import Wyzeapy
 from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
 from wyzeapy.types import Device, Event, DeviceTypes
@@ -59,6 +60,8 @@ async def async_setup_entry(
 
 class WyzeIrrigationZoneButton(ButtonEntity):
     """Representation of a Wyze Irrigation Zone Button."""
+
+    _attr_has_entity_name = True
 
     def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
         """Initialize the irrigation zone button."""
@@ -109,45 +112,102 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Start the zone with its quickrun duration.
-        
+
         This method is called when the button is pressed in Home Assistant.
-        It will start the irrigation zone for the configured quickrun duration.
-        
+        It starts the irrigation zone for the duration specified in the corresponding number entity.
+
+        The number entity is matched by comparing the zone name (e.g., 'Backyard S') to the
+        entity ID suffix (e.g., 'backyard_s' in 'number.hag_controller_backyard_s') or unique_id.
+
         Raises:
-            HomeAssistantError: If the zone cannot be started.
+            HomeAssistantError: If the zone cannot be started or the number entity is invalid.
         """
         try:
-            # This quickduration field doesnt exist in the Wyze API
+            # The quickrun duration field doesnt exist in the Wyze API
             # It has been created in Home Assistant as a number entity
             # to conveniently trigger a zone start with a specific duration
-        
-            # Get the number entity ID for this zone's quickrun duration
-            # Convert to lowercase, replace spaces and special chars with underscores, remove any non-alphanumeric chars
-            sanitized_name = ''.join(c if c.isalnum() else '_' for c in self._zone.name.lower())
-            # Remove consecutive underscores and ensure it starts with a letter
-            sanitized_name = '_'.join(filter(None, sanitized_name.split('_')))
-            if not sanitized_name[0].isalpha():
-                sanitized_name = 'zone_' + sanitized_name
-            number_entity_id = f"number.{sanitized_name}"
             
+            # Get the device registry and find the device
+            device_registry = dr.async_get(self.hass)
+            device = device_registry.async_get_device(identifiers={(DOMAIN, self._device.mac)})
+            if not device:
+                raise HomeAssistantError(f"Device not found for MAC {self._device.mac}")
+
+            # Get the entity registry
+            entity_registry = er.async_get(self.hass)
+
+            # Find number entities for this device
+            number_entities = [
+                entity_id
+                for entity_id, entity in entity_registry.entities.items()
+                if entity.device_id == device.id
+                and entity.platform == DOMAIN
+                and entity_id.startswith("number.")
+            ]
+            _LOGGER.debug(f"Found number entities for device {self._device.mac}: {number_entities}")
+
+            # Find the matching number entity
+            matching_entity = None
+            zone_name_normalized = self._zone.name.lower().replace(" ", "_")
+            for entity_id in number_entities:
+                entity = entity_registry.entities[entity_id]
+                # Extract the zone part from entity_id (e.g., 'backyard_s' from 'number.hag_controller_backyard_s')
+                entity_id_suffix = entity_id.split(".")[-1].lower()  # e.g., 'hag_controller_backyard_s' -> 'backyard_s'
+                # Also check unique_id and original_name
+                unique_id = entity.unique_id.lower() if entity.unique_id else ""
+                original_name = entity.original_name.lower() if entity.original_name else ""
+                _LOGGER.debug(
+                    f"Checking entity {entity_id}: "
+                    f"suffix={entity_id_suffix}, unique_id={unique_id}, original_name={original_name}, "
+                    f"zone_normalized={zone_name_normalized}"
+                )
+                if (
+                    entity_id_suffix.endswith(zone_name_normalized)
+                    or unique_id.endswith(zone_name_normalized)
+                    or original_name == zone_name_normalized
+                ):
+                    matching_entity = entity_id
+                    break
+
+            if not matching_entity:
+                raise HomeAssistantError(
+                    f"No number entity found for zone {self._zone.name} (device: {self._device.mac})"
+                )
+
             # Get the current state of the number entity
-            state = self.hass.states.get(number_entity_id)
-            if state is None:
-                raise HomeAssistantError(f"Could not find number entity {number_entity_id}")
-            
-            # Get the duration value from the state
-            duration = int(float(state.state))
-            
+            state = self.hass.states.get(matching_entity)
+            if state is None or state.state in ["unavailable", "unknown"]:
+                raise HomeAssistantError(f"Number entity {matching_entity} is unavailable or unknown")
+
+            # Convert duration from minutes to seconds
+            try:
+                duration_minutes = float(state.state)
+                if duration_minutes <= 0:
+                    raise ValueError("Duration must be greater than 0")
+                duration_seconds = int(duration_minutes * 60)
+            except ValueError as err:
+                raise HomeAssistantError(
+                    f"Invalid duration {state.state} for {matching_entity}"
+                ) from err
+
+            _LOGGER.debug(
+                f"Starting zone {self._zone.name} (zone {self._zone.zone_number}) "
+                f"for {duration_minutes} minutes ({duration_seconds} seconds)"
+            )
+
+            # Start the zone with the specified duration
             await self._irrigation_service.start_zone(
                 self._device,
                 self._zone.zone_number,
-                duration
+                duration_seconds
             )
-        except ClientConnectionError as err:
-            raise HomeAssistantError(f"Failed to start zone: {err}") from err
+
+        except HomeAssistantError as err:
+            _LOGGER.error("Failed to start zone %s: %s", self._zone.name, err)
+            raise
         except Exception as err:
-            _LOGGER.error("Error starting zone: %s", err)
-            raise HomeAssistantError(f"Failed to start zone: {err}") from err
+            _LOGGER.error("Unexpected error starting zone %s: %s", self._zone.name, err)
+            raise HomeAssistantError(f"Failed to start zone {self._zone.name}: {err}") from err
 
 
 class WyzeIrrigationStopAllButton(ButtonEntity):
