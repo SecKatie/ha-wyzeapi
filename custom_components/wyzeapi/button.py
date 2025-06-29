@@ -148,7 +148,14 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
             # Find the matching number entity
             matching_entity = None
-            zone_name_normalized = self._zone.name.lower().replace(" ", "_")
+            # Normalize zone name to be a valid Home Assistant entity name
+            zone_name_normalized = ''.join(c if c.isalnum() else '_' for c in self._zone.name.lower())
+            # Remove double underscores
+            while '__' in zone_name_normalized:
+                zone_name_normalized = zone_name_normalized.replace('__', '_')
+            # Remove leading/trailing underscores
+            zone_name_normalized = zone_name_normalized.strip('_')
+            
             for entity_id in number_entities:
                 entity = entity_registry.entities[entity_id]
                 # Extract the zone part from entity_id (e.g., 'backyard_s' from 'number.hag_controller_backyard_s')
