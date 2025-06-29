@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 """Platform for siren integration."""
+
 import logging
 from typing import Any, Callable
 from aiohttp.client_exceptions import ClientConnectionError
@@ -14,7 +15,6 @@ from homeassistant.components.siren import (
     SirenEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -27,8 +27,11 @@ ATTRIBUTION = "Data provided by Wyze"
 
 
 @token_exception_handler
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: Callable[[list[Any], bool], None]) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: Callable[[list[Any], bool], None],
+) -> None:
     """
     This function sets up the config entry
 
@@ -52,6 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
 class WyzeCameraSiren(SirenEntity):
     """Representation of a Wyze Camera Siren."""
+
     _available: bool
     _just_updated = False
 
@@ -116,12 +120,10 @@ class WyzeCameraSiren(SirenEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._device.mac)
-            },
+            "identifiers": {(DOMAIN, self._device.mac)},
             "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
-            "model": self._device.product_model
+            "model": self._device.product_model,
         }
 
     @callback

@@ -8,7 +8,7 @@ from typing import Callable, List, Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
-    BinarySensorDeviceClass
+    BinarySensorDeviceClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -26,8 +26,11 @@ ATTRIBUTION = "Data provided by Wyze"
 
 
 @token_exception_handler
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: Callable[[List[Any], bool], None]):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: Callable[[List[Any], bool], None],
+):
     """
     This function sets up the config entry for use in Home Assistant
 
@@ -43,8 +46,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     sensor_service = await client.sensor_service
     camera_service = await client.camera_service
 
-    cameras = [WyzeCameraMotion(camera_service, camera) for camera in await camera_service.get_cameras()]
-    sensors = [WyzeSensor(sensor_service, sensor) for sensor in await sensor_service.get_sensors()]
+    cameras = [
+        WyzeCameraMotion(camera_service, camera)
+        for camera in await camera_service.get_cameras()
+    ]
+    sensors = [
+        WyzeSensor(sensor_service, sensor)
+        for sensor in await sensor_service.get_sensors()
+    ]
 
     async_add_entities(cameras, True)
     async_add_entities(sensors, True)
@@ -63,7 +72,9 @@ class WyzeSensor(BinarySensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Registers for updates when the entity is added to Home Assistant"""
-        await self._sensor_service.register_for_updates(self._sensor, self.process_update)
+        await self._sensor_service.register_for_updates(
+            self._sensor, self.process_update
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         await self._sensor_service.deregister_for_updates(self._sensor)
@@ -80,12 +91,10 @@ class WyzeSensor(BinarySensorEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._sensor.mac)
-            },
+            "identifiers": {(DOMAIN, self._sensor.mac)},
             "name": self.name,
             "manufacturer": "WyzeLabs",
-            "model": self._sensor.product_model
+            "model": self._sensor.product_model,
         }
 
     @property
@@ -116,7 +125,7 @@ class WyzeSensor(BinarySensorEntity):
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "device model": self._sensor.product_model,
-            "mac": self.unique_id
+            "mac": self.unique_id,
         }
 
     @property
@@ -128,13 +137,15 @@ class WyzeSensor(BinarySensorEntity):
             return BinarySensorDeviceClass.DOOR
         else:
             raise RuntimeError(
-                f"The device type {self._sensor.type} is not supported by this class")
+                f"The device type {self._sensor.type} is not supported by this class"
+            )
 
 
 class WyzeCameraMotion(BinarySensorEntity):
     """
     A representation of the Wyze Camera for use as a binary sensor in Home Assistant
     """
+
     _is_on = False
     _last_event = time.time() * 1000
 
@@ -145,12 +156,10 @@ class WyzeCameraMotion(BinarySensorEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._camera.mac)
-            },
+            "identifiers": {(DOMAIN, self._camera.mac)},
             "name": self.name,
             "manufacturer": "WyzeLabs",
-            "model": self._camera.product_model
+            "model": self._camera.product_model,
         }
 
     @property
@@ -181,7 +190,7 @@ class WyzeCameraMotion(BinarySensorEntity):
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             "device model": self._camera.product_model,
-            "mac": self.unique_id
+            "mac": self.unique_id,
         }
 
     @property
@@ -189,7 +198,9 @@ class WyzeCameraMotion(BinarySensorEntity):
         return BinarySensorDeviceClass.MOTION
 
     async def async_added_to_hass(self) -> None:
-        await self._camera_service.register_for_updates(self._camera, self.process_update)
+        await self._camera_service.register_for_updates(
+            self._camera, self.process_update
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         await self._camera_service.deregister_for_updates(self._camera)

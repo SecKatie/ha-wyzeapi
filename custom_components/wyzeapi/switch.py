@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 """Platform for switch integration."""
+
 import logging
 from datetime import timedelta
 from typing import Any, Callable, List, Union
@@ -8,12 +9,14 @@ from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.dispatcher import async_dispatcher_send, async_dispatcher_connect
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_send,
+    async_dispatcher_connect,
+)
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import CameraService, SwitchService, WallSwitchService, Wyzeapy, BulbService
+from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
@@ -27,8 +30,13 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
-MOTION_SWITCH_UNSUPPORTED = ["GW_BE1", "GW_GC1", "GW_GC2"]  # Video doorbell pro, OG, OG 3x Telephoto
+MOTION_SWITCH_UNSUPPORTED = [
+    "GW_BE1",
+    "GW_GC1",
+    "GW_GC2",
+]  # Video doorbell pro, OG, OG 3x Telephoto
 POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
+
 
 # noinspection DuplicatedCode
 @token_exception_handler
@@ -65,14 +73,13 @@ async def async_setup_entry(
 
     camera_switches = await camera_service.get_cameras()
     for switch in camera_switches:
-
         # Notification toggle switch
         switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
 
         # IoT Power switch
         if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
             switches.extend([WyzeSwitch(camera_service, switch)])
-        
+
         # Motion toggle switch
         if switch.product_model not in MOTION_SWITCH_UNSUPPORTED:
             switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
@@ -107,12 +114,10 @@ class WyzeNotifications(SwitchEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._uid)
-            },
+            "identifiers": {(DOMAIN, self._uid)},
             "name": "Wyze Notifications",
             "manufacturer": "WyzeLabs",
-            "model": "WyzeNotificationToggle"
+            "model": "WyzeNotificationToggle",
         }
 
     @property
@@ -185,9 +190,7 @@ class WyzeSwitch(SwitchEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._device.mac)
-            },
+            "identifiers": {(DOMAIN, self._device.mac)},
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
@@ -196,7 +199,7 @@ class WyzeSwitch(SwitchEntity):
             },
             "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
-            "model": self._device.product_model
+            "model": self._device.product_model,
         }
 
     @property
@@ -257,7 +260,9 @@ class WyzeSwitch(SwitchEntity):
         dev_info = {}
 
         if self._device.device_params.get("electricity"):
-            dev_info["Battery"] = str(self._device.device_params.get("electricity") + "%")
+            dev_info["Battery"] = str(
+                self._device.device_params.get("electricity") + "%"
+            )
         # noinspection DuplicatedCode
         if self._device.device_params.get("ip"):
             dev_info["IP"] = str(self._device.device_params.get("ip"))
@@ -288,7 +293,11 @@ class WyzeSwitch(SwitchEntity):
         self.async_schedule_update_ha_state()
         # if the switch is from a camera, lets check for new events
         if isinstance(switch, Camera):
-            if self._old_event_ts > 0 and self._old_event_ts != switch.last_event_ts and switch.last_event is not None:
+            if (
+                self._old_event_ts > 0
+                and self._old_event_ts != switch.last_event_ts
+                and switch.last_event is not None
+            ):
                 event: Event = switch.last_event
                 # The screenshot/video urls are not always in the same positions in the lists, so we have to loop
                 # through them
@@ -302,14 +311,17 @@ class WyzeSwitch(SwitchEntity):
                     elif resource["type"] == 2:
                         _video_url = resource["url"]
                 _LOGGER.debug("Camera: %s has a new event", switch.nickname)
-                self.hass.bus.fire(WYZE_CAMERA_EVENT, {
-                    "device_name": switch.nickname,
-                    "device_mac": switch.mac,
-                    "ai_tag_list": _ai_tag_list,
-                    "tag_list": event.tag_list,
-                    "event_screenshot": _screenshot_url,
-                    "event_video": _video_url
-                })
+                self.hass.bus.fire(
+                    WYZE_CAMERA_EVENT,
+                    {
+                        "device_name": switch.nickname,
+                        "device_mac": switch.mac,
+                        "ai_tag_list": _ai_tag_list,
+                        "tag_list": event.tag_list,
+                        "event_screenshot": _screenshot_url,
+                        "event_video": _video_url,
+                    },
+                )
             self._old_event_ts = switch.last_event_ts
 
     async def async_added_to_hass(self) -> None:
@@ -340,7 +352,7 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
             "identifiers": {(DOMAIN, self._device.mac)},
             "name": self._device.nickname,
             "manufacturer": "WyzeLabs",
-            "model": self._device.product_model
+            "model": self._device.product_model,
         }
 
     @property
@@ -359,7 +371,6 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
         else:
             self._device.notify = True
             self.async_write_ha_state()
-
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""

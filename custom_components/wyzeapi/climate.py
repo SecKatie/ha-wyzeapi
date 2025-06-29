@@ -1,5 +1,7 @@
 """Platform for light integration."""
+
 import logging
+
 # Import the device class from the component that you want to support
 from datetime import timedelta
 from typing import List, Optional, Callable, Any
@@ -19,13 +21,20 @@ from homeassistant.components.climate.const import (
     PRESET_SLEEP,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.services.thermostat_service import Thermostat, TemperatureUnit, Preset, FanMode, HVACState, HVACMode as WyzeHVACMode
+from wyzeapy.services.thermostat_service import (
+    Thermostat,
+    TemperatureUnit,
+    Preset,
+    FanMode,
+    HVACState,
+    HVACMode as WyzeHVACMode,
+)
 from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT
@@ -36,8 +45,11 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 
 @token_exception_handler
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: Callable[[List[Any], bool], None]):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: Callable[[List[Any], bool], None],
+):
     """
     This function sets up the config entry so that it is available to Home Assistant
 
@@ -51,8 +63,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     thermostat_service = await client.thermostat_service
-    thermostats = [WyzeThermostat(thermostat_service, thermostat) for thermostat in
-                   await thermostat_service.get_thermostats()]
+    thermostats = [
+        WyzeThermostat(thermostat_service, thermostat)
+        for thermostat in await thermostat_service.get_thermostats()
+    ]
 
     async_add_entities(thermostats, True)
 
@@ -103,9 +117,9 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def temperature_unit(self) -> str:
-        #if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
+        # if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
         return UnitOfTemperature.FAHRENHEIT
-        #return TEMP_CELSIUS
+        # return TEMP_CELSIUS
 
     @property
     def unit_of_measurement(self) -> str:
@@ -190,15 +204,19 @@ class WyzeThermostat(ClimateEntity):
 
     @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
-        target_temp_low = kwargs['target_temp_low']
-        target_temp_high = kwargs['target_temp_high']
+        target_temp_low = kwargs["target_temp_low"]
+        target_temp_high = kwargs["target_temp_high"]
 
         try:
             if target_temp_low != self._thermostat.heat_set_point:
-                await self._thermostat_service.set_heat_point(self._thermostat, int(target_temp_low))
+                await self._thermostat_service.set_heat_point(
+                    self._thermostat, int(target_temp_low)
+                )
                 self._thermostat.heat_set_point = int(target_temp_low)
             if target_temp_high != self._thermostat.cool_set_point:
-                await self._thermostat_service.set_cool_point(self._thermostat, int(target_temp_high))
+                await self._thermostat_service.set_cool_point(
+                    self._thermostat, int(target_temp_high)
+                )
                 self._thermostat.cool_set_point = int(target_temp_high)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
@@ -215,10 +233,14 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         try:
             if fan_mode == FAN_ON:
-                await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.ON)
+                await self._thermostat_service.set_fan_mode(
+                    self._thermostat, FanMode.ON
+                )
                 self._thermostat.fan_mode = FanMode.ON
             elif fan_mode == FAN_AUTO:
-                await self._thermostat_service.set_fan_mode(self._thermostat, FanMode.AUTO)
+                await self._thermostat_service.set_fan_mode(
+                    self._thermostat, FanMode.AUTO
+                )
                 self._thermostat.fan_mode = FanMode.AUTO
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
@@ -232,16 +254,24 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         try:
             if hvac_mode == HVACMode.OFF:
-                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.OFF)
+                await self._thermostat_service.set_hvac_mode(
+                    self._thermostat, WyzeHVACMode.OFF
+                )
                 self._thermostat.hvac_mode = HVACMode.OFF
             elif hvac_mode == HVACMode.HEAT:
-                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.HEAT)
+                await self._thermostat_service.set_hvac_mode(
+                    self._thermostat, WyzeHVACMode.HEAT
+                )
                 self._thermostat.hvac_mode = HVACMode.HEAT
             elif hvac_mode == HVACMode.COOL:
-                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.COOL)
+                await self._thermostat_service.set_hvac_mode(
+                    self._thermostat, WyzeHVACMode.COOL
+                )
                 self._thermostat.hvac_mode = HVACMode.COOL
             elif hvac_mode == HVACMode.AUTO:
-                await self._thermostat_service.set_hvac_mode(self._thermostat, WyzeHVACMode.AUTO)
+                await self._thermostat_service.set_hvac_mode(
+                    self._thermostat, WyzeHVACMode.AUTO
+                )
                 self._thermostat.hvac_mode = HVACMode.AUTO
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
@@ -258,7 +288,9 @@ class WyzeThermostat(ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         try:
             if preset_mode == PRESET_SLEEP:
-                await self._thermostat_service.set_preset(self._thermostat, Preset.SLEEP)
+                await self._thermostat_service.set_preset(
+                    self._thermostat, Preset.SLEEP
+                )
                 self._thermostat.preset = Preset.SLEEP
             elif preset_mode == PRESET_AWAY:
                 await self._thermostat_service.set_preset(self._thermostat, Preset.AWAY)
@@ -282,14 +314,16 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def supported_features(self) -> int:
-        return ClimateEntityFeature.TARGET_TEMPERATURE_RANGE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
+        return (
+            ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+            | ClimateEntityFeature.FAN_MODE
+            | ClimateEntityFeature.PRESET_MODE
+        )
 
     @property
     def device_info(self) -> dict:
         return {
-            "identifiers": {
-                (DOMAIN, self._thermostat.mac)
-            },
+            "identifiers": {(DOMAIN, self._thermostat.mac)},
             "name": self._thermostat.nickname,
             "connections": {
                 (
@@ -298,7 +332,7 @@ class WyzeThermostat(ClimateEntity):
                 )
             },
             "manufacturer": "WyzeLabs",
-            "model": self._thermostat.product_model
+            "model": self._thermostat.product_model,
         }
 
     @property

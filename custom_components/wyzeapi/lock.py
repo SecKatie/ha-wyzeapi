@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 """Platform for light integration."""
+
 from abc import ABC
 from datetime import timedelta
 import logging
@@ -31,8 +32,11 @@ MAX_OUT_OF_SYNC_COUNT = 5
 
 
 @token_exception_handler
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: Callable[[List[Any], bool], None]) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: Callable[[List[Any], bool], None],
+) -> None:
     """
     This function sets up the config_entry
 
@@ -65,9 +69,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     def __init__(self, lock_service: LockService, lock: Lock):
         """Initialize a Wyze lock."""
         self._lock = lock
-        if self._lock.type not in [
-            DeviceTypes.LOCK
-        ]:
+        if self._lock.type not in [DeviceTypes.LOCK]:
             raise AttributeError("Device type not supported")
 
         self._lock_service = lock_service
@@ -77,9 +79,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._lock.mac)
-            },
+            "identifiers": {(DOMAIN, self._lock.mac)},
             "name": self._lock.nickname,
             "connections": {
                 (
@@ -88,7 +88,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
                 )
             },
             "manufacturer": "WyzeLabs",
-            "model": self._lock.product_model
+            "model": self._lock.product_model,
         }
 
     def lock(self, **kwargs):
@@ -158,7 +158,9 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
 
         # Add the keypad's battery value if it exists
         if self._lock.raw_dict.get("keypad", {}).get("power"):
-            dev_info["keypad_battery"] = str(self._lock.raw_dict.get("keypad", {}).get("power"))
+            dev_info["keypad_battery"] = str(
+                self._lock.raw_dict.get("keypad", {}).get("power")
+            )
 
         return dev_info
 
@@ -172,7 +174,10 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         This function updates the entity
         """
         lock = await self._lock_service.update(self._lock)
-        if lock.unlocked == self._lock.unlocked or self._out_of_sync_count >= MAX_OUT_OF_SYNC_COUNT:
+        if (
+            lock.unlocked == self._lock.unlocked
+            or self._out_of_sync_count >= MAX_OUT_OF_SYNC_COUNT
+        ):
             self._lock = lock
             self._out_of_sync_count = 0
         else:

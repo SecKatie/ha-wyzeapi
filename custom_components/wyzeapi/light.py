@@ -426,7 +426,7 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def name(self) -> str:
         """Return the device name."""
-        return f"{self._device.nickname} {"Lamp Socket" if self._light_type == "lampsocket" else ("Floodlight" if self._light_type == "floodlight" else "Spotlight")}"
+        return f"{self._device.nickname} {'Lamp Socket' if self._light_type == 'lampsocket' else ('Floodlight' if self._light_type == 'floodlight' else 'Spotlight')}"
 
     @property
     def device_info(self):

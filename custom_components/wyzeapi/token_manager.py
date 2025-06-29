@@ -50,4 +50,3 @@ def token_exception_handler(func):
             raise ConfigEntryAuthFailed("Unable to login, please re-login.") from err
 
     return inner_function
-    
