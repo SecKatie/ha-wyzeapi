@@ -41,7 +41,6 @@ NOTIFICATION_SWITCH_UNSUPPORTED = {
     "GW_GC2",
 }  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
 
-
 # noinspection DuplicatedCode
 @token_exception_handler
 async def async_setup_entry(
@@ -79,7 +78,7 @@ async def async_setup_entry(
     for switch in camera_switches:
         # Notification toggle switch
         if switch.product_model not in NOTIFICATION_SWITCH_UNSUPPORTED:
-            switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
+            switches.append(WyzeCameraNotificationSwitch(camera_service, switch))
 
         # IoT Power switch
         if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
