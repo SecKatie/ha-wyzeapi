@@ -36,6 +36,10 @@ MOTION_SWITCH_UNSUPPORTED = [
     "GW_GC2",
 ]  # Video doorbell pro, OG, OG 3x Telephoto
 POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
+NOTIFICATION_SWITCH_UNSUPPORTED = [
+    "GW_GC1",
+    "GW_GC2",
+]  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
 
 
 # noinspection DuplicatedCode
@@ -74,7 +78,8 @@ async def async_setup_entry(
     camera_switches = await camera_service.get_cameras()
     for switch in camera_switches:
         # Notification toggle switch
-        switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
+        if switch.product_model not in NOTIFICATION_SWITCH_UNSUPPORTED:
+            switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
 
         # IoT Power switch
         if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
