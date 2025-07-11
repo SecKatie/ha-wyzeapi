@@ -37,6 +37,8 @@ PLATFORMS = [
     "sensor",
     "siren",
     "cover",
+    "number",
+    "button"
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
