@@ -36,10 +36,10 @@ MOTION_SWITCH_UNSUPPORTED = [
     "GW_GC2",
 ]  # Video doorbell pro, OG, OG 3x Telephoto
 POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
-NOTIFICATION_SWITCH_UNSUPPORTED = [
+NOTIFICATION_SWITCH_UNSUPPORTED = {
     "GW_GC1",
     "GW_GC2",
-]  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
+}  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
 
 
 # noinspection DuplicatedCode
