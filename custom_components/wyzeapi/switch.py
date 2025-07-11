@@ -36,7 +36,10 @@ MOTION_SWITCH_UNSUPPORTED = [
     "GW_GC2",
 ]  # Video doorbell pro, OG, OG 3x Telephoto
 POWER_SWITCH_UNSUPPORTED = ["GW_BE1"]  # Video doorbell pro (device has no off function)
-
+NOTIFICATION_SWITCH_UNSUPPORTED = {
+    "GW_GC1",
+    "GW_GC2",
+}  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
 
 # noinspection DuplicatedCode
 @token_exception_handler
@@ -74,22 +77,23 @@ async def async_setup_entry(
     camera_switches = await camera_service.get_cameras()
     for switch in camera_switches:
         # Notification toggle switch
-        switches.extend([WyzeCameraNotificationSwitch(camera_service, switch)])
+        if switch.product_model not in NOTIFICATION_SWITCH_UNSUPPORTED:
+            switches.append(WyzeCameraNotificationSwitch(camera_service, switch))
 
         # IoT Power switch
         if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
-            switches.extend([WyzeSwitch(camera_service, switch)])
+            switches.append(WyzeSwitch(camera_service, switch))
 
         # Motion toggle switch
         if switch.product_model not in MOTION_SWITCH_UNSUPPORTED:
-            switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
+            switches.append(WyzeCameraMotionSwitch(camera_service, switch))
 
     switches.append(WyzeNotifications(client))
 
     bulb_switches = await bulb_service.get_bulbs()
     for bulb in bulb_switches:
         if bulb.type is DeviceTypes.LIGHTSTRIP:
-            switches.extend([WzyeLightstripSwitch(bulb_service, bulb)])
+            switches.append(WzyeLightstripSwitch(bulb_service, bulb))
 
     async_add_entities(switches, True)
 
