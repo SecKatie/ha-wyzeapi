@@ -82,18 +82,18 @@ async def async_setup_entry(
 
         # IoT Power switch
         if switch.product_model not in POWER_SWITCH_UNSUPPORTED:
-            switches.extend([WyzeSwitch(camera_service, switch)])
+            switches.append(WyzeSwitch(camera_service, switch))
 
         # Motion toggle switch
         if switch.product_model not in MOTION_SWITCH_UNSUPPORTED:
-            switches.extend([WyzeCameraMotionSwitch(camera_service, switch)])
+            switches.append(WyzeCameraMotionSwitch(camera_service, switch))
 
     switches.append(WyzeNotifications(client))
 
     bulb_switches = await bulb_service.get_bulbs()
     for bulb in bulb_switches:
         if bulb.type is DeviceTypes.LIGHTSTRIP:
-            switches.extend([WzyeLightstripSwitch(bulb_service, bulb)])
+            switches.append(WzyeLightstripSwitch(bulb_service, bulb))
 
     async_add_entities(switches, True)
 
