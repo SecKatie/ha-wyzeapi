@@ -4,7 +4,7 @@ This module handles the Wyze Home Monitoring system
 
 import logging
 from datetime import timedelta
-from typing import Optional, Callable, List, Any, cast
+from typing import Optional, Callable, List, Any
 from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.alarm_control_panel import (
@@ -30,8 +30,11 @@ SCAN_INTERVAL = timedelta(seconds=15)
 
 
 @token_exception_handler
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: Callable[[List[Any], bool], None]):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: Callable[[List[Any], bool], None],
+):
     """
     This function sets up the integration
 
@@ -52,20 +55,21 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     """
     A representation of the Wyze Home Monitoring system that works for wyze
     """
+
     DEVICE_MODEL = "HMS"
     MANUFACTURER = "WyzeLabs"
     NAME = "Wyze Home Monitoring System"
     AVAILABLE = True
     _attr_has_entity_name = True
     _attr_name = None
-    
+
     def __init__(self, hms_service: HMSService):
         self._attr_unique_id = hms_service.hms_id
 
         self._hms_service = hms_service
         self._state = AlarmControlPanelState.DISARMED
         self._server_out_of_sync = False
-    
+
     @property
     def alarm_state(self) -> str:
         return self._state
@@ -123,14 +127,15 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
 
     @property
     def supported_features(self) -> int:
-        return AlarmControlPanelEntityFeature.ARM_HOME | AlarmControlPanelEntityFeature.ARM_AWAY
+        return (
+            AlarmControlPanelEntityFeature.ARM_HOME
+            | AlarmControlPanelEntityFeature.ARM_AWAY
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
-            identifiers={
-                (DOMAIN, self.unique_id)
-            },
+            identifiers={(DOMAIN, self.unique_id)},
             name=self.NAME,
             manufacturer=self.MANUFACTURER,
             model=self.DEVICE_MODEL,
@@ -139,10 +144,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
     @property
     def extra_state_attributes(self) -> dict | None:
         """Return device attributes of the entity."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            "mac": self.unique_id
-        }
+        return {ATTR_ATTRIBUTION: ATTRIBUTION, "mac": self.unique_id}
 
     @token_exception_handler
     async def async_update(self) -> None:

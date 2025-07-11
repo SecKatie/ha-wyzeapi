@@ -29,7 +29,10 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
 )
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_change,
+)
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.entity import DeviceInfo
 
@@ -113,8 +116,6 @@ class WyzeLockBatterySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
 
-
-
     def __init__(self, lock, battery_type):
         self._enabled = None
         self._lock = lock
@@ -179,16 +180,14 @@ class WyzeLockBatterySensor(SensorEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._lock.mac)
-            },
+            "identifiers": {(DOMAIN, self._lock.mac)},
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self._lock.mac,
                 )
             },
-            "name": f"{self._lock.nickname}.{self._battery_type}"
+            "name": f"{self._lock.nickname}.{self._battery_type}",
         }
 
     @property
@@ -252,9 +251,7 @@ class WyzeCameraBatterySensor(SensorEntity):
     def device_info(self):
         """Return the device info."""
         return {
-            "identifiers": {
-                (DOMAIN, self._camera.mac)
-            },
+            "identifiers": {(DOMAIN, self._camera.mac)},
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
@@ -263,7 +260,7 @@ class WyzeCameraBatterySensor(SensorEntity):
             },
             "name": self._camera.nickname,
             "model": self._camera.product_model,
-            "manufacturer": "WyzeLabs"
+            "manufacturer": "WyzeLabs",
         }
 
     @property
@@ -329,7 +326,9 @@ class WyzePlugEnergySensor(RestoreSensor):
         _now = int(datetime.utcnow().hour)
         self._hourly_energy_usage_added = 0
 
-        if self._switch.usage_history and len(self._switch.usage_history) > 0:  # Confirm there is data
+        if (
+            self._switch.usage_history and len(self._switch.usage_history) > 0
+        ):  # Confirm there is data
             _raw_data = self._switch.usage_history
             _LOGGER.debug(_raw_data)
             _current_day_list = json.loads(_raw_data[0]["data"])
@@ -455,7 +454,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
         if not old_state or not new_state:
             return
 
-        updated_energy = (float(new_state.state) - float(old_state.state))
+        updated_energy = float(new_state.state) - float(old_state.state)
         self._attr_native_value += updated_energy
         self.async_write_ha_state()
 
@@ -475,21 +474,19 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
             self._attr_native_value = 0
 
         registry = async_get(self.hass)
-        entity_id_total_sensor = registry.async_get_entity_id("sensor", DOMAIN, f"{self._switch.nickname}.energy-{self._switch.mac}")
+        entity_id_total_sensor = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{self._switch.nickname}.energy-{self._switch.mac}"
+        )
 
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass,
-                [entity_id_total_sensor],
-                self._update_daily_sensor
+                self.hass, [entity_id_total_sensor], self._update_daily_sensor
             )
         )
 
         self.async_on_remove(
             async_track_time_change(
-                self.hass,
-                self._async_reset_at_midnight,
-                hour=0, minute=0, second=0
+                self.hass, self._async_reset_at_midnight, hour=0, minute=0, second=0
             )
         )
 

@@ -13,17 +13,28 @@ from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
 from .const import (
-    DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, 
-    REFRESH_TIME, BULB_LOCAL_CONTROL,
+    DOMAIN,
+    ACCESS_TOKEN,
+    REFRESH_TOKEN,
+    REFRESH_TIME,
+    BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
-    KEY_ID, API_KEY
+    KEY_ID,
+    API_KEY,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required(CONF_USERNAME): str, vol.Required(CONF_PASSWORD): str,
-                                    vol.Required(KEY_ID): str, vol.Required(API_KEY): str})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+        vol.Required(KEY_ID): str,
+        vol.Required(API_KEY): str,
+    }
+)
 STEP_2FA_DATA_SCHEMA = vol.Schema({CONF_ACCESS_TOKEN: str})
+
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wyze Home Assistant Integration."""
@@ -45,7 +56,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.client = await Wyzeapy.create()
 
     async def async_step_user(
-            self, user_input: Optional[dict[str, any]] = None
+        self, user_input: Optional[dict[str, any]] = None
     ) -> dict[str, Any]:
         """Handle the initial step."""
         await self.get_client()
@@ -88,7 +99,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_2fa(self, user_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    async def async_step_2fa(
+        self, user_input: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         if user_input is None:
             return self.async_show_form(step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA)
 
@@ -106,7 +119,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.user_params[REFRESH_TIME] = token.refresh_time
             if self.hass.config_entries.async_entries(DOMAIN):
                 for entry in self.hass.config_entries.async_entries(DOMAIN):
-                    self.hass.config_entries.async_update_entry(entry, data=self.user_params)
+                    self.hass.config_entries.async_update_entry(
+                        entry, data=self.user_params
+                    )
                     await self.hass.config_entries.async_reload(entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
             else:
@@ -132,8 +147,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry
-        ) -> OptionsFlowHandler:
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlowHandler:
         """Create the Wyze options flow."""
         return OptionsFlowHandler()
 
@@ -150,7 +165,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)
+                    default=self.config_entry.options.get(
+                        BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
+                    ),
                 ): bool
             }
         )
