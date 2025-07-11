@@ -2,21 +2,27 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-[tool.poetry]
+[project]
 name = "ha-wyzeapi"
 version = "0.1.33"
 description = "A Home Assistant integration for Wyze devices"
-authors = ["Katie Mulliken <katie@mulliken.net>"]
-license = "Apache-2.0"
-package-mode = false
+authors = [{ name = "Katie Mulliken", email = "katie@mulliken.net" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.13.2,<3.14"
 
-[tool.poetry.dependencies]
-python = ">=3.13.0,<3.14"
-homeassistant = ">=2025.2.0"
-wyzeapy = "^0.5.28"
-
-[tool.poetry.group.dev.dependencies]
+dependencies = [
+    "homeassistant>=2025.5.0",
+    "wyzeapy>=0.5.28,<0.6.0",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["custom_components"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.1",
+]
