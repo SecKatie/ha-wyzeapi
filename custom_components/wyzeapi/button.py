@@ -254,7 +254,7 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
 
     @property
     def icon(self) -> str:
-        """Return the icon for the stop allbutton."""
+        """Return the icon for the stop all button."""
         return "mdi:octagon"
 
     async def async_press(self) -> None:
