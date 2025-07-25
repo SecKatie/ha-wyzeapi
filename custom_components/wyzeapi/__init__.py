@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from aiohttp.client_exceptions import ClientConnectorError
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady, SOURCE_IMPORT
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from wyzeapy import Wyzeapy
+from wyzeapy.exceptions import AccessTokenError
 from wyzeapy.wyze_auth_lib import Token
 
 from .const import (
@@ -119,7 +121,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             api_key,
             token,
         )
-    except Exception as e:
+    except ClientConnectorError as e:
+        raise ConfigEntryNotReady("Unable to login due to network issues.") from e
+    except AccessTokenError as e:
         _LOGGER.error(
             "Wyzeapi: Could not login. Please re-login through integration configuration"
         )
