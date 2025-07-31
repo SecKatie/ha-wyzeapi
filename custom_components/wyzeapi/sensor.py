@@ -541,7 +541,7 @@ class WyzeIrrigationRSSI(WyzeIrrigationBaseSensor):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"RSSI"
+        return "RSSI"
 
     @property
     def unique_id(self) -> str:
@@ -568,7 +568,7 @@ class WyzeIrrigationIP(WyzeIrrigationBaseSensor):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"IP Address"
+        return "IP Address"
 
     @property
     def unique_id(self) -> str:
@@ -590,7 +590,7 @@ class WyzeIrrigationSSID(WyzeIrrigationBaseSensor):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"SSID"
+        return "SSID"
 
     @property
     def unique_id(self) -> str:
