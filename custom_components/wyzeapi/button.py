@@ -116,8 +116,8 @@ class WyzeIrrigationZoneButton(ButtonEntity):
         This method is called when the button is pressed in Home Assistant.
         It starts the irrigation zone for the duration specified in the corresponding number entity.
 
-        The number entity is matched by comparing the zone name (e.g., 'Backyard S') to the
-        entity ID suffix (e.g., 'backyard_s' in 'number.hag_controller_backyard_s') or unique_id.
+        The number entity is found using the exact unique_id pattern that follows the format:
+        {device.mac}-zone-{zone.zone_number}-quickrun-duration
 
         Raises:
             HomeAssistantError: If the zone cannot be started or the number entity is invalid.
@@ -136,49 +136,25 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             # Get the entity registry
             entity_registry = er.async_get(self.hass)
 
-            # Find number entities for this device
-            number_entities = [
-                entity_id
-                for entity_id, entity in entity_registry.entities.items()
-                if entity.device_id == device.id
-                and entity.platform == DOMAIN
-                and entity_id.startswith("number.")
-            ]
-            _LOGGER.debug(f"Found number entities for device {self._device.mac}: {number_entities}")
-
-            # Find the matching number entity
-            matching_entity = None
-            # Normalize zone name to be a valid Home Assistant entity name
-            zone_name_normalized = ''.join(c if c.isalnum() else '_' for c in self._zone.name.lower())
-            # Remove double underscores
-            while '__' in zone_name_normalized:
-                zone_name_normalized = zone_name_normalized.replace('__', '_')
-            # Remove leading/trailing underscores
-            zone_name_normalized = zone_name_normalized.strip('_')
+            # Find the matching number entity using the zone number and device MAC
+            # The number entities have unique_id pattern: {device.mac}-zone-{zone.zone_number}-quickrun-duration
+            expected_unique_id = f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
             
-            for entity_id in number_entities:
-                entity = entity_registry.entities[entity_id]
-                # Extract the zone part from entity_id (e.g., 'backyard_s' from 'number.hag_controller_backyard_s')
-                entity_id_suffix = entity_id.split(".")[-1].lower()  # e.g., 'hag_controller_backyard_s' -> 'backyard_s'
-                # Also check unique_id and original_name
-                unique_id = entity.unique_id.lower() if entity.unique_id else ""
-                original_name = entity.original_name.lower() if entity.original_name else ""
-                _LOGGER.debug(
-                    f"Checking entity {entity_id}: "
-                    f"suffix={entity_id_suffix}, unique_id={unique_id}, original_name={original_name}, "
-                    f"zone_normalized={zone_name_normalized}"
-                )
-                if (
-                    entity_id_suffix.endswith(zone_name_normalized)
-                    or unique_id.endswith(zone_name_normalized)
-                    or original_name == zone_name_normalized
-                ):
+            matching_entity = None
+            for entity_id, entity in entity_registry.entities.items():
+                if (entity.device_id == device.id 
+                    and entity.platform == DOMAIN 
+                    and entity_id.startswith("number.")
+                    and entity.unique_id == expected_unique_id):
                     matching_entity = entity_id
                     break
-
+            
+            _LOGGER.debug(f"Looking for number entity with unique_id: {expected_unique_id}")
+            _LOGGER.debug(f"Found matching entity: {matching_entity}")
+            
             if not matching_entity:
                 raise HomeAssistantError(
-                    f"No number entity found for zone {self._zone.name} (device: {self._device.mac})"
+                    f"No number entity found for zone {self._zone.name} (zone {self._zone.zone_number}, device: {self._device.mac})"
                 )
 
             # Get the current state of the number entity
