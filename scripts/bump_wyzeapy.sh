@@ -20,7 +20,7 @@ VERSION_IDENTITY="wyzeapy>=${TARGET_VERSION},<${NEXT_VERSION}"
 
 echo "Setting version to $VERSION_IDENTITY"
 
-poetry add $VERSION_IDENTITY
+uv add "$VERSION_IDENTITY"
 
 tmpfile=$(mktemp)
 jq "(.requirements[] | select(. | contains(\"wyzeapy\"))) |= \"$VERSION_IDENTITY\"" custom_components/wyzeapi/manifest.json > "$tmpfile" && mv "$tmpfile" custom_components/wyzeapi/manifest.json

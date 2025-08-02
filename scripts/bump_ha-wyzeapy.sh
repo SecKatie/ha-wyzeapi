@@ -11,7 +11,7 @@ if [ -z "$TARGET_VERSION" ]; then
     exit 1
 fi
 
-poetry version $TARGET_VERSION
+uv version $TARGET_VERSION
 
 tmpfile=$(mktemp)
 jq "(.version = \"$TARGET_VERSION\")" custom_components/wyzeapi/manifest.json > "$tmpfile" && mv "$tmpfile" custom_components/wyzeapi/manifest.json
