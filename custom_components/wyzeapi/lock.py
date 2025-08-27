@@ -8,10 +8,10 @@ import logging
 from typing import Any, Callable, List
 from aiohttp.client_exceptions import ClientConnectionError
 
-from wyzeapy import LockService, Wyzeapy
-from wyzeapy.services.lock_service import Lock
-from wyzeapy.types import DeviceTypes
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
+from wyzeapy import LockService, Wyzeapy # type: ignore
+from wyzeapy.services.lock_service import Lock # type: ignore
+from wyzeapy.types import DeviceTypes # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
 
 import homeassistant.components.lock
 from homeassistant.config_entries import ConfigEntry

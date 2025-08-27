@@ -3,13 +3,13 @@
 import logging
 from typing import Any, Callable, List
 
-from homeassistant.components.number import RestoreNumber
+from homeassistant.components.number import NumberMode, RestoreNumber
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import Wyzeapy
-from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
+from wyzeapy import Wyzeapy # type: ignore
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone # type: ignore
 
 from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
@@ -101,9 +101,9 @@ class WyzeIrrigationQuickrunDuration(RestoreNumber):
         return 1.0  # 1 minute steps
 
     @property
-    def mode(self) -> str:
+    def mode(self) -> NumberMode:
         """Return the mode of the number entity."""
-        return "box"
+        return NumberMode.BOX
 
     @property
     def native_unit_of_measurement(self) -> str:

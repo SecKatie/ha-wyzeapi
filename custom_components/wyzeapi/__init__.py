@@ -11,9 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
-from wyzeapy import Wyzeapy
-from wyzeapy.exceptions import AccessTokenError
-from wyzeapy.wyze_auth_lib import Token
+from wyzeapy import Wyzeapy # type: ignore
+from wyzeapy.exceptions import AccessTokenError # type: ignore
+from wyzeapy.wyze_auth_lib import Token # type: ignore
 
 from .const import (
     DOMAIN,

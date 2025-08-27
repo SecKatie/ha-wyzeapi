@@ -10,8 +10,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-from wyzeapy import Wyzeapy
-from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
+from wyzeapy import Wyzeapy # type: ignore
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone # type: ignore
 
 from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
@@ -43,7 +43,7 @@ async def async_setup_entry(
     irrigation_devices = await irrigation_service.get_irrigations()
 
     # Create a button entity for each zone in each irrigation device
-    buttons = []
+    buttons: List[ButtonEntity] = []
     for device in irrigation_devices:
         # Update the device to get its zones
         device = await irrigation_service.update(device)
@@ -93,7 +93,7 @@ class WyzeIrrigationZoneButton(ButtonEntity):
         )
 
     @property
-    def device_class(self) -> str:
+    def device_class(self) -> ButtonDeviceClass:
         """Return the device class of the button."""
         return ButtonDeviceClass.RESTART
 
