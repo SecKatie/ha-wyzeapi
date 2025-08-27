@@ -13,10 +13,10 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
-from wyzeapy import Wyzeapy, CameraService, SensorService
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.sensor_service import Sensor
-from wyzeapy.types import DeviceTypes
+from wyzeapy import Wyzeapy, CameraService, SensorService # type: ignore
+from wyzeapy.services.camera_service import Camera # type: ignore
+from wyzeapy.services.sensor_service import Sensor # type: ignore
+from wyzeapy.types import DeviceTypes # type: ignore
 from .token_manager import token_exception_handler
 
 from .const import DOMAIN, CONF_CLIENT

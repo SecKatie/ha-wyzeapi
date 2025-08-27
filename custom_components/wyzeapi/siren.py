@@ -6,9 +6,9 @@ import logging
 from typing import Any, Callable
 from aiohttp.client_exceptions import ClientConnectionError
 
-from wyzeapy import CameraService, Wyzeapy
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
+from wyzeapy import CameraService, Wyzeapy # type: ignore
+from wyzeapy.services.camera_service import Camera # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
 
 from homeassistant.components.siren import (
     SirenEntity,

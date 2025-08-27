@@ -13,7 +13,7 @@ from wyzeapy.services.lock_service import Lock # type: ignore
 from wyzeapy.types import DeviceTypes # type: ignore
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
 
-import homeassistant.components.lock
+from homeassistant.components.lock import LockEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
@@ -68,7 +68,7 @@ async def async_setup_entry(
     async_add_entities(locks + lock_bolts, True)
 
 
-class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
+class WyzeLock(LockEntity, ABC):
     """Representation of a Wyze Lock."""
 
     def __init__(self, lock_service: LockService, lock: Lock):
@@ -210,7 +210,7 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         self._lock_service.unregister_updater(self._lock)
 
 
-class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
+class WyzeLockBolt(CoordinatorEntity, LockEntity):
     def __init__(self, coordinator):
         super().__init__(coordinator)
         self._lock = coordinator._lock
@@ -260,5 +260,5 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
         return self.coordinator._current_command == "unlock"
 
     @property
-    def state_attributes(self):
-        return {"last_operated": self.coordinator.data["timestamp"]}
+    def extra_state_attributes(self):
+        return {"last_operated": self.coordinator.data.get("timestamp")}

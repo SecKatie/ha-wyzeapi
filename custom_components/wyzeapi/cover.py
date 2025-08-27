@@ -4,10 +4,10 @@ from abc import ABC
 import logging
 from typing import Any, Callable, List
 
-from wyzeapy import Wyzeapy, CameraService
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.types import DeviceTypes
+from wyzeapy import Wyzeapy, CameraService # type: ignore
+from wyzeapy.services.camera_service import Camera # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
+from wyzeapy.types import DeviceTypes # type: ignore
 
 import homeassistant.components.cover
 from homeassistant.config_entries import ConfigEntry

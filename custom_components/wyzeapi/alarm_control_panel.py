@@ -16,9 +16,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy import Wyzeapy, HMSService
-from wyzeapy.services.hms_service import HMSMode
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
+from wyzeapy import Wyzeapy, HMSService # type: ignore
+from wyzeapy.services.hms_service import HMSMode # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
 from .token_manager import token_exception_handler
 from homeassistant.helpers.entity import DeviceInfo
 
@@ -67,11 +67,11 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         self._attr_unique_id = hms_service.hms_id
 
         self._hms_service = hms_service
-        self._state = AlarmControlPanelState.DISARMED
+        self._state: AlarmControlPanelState = AlarmControlPanelState.DISARMED
         self._server_out_of_sync = False
 
     @property
-    def alarm_state(self) -> str:
+    def alarm_state(self) -> AlarmControlPanelState:
         return self._state
 
     # NotImplemented Methods
@@ -98,7 +98,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
         else:
-            self._state = "disarmed"
+            self._state = AlarmControlPanelState.DISARMED
             self._server_out_of_sync = True
 
     @token_exception_handler
@@ -110,7 +110,7 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
         else:
-            self._state = "armed_home"
+            self._state = AlarmControlPanelState.ARMED_HOME
             self._server_out_of_sync = True
 
     @token_exception_handler
@@ -122,20 +122,17 @@ class WyzeHomeMonitoring(AlarmControlPanelEntity):
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
         else:
-            self._state = "armed_away"
+            self._state = AlarmControlPanelState.ARMED_AWAY
             self._server_out_of_sync = True
 
     @property
-    def supported_features(self) -> int:
-        return (
-            AlarmControlPanelEntityFeature.ARM_HOME
-            | AlarmControlPanelEntityFeature.ARM_AWAY
-        )
+    def supported_features(self) -> AlarmControlPanelEntityFeature:
+        return AlarmControlPanelEntityFeature.ARM_HOME | AlarmControlPanelEntityFeature.ARM_AWAY
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
-            identifiers={(DOMAIN, self.unique_id)},
+            identifiers={(DOMAIN, self.unique_id or "")},
             name=self.NAME,
             manufacturer=self.MANUFACTURER,
             model=self.DEVICE_MODEL,

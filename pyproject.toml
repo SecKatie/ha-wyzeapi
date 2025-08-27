@@ -24,5 +24,6 @@ packages = ["custom_components"]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.17.1",
     "ruff>=0.12.1",
 ]
