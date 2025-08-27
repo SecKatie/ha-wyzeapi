@@ -187,6 +187,7 @@ class WyzeThermostat(ClimateEntity):
         raise NotImplementedError
 
     @property
+    def swing_modes(self) -> Optional[List[str]]:
         return None
 
     @property
