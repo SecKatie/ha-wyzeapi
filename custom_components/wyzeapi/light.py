@@ -66,9 +66,10 @@ async def async_setup_entry(
 
     bulb_service = await client.bulb_service
 
-    lights: list[LightEntity] = []
-    for light in await bulb_service.get_bulbs():
-        lights.append(WyzeLight(bulb_service, light, config_entry))
+    lights: list[LightEntity] = [
+        WyzeLight(bulb_service, light, config_entry)
+        for light in await bulb_service.get_bulbs()
+    ]
 
     for camera in await camera_service.get_cameras():
         if (
