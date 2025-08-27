@@ -397,7 +397,7 @@ class WyzePlugEnergySensor(RestoreSensor):
             numeric_current = float(current)
         elif isinstance(current, str):
             try:
-                numeric_current = float(cast(str, current))
+                numeric_current = float(current)
             except ValueError:
                 numeric_current = 0.0
         elif isinstance(current, date):
