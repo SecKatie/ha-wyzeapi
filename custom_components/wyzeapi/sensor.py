@@ -3,9 +3,9 @@
 
 import logging
 import json
-from typing import Any, Callable, List, cast
+from typing import Any, Callable, List, SupportsFloat, SupportsIndex
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime
 
 from wyzeapy import Wyzeapy  # type: ignore
 from wyzeapy.services.camera_service import Camera  # type: ignore
@@ -91,16 +91,18 @@ async def async_setup_entry(
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
-    
+
     # Create sensor entities for each irrigation device
     for device in irrigation_devices:
         # Update the device to get its properties
         device = await irrigation_service.update(device)
-        sensors.extend([
-            WyzeIrrigationRSSI(irrigation_service, device),
-            WyzeIrrigationIP(irrigation_service, device),
-            WyzeIrrigationSSID(irrigation_service, device),
-        ])
+        sensors.extend(
+            [
+                WyzeIrrigationRSSI(irrigation_service, device),
+                WyzeIrrigationIP(irrigation_service, device),
+                WyzeIrrigationSSID(irrigation_service, device),
+            ]
+        )
 
     async_add_entities(sensors, True)
 
@@ -284,6 +286,7 @@ class WyzePlugEnergySensor(RestoreSensor):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
+    _attr_native_value: float = 0.0
     _previous_hour = None
     _previous_value = None
     _past_hours_previous_value = None
@@ -389,28 +392,19 @@ class WyzePlugEnergySensor(RestoreSensor):
         """Update the sensor's state."""
         self._switch = switch
         self.update_energy()
-        current = self._attr_native_value
-        if isinstance(current, (int, float, Decimal)):
-            numeric_current = float(current)
-        elif isinstance(current, str):
-            try:
-                numeric_current = float(current)
-            except ValueError:
-                numeric_current = 0.0
-        elif isinstance(current, date):
-            numeric_current = 0.0
-        else:
-            numeric_current = 0.0
-        self._attr_native_value = numeric_current + float(self._hourly_energy_usage_added)
+
+        self._attr_native_value += float(self._hourly_energy_usage_added)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Register Updater for the sensor and get previous data."""
         state = await self.async_get_last_sensor_data()
-        if state:
-            self._attr_native_value = state.native_value
+        if state and isinstance(
+            state.native_value, (float, Decimal, SupportsFloat, SupportsIndex)
+        ):
+            self._attr_native_value = float(state.native_value)
         else:
-            self._attr_native_value = 0
+            self._attr_native_value = 0.0
         self._switch.callback_function = self.async_update_callback
         self._switch_usage_service.register_updater(
             self._switch, 120
@@ -511,7 +505,9 @@ class WyzeIrrigationBaseSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation
+    ) -> None:
         """Initialize the irrigation base sensor."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
