@@ -16,12 +16,12 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
 )
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.switch_service import Switch
-from wyzeapy.services.bulb_service import Bulb
-from wyzeapy.types import Device, Event, DeviceTypes
+from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
+from wyzeapy.services.camera_service import Camera # type: ignore
+from wyzeapy.services.switch_service import Switch # type: ignore
+from wyzeapy.services.bulb_service import Bulb # type: ignore
+from wyzeapy.types import Device, Event, DeviceTypes # type: ignore
 
 from .const import CAMERA_UPDATED, LIGHT_UPDATED
 from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
@@ -307,7 +307,7 @@ class WyzeSwitch(SwitchEntity):
                 # through them
                 _screenshot_url = None
                 _video_url = None
-                _ai_tag_list = []
+                _ai_tag_list: list[str] = []
                 for resource in event.file_list:
                     _ai_tag_list = _ai_tag_list + resource["ai_tag_list"]
                     if resource["type"] == 1:

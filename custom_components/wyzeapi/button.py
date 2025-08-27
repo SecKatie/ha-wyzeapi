@@ -6,15 +6,12 @@ from aiohttp.client_exceptions import ClientConnectionError
 
 from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.entity_registry import async_get
 from wyzeapy import Wyzeapy
 from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
-from wyzeapy.types import Device, Event, DeviceTypes
 
 from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
@@ -204,7 +201,7 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
     @property
     def name(self) -> str:
         """Return the name of the button."""
-        return f"Stop All Zones"
+        return "Stop All Zones"
 
     @property
     def unique_id(self) -> str:
@@ -224,7 +221,7 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
         )
 
     @property
-    def device_class(self) -> str:
+    def device_class(self) -> ButtonDeviceClass:
         """Return the device class of the button."""
         return ButtonDeviceClass.RESTART
 

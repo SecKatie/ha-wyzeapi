@@ -1,5 +1,4 @@
 import asyncio
-import binascii
 import logging
 from datetime import datetime, timedelta
 from typing import Dict
@@ -144,7 +143,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
                     return
         _LOGGER.warning(f"Unexpected message: stage={context['stage']}"
                         f" flags={l1_flags:01x}, seq_no={seq_no:02x},"
-                        f" l2_data={binascii.hexlify(l2_data)}")
+                        f" l2_data={l2_data.hex()}")
         
 
     async def _get_ble_client(self) -> BleakClient:

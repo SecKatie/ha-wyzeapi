@@ -1,15 +1,17 @@
 """Platform for sensor integration."""
+# pyright: reportMissingTypeStubs=false
 
 import logging
 import json
-from typing import Any, Callable, List
-from datetime import datetime
+from typing import Any, Callable, List, cast
+from decimal import Decimal
+from datetime import datetime, date
 
-from wyzeapy import Wyzeapy
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.lock_service import Lock
-from wyzeapy.services.switch_service import Switch, SwitchUsageService
-from wyzeapy.services.irrigation_service import IrrigationService, Irrigation
+from wyzeapy import Wyzeapy  # type: ignore
+from wyzeapy.services.camera_service import Camera  # type: ignore
+from wyzeapy.services.lock_service import Lock  # type: ignore
+from wyzeapy.services.switch_service import Switch, SwitchUsageService  # type: ignore
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation  # type: ignore
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -69,7 +71,7 @@ async def async_setup_entry(
     irrigation_service = await client.irrigation_service
 
     locks = await lock_service.get_locks()
-    sensors = []
+    sensors: List[SensorEntity] = []
     for lock in locks:
         sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.LOCK_BATTERY))
         sensors.append(
@@ -139,7 +141,7 @@ class WyzeLockBatterySensor(SensorEntity):
             and self._battery_type == self.KEYPAD_BATTERY
         ):
             if self.enabled is False:
-                self.enabled = True
+                self._enabled = True
             self._available = True
         self.async_write_ha_state()
 
@@ -207,9 +209,7 @@ class WyzeLockBatterySensor(SensorEntity):
             return str(self._lock.raw_dict.get("keypad", {}).get("power"))
         return 0
 
-    @enabled.setter
-    def enabled(self, value):
-        self._enabled = value
+    # Setter removed; internal flag is updated directly where needed
 
 
 class WyzeCameraBatterySensor(SensorEntity):
@@ -388,7 +388,19 @@ class WyzePlugEnergySensor(RestoreSensor):
         """Update the sensor's state."""
         self._switch = switch
         self.update_energy()
-        self._attr_native_value += self._hourly_energy_usage_added
+        current = self._attr_native_value
+        if isinstance(current, (int, float, Decimal)):
+            numeric_current = float(current)
+        elif isinstance(current, str):
+            try:
+                numeric_current = float(cast(str, current))
+            except ValueError:
+                numeric_current = 0.0
+        elif isinstance(current, date):
+            numeric_current = 0.0
+        else:
+            numeric_current = 0.0
+        self._attr_native_value = numeric_current + float(self._hourly_energy_usage_added)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -478,11 +490,12 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
             "sensor", DOMAIN, f"{self._switch.nickname}.energy-{self._switch.mac}"
         )
 
-        self.async_on_remove(
-            async_track_state_change_event(
-                self.hass, [entity_id_total_sensor], self._update_daily_sensor
+        if entity_id_total_sensor:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, [entity_id_total_sensor], self._update_daily_sensor
+                )
             )
-        )
 
         self.async_on_remove(
             async_track_time_change(

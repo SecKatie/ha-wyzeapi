@@ -1,4 +1,5 @@
 """Platform for light integration."""
+# pyright: reportMissingTypeStubs=false
 
 from collections.abc import Callable
 from datetime import timedelta
@@ -6,12 +7,12 @@ import logging
 from typing import Any
 
 from aiohttp.client_exceptions import ClientConnectionError
-from wyzeapy import BulbService, CameraService, Wyzeapy
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.services.bulb_service import Bulb
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.types import DeviceTypes, PropertyIDs
-from wyzeapy.utils import create_pid_pair
+from wyzeapy import BulbService, CameraService, Wyzeapy  # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError  # type: ignore
+from wyzeapy.services.bulb_service import Bulb  # type: ignore
+from wyzeapy.services.camera_service import Camera  # type: ignore
+from wyzeapy.types import DeviceTypes, PropertyIDs  # type: ignore
+from wyzeapy.utils import create_pid_pair  # type: ignore
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -65,10 +66,9 @@ async def async_setup_entry(
 
     bulb_service = await client.bulb_service
 
-    lights = [
-        WyzeLight(bulb_service, light, config_entry)
-        for light in await bulb_service.get_bulbs()
-    ]
+    lights: list[LightEntity] = []
+    for light in await bulb_service.get_bulbs():
+        lights.append(WyzeLight(bulb_service, light, config_entry))
 
     for camera in await camera_service.get_cameras():
         if (
@@ -146,7 +146,8 @@ class WyzeLight(LightEntity):
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
 
         if kwargs.get(ATTR_BRIGHTNESS) is not None:
-            brightness = round((kwargs.get(ATTR_BRIGHTNESS) / 255) * 100)
+            brightness_val = kwargs[ATTR_BRIGHTNESS]
+            brightness = round((int(brightness_val) / 255) * 100)
 
             options.append(create_pid_pair(PropertyIDs.BRIGHTNESS, str(brightness)))
 
@@ -165,7 +166,8 @@ class WyzeLight(LightEntity):
 
         if kwargs.get(ATTR_COLOR_TEMP_KELVIN) is not None:
             _LOGGER.debug("Setting color temp")
-            color_temp = kwargs.get(ATTR_COLOR_TEMP_KELVIN)
+            color_temp_val = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            color_temp = int(color_temp_val)
 
             options.append(create_pid_pair(PropertyIDs.COLOR_TEMP, str(color_temp)))
 
@@ -176,18 +178,18 @@ class WyzeLight(LightEntity):
                 self._bulb.color_mode = "2"
 
             self._bulb.color_temp = color_temp
-            self._bulb.color = color_util.color_rgb_to_hex(
-                *color_util.color_temperature_to_rgb(color_temp)
-            )
+            r, g, b = color_util.color_temperature_to_rgb(float(color_temp))
+            self._bulb.color = color_util.color_rgb_to_hex(int(r), int(g), int(b))
 
         if kwargs.get(ATTR_HS_COLOR) is not None and (
             self._device_type is DeviceTypes.MESH_LIGHT
             or self._device_type is DeviceTypes.LIGHTSTRIP
         ):
             _LOGGER.debug("Setting color")
-            color = color_util.color_rgb_to_hex(
-                *color_util.color_hs_to_RGB(*kwargs.get(ATTR_HS_COLOR))
-            )
+            hs = kwargs[ATTR_HS_COLOR]
+            h, s = float(hs[0]), float(hs[1])
+            r, g, b = color_util.color_hs_to_RGB(h, s)
+            color = color_util.color_rgb_to_hex(int(r), int(g), int(b))
 
             options.extend(
                 [

@@ -3,15 +3,11 @@
 import logging
 from typing import Any, Callable, List
 
-from homeassistant.components.number import NumberEntity, RestoreNumber
+from homeassistant.components.number import RestoreNumber
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send
-)
 from wyzeapy import Wyzeapy
 from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
 

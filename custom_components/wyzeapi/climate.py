@@ -25,9 +25,9 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import Wyzeapy, ThermostatService
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.services.thermostat_service import (
+from wyzeapy import Wyzeapy, ThermostatService  # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError  # type: ignore
+from wyzeapy.services.thermostat_service import (  # type: ignore
     Thermostat,
     TemperatureUnit,
     Preset,
@@ -128,7 +128,7 @@ class WyzeThermostat(ClimateEntity):
         return UnitOfTemperature.CELSIUS
 
     @property
-    def hvac_mode(self) -> str:
+    def hvac_mode(self) -> HVACMode:
         # pylint: disable=R1705
         if self._thermostat.hvac_mode == WyzeHVACMode.AUTO:
             return HVACMode.AUTO
@@ -140,7 +140,7 @@ class WyzeThermostat(ClimateEntity):
             return HVACMode.OFF
 
     @property
-    def hvac_modes(self) -> List[str]:
+    def hvac_modes(self) -> List[HVACMode]:
         return [HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
 
     @property
@@ -187,11 +187,11 @@ class WyzeThermostat(ClimateEntity):
         raise NotImplementedError
 
     @property
-    def swing_modes(self) -> Optional[str]:
+    def swing_modes(self) -> Optional[List[str]]:
         raise NotImplementedError
 
     @property
-    def hvac_action(self) -> str:
+    def hvac_action(self) -> HVACAction:
         # pylint: disable=R1705
         if self._thermostat.hvac_state == HVACState.IDLE:
             return HVACAction.IDLE
@@ -313,7 +313,7 @@ class WyzeThermostat(ClimateEntity):
         raise NotImplementedError
 
     @property
-    def supported_features(self) -> int:
+    def supported_features(self) -> ClimateEntityFeature:
         return (
             ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
             | ClimateEntityFeature.FAN_MODE
@@ -321,7 +321,7 @@ class WyzeThermostat(ClimateEntity):
         )
 
     @property
-    def device_info(self) -> dict:
+    def device_info(self) -> dr.DeviceInfo:
         return {
             "identifiers": {(DOMAIN, self._thermostat.mac)},
             "name": self._thermostat.nickname,

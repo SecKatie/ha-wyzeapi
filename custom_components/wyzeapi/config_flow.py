@@ -1,4 +1,5 @@
 """Config flow for Wyze Home Assistant Integration integration."""
+# pyright: reportMissingTypeStubs=false
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_ACCESS_TOKEN
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
-from wyzeapy import Wyzeapy, exceptions
+from wyzeapy import Wyzeapy, exceptions  # type: ignore
 
 from .const import (
     DOMAIN,
@@ -42,7 +43,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     client: Wyzeapy = None
-    user_params = {}
+    user_params: dict[str, Any] = {}
 
     def __init__(self):
         """Initialize."""
@@ -56,8 +57,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.client = await Wyzeapy.create()
 
     async def async_step_user(
-        self, user_input: Optional[dict[str, any]] = None
-    ) -> dict[str, Any]:
+        self, user_input: Optional[dict[str, Any]] = None
+    ) -> config_entries.ConfigFlowResult:
         """Handle the initial step."""
         await self.get_client()
 
@@ -101,7 +102,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_2fa(
         self, user_input: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    ) -> config_entries.ConfigFlowResult:
         if user_input is None:
             return self.async_show_form(step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA)
 
@@ -131,11 +132,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_import(self, import_config):
+    async def async_step_import(self, import_config) -> config_entries.ConfigFlowResult:
         """Import a config entry from configuration.yaml."""
         return await self.async_step_user(import_config)
 
-    async def async_step_reauth(self, user_input=None):
+    async def async_step_reauth(self, user_input=None) -> config_entries.ConfigFlowResult:
         """Perform reauth upon an API authentication error."""
         if user_input is None:
             return self.async_show_form(
