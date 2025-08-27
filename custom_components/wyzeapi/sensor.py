@@ -112,6 +112,10 @@ class WyzeLockBatterySensor(SensorEntity):
     def enabled(self):
         return self._enabled
 
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self._enabled = value
+
     LOCK_BATTERY = "lock_battery"
     KEYPAD_BATTERY = "keypad_battery"
 
@@ -141,7 +145,7 @@ class WyzeLockBatterySensor(SensorEntity):
             and self._battery_type == self.KEYPAD_BATTERY
         ):
             if self.enabled is False:
-                self._enabled = True
+                self.enabled = True
             self._available = True
         self.async_write_ha_state()
 
