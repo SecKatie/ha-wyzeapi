@@ -5,8 +5,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from wyzeapy.exceptions import AccessTokenError, LoginError # type: ignore
-from wyzeapy.wyze_auth_lib import Token # type: ignore
+from wyzeapy.exceptions import AccessTokenError, LoginError  # type: ignore
+from wyzeapy.wyze_auth_lib import Token  # type: ignore
 
 from .const import DOMAIN, ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME
 
@@ -14,7 +14,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class TokenManager:
-
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         self.hass = hass
         self.config_entry = config_entry

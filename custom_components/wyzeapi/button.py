@@ -19,6 +19,7 @@ from .token_manager import token_exception_handler
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 
+
 @token_exception_handler
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -40,7 +41,7 @@ async def async_setup_entry(
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
-    
+
     # Create a button entity for each zone in each irrigation device
     buttons = []
     for device in irrigation_devices:
@@ -48,7 +49,9 @@ async def async_setup_entry(
         device = await irrigation_service.update(device)
         for zone in device.zones:
             if zone.enabled:
-                buttons.append(WyzeIrrigationZoneButton(irrigation_service, device, zone))
+                buttons.append(
+                    WyzeIrrigationZoneButton(irrigation_service, device, zone)
+                )
         # Add a stop all schedules button for each irrigation device, not each zone
         buttons.append(WyzeIrrigationStopAllButton(irrigation_service, device))
 
@@ -60,7 +63,9 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone
+    ) -> None:
         """Initialize the irrigation zone button."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
@@ -123,10 +128,12 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             # The quickrun duration field doesnt exist in the Wyze API
             # It has been created in Home Assistant as a number entity
             # to conveniently trigger a zone start with a specific duration
-            
+
             # Get the device registry and find the device
             device_registry = dr.async_get(self.hass)
-            device = device_registry.async_get_device(identifiers={(DOMAIN, self._device.mac)})
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, self._device.mac)}
+            )
             if not device:
                 raise HomeAssistantError(f"Device not found for MAC {self._device.mac}")
 
@@ -135,20 +142,26 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
             # Find the matching number entity using the zone number and device MAC
             # The number entities have unique_id pattern: {device.mac}-zone-{zone.zone_number}-quickrun-duration
-            expected_unique_id = f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
-            
+            expected_unique_id = (
+                f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
+            )
+
             matching_entity = None
             for entity_id, entity in entity_registry.entities.items():
-                if (entity.device_id == device.id 
-                    and entity.platform == DOMAIN 
+                if (
+                    entity.device_id == device.id
+                    and entity.platform == DOMAIN
                     and entity_id.startswith("number.")
-                    and entity.unique_id == expected_unique_id):
+                    and entity.unique_id == expected_unique_id
+                ):
                     matching_entity = entity_id
                     break
-            
-            _LOGGER.debug(f"Looking for number entity with unique_id: {expected_unique_id}")
+
+            _LOGGER.debug(
+                f"Looking for number entity with unique_id: {expected_unique_id}"
+            )
             _LOGGER.debug(f"Found matching entity: {matching_entity}")
-            
+
             if not matching_entity:
                 raise HomeAssistantError(
                     f"No number entity found for zone {self._zone.name} (zone {self._zone.zone_number}, device: {self._device.mac})"
@@ -157,7 +170,9 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             # Get the current state of the number entity
             state = self.hass.states.get(matching_entity)
             if state is None or state.state in ["unavailable", "unknown"]:
-                raise HomeAssistantError(f"Number entity {matching_entity} is unavailable or unknown")
+                raise HomeAssistantError(
+                    f"Number entity {matching_entity} is unavailable or unknown"
+                )
 
             # Convert duration from minutes to seconds
             try:
@@ -177,9 +192,7 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
             # Start the zone with the specified duration
             await self._irrigation_service.start_zone(
-                self._device,
-                self._zone.zone_number,
-                duration_seconds
+                self._device, self._zone.zone_number, duration_seconds
             )
 
         except HomeAssistantError as err:
@@ -187,13 +200,17 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             raise
         except Exception as err:
             _LOGGER.error("Unexpected error starting zone %s: %s", self._zone.name, err)
-            raise HomeAssistantError(f"Failed to start zone {self._zone.name}: {err}") from err
+            raise HomeAssistantError(
+                f"Failed to start zone {self._zone.name}: {err}"
+            ) from err
 
 
 class WyzeIrrigationStopAllButton(ButtonEntity):
     """Representation of a Wyze Irrigation Stop All Schedules Button."""
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation
+    ) -> None:
         """Initialize the irrigation stop all button."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
@@ -232,10 +249,10 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Stop all running irrigation schedules.
-        
+
         This method is called when the button is pressed in Home Assistant.
         It will stop all running irrigation schedules for the device.
-        
+
         Raises:
             HomeAssistantError: If the schedules cannot be stopped.
         """

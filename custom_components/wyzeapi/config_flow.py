@@ -136,7 +136,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Import a config entry from configuration.yaml."""
         return await self.async_step_user(import_config)
 
-    async def async_step_reauth(self, user_input=None) -> config_entries.ConfigFlowResult:
+    async def async_step_reauth(
+        self, user_input=None
+    ) -> config_entries.ConfigFlowResult:
         """Perform reauth upon an API authentication error."""
         if user_input is None:
             return self.async_show_form(

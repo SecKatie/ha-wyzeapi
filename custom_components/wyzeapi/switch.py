@@ -16,12 +16,12 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
 )
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService # type: ignore
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError # type: ignore
-from wyzeapy.services.camera_service import Camera # type: ignore
-from wyzeapy.services.switch_service import Switch # type: ignore
-from wyzeapy.services.bulb_service import Bulb # type: ignore
-from wyzeapy.types import Device, Event, DeviceTypes # type: ignore
+from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService  # type: ignore
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError  # type: ignore
+from wyzeapy.services.camera_service import Camera  # type: ignore
+from wyzeapy.services.switch_service import Switch  # type: ignore
+from wyzeapy.services.bulb_service import Bulb  # type: ignore
+from wyzeapy.types import Device, Event, DeviceTypes  # type: ignore
 
 from .const import CAMERA_UPDATED, LIGHT_UPDATED
 from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
@@ -40,6 +40,7 @@ NOTIFICATION_SWITCH_UNSUPPORTED = {
     "GW_GC1",
     "GW_GC2",
 }  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
+
 
 # noinspection DuplicatedCode
 @token_exception_handler
