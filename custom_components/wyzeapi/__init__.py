@@ -60,22 +60,25 @@ async def async_setup(
     # noinspection SpellCheckingInspection
     domainconfig = config.get(DOMAIN)
     # pylint: disable=logging-not-lazy
-    _LOGGER.debug(
-        "Importing config information for %s from configuration.yml"
-        % domainconfig[CONF_USERNAME]
-    )
+    if domainconfig:
+        _LOGGER.debug(
+            "Importing config information for %s from configuration.yml"
+            % domainconfig[CONF_USERNAME]
+        )
     if hass.config_entries.async_entries(DOMAIN):
         _LOGGER.debug("Found existing config entries")
         for entry in hass.config_entries.async_entries(DOMAIN):
             if entry:
-                entry_data = entry.as_dict().get("data")
                 hass.config_entries.async_update_entry(
                     entry,
-                    data=entry_data,
+                    data=entry.data,
                 )
                 break
     else:
         _LOGGER.debug("Creating new config entry")
+        if domainconfig is None:
+            _LOGGER.debug("No configuration found in configuration.yaml; skipping import")
+            return True
         hass.async_create_task(
             hass.config_entries.flow.async_init(
                 DOMAIN,
@@ -105,11 +108,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     client = await Wyzeapy.create()
     token = None
-    if config_entry.data.get(ACCESS_TOKEN):
+    if all(k in config_entry.data for k in (ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME)):
         token = Token(
-            config_entry.data.get(ACCESS_TOKEN),
-            config_entry.data.get(REFRESH_TOKEN),
-            float(config_entry.data.get(REFRESH_TIME)),
+            config_entry.data[ACCESS_TOKEN],
+            config_entry.data[REFRESH_TOKEN],
+            float(config_entry.data[REFRESH_TIME]),
         )
     a_tkn_manager = TokenManager(hass, config_entry)
     client.register_for_token_callback(a_tkn_manager.token_callback)
@@ -176,10 +179,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 async def options_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
     """Handle options update."""
     _LOGGER.debug("Updated options")
-    entry_data = config_entry.as_dict().get("data")
     hass.config_entries.async_update_entry(
         config_entry,
-        data=entry_data,
+        data=config_entry.data,
     )
     _LOGGER.debug("Reload entry: " + config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
