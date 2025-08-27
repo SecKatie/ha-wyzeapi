@@ -47,7 +47,14 @@ After you have done that if you feel like my work has been valuable to you I wel
    **NOTE:** If _Wyze Home Assistant Integration_ does not appear, hard refresh the browser (ctrl+F5) and search again
 9. Enter your email, password, keyid & apikey when prompted.
    **NOTE:** If you do not know how to generate your keyid & apikey, please see the following official Wyze documentation: [Creating an API Key](https://support.wyze.com/hc/en-us/articles/16129834216731-Creating-an-API-Key)
+   **NOTE:** Google OAuth ("Sign in with Google") accounts are not supported. Use a Wyze email/password account.
 10. Click _SUBMIT_ and profit!
+
+## Authentication
+
+- Not supported: Wyze accounts that sign in with Google OAuth ("Sign in with Google"). The integration requires a Wyze account that authenticates with a native email/password plus a valid Wyze Developer Key ID and API Key.
+- Workaround: If your primary Wyze account uses Google SSO, create a secondary Wyze account with email/password and share your devices to it from the Wyze app. Generate a developer key for that account and use that account’s email/password and key ID/API key during setup.
+- 2FA is supported and you may be prompted to enter a verification code during configuration.
 
 ## Usage
 
@@ -70,18 +77,3 @@ If you need help with anything then please connect with the community!
 * Visit the discussions tab on this repo
 * For bugs or feature requests create an issue
 * Check out the [wiki](https://github.com/SecKatie/ha-wyzeapi/wiki)!
-
-## Reporting an Issue
-
-1. Setup your logger to print debug messages for this component by adding this to your `configuration.yaml`:
-    ```yaml
-    logger:
-     default: warning
-     logs:
-       custom_components.wyzeapi: debug
-       wyzeapy: debug
-    ```
-2. Restart HA
-3. Verify you're still having the issue
-4. File an issue in this Github Repository (being sure to fill out every provided field)
-
