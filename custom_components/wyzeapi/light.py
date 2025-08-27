@@ -165,9 +165,9 @@ class WyzeLight(LightEntity):
                 self._bulb.sun_match = False
                 _LOGGER.debug("Turning off sun match")
 
-        if kwargs.get(ATTR_COLOR_TEMP_KELVIN) is not None:
+        color_temp_val = kwargs.get(ATTR_COLOR_TEMP_KELVIN)
+        if color_temp_val is not None:
             _LOGGER.debug("Setting color temp")
-            color_temp_val = kwargs[ATTR_COLOR_TEMP_KELVIN]
             color_temp = int(color_temp_val)
 
             options.append(create_pid_pair(PropertyIDs.COLOR_TEMP, str(color_temp)))
