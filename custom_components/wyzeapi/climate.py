@@ -322,18 +322,13 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def device_info(self) -> dr.DeviceInfo:
-        return {
-            "identifiers": {(DOMAIN, self._thermostat.mac)},
-            "name": self._thermostat.nickname,
-            "connections": {
-                (
-                    dr.CONNECTION_NETWORK_MAC,
-                    self._thermostat.mac,
-                )
-            },
-            "manufacturer": "WyzeLabs",
-            "model": self._thermostat.product_model,
-        }
+        return dr.DeviceInfo(
+            identifiers={(DOMAIN, self._thermostat.mac)},
+            name=self._thermostat.nickname,
+            manufacturer="WyzeLabs",
+            model=self._thermostat.product_model,
+            connections={(dr.CONNECTION_NETWORK_MAC, self._thermostat.mac)},
+        )
 
     @property
     def should_poll(self) -> bool:
