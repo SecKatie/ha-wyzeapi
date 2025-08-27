@@ -146,8 +146,8 @@ class WyzeLight(LightEntity):
         options = []
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
 
-        if kwargs.get(ATTR_BRIGHTNESS) is not None:
-            brightness_val = kwargs[ATTR_BRIGHTNESS]
+        brightness_val = kwargs.get(ATTR_BRIGHTNESS)
+        if brightness_val is not None:
             brightness = round((int(brightness_val) / 255) * 100)
 
             options.append(create_pid_pair(PropertyIDs.BRIGHTNESS, str(brightness)))
