@@ -213,7 +213,7 @@ class WyzeLockBatterySensor(SensorEntity):
             return str(self._lock.raw_dict.get("keypad", {}).get("power"))
         return 0
 
-    # Setter removed; internal flag is updated directly where needed
+    # Setter present; internal flag may be updated via setter or directly as needed
 
 
 class WyzeCameraBatterySensor(SensorEntity):
