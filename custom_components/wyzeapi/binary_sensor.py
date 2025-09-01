@@ -49,13 +49,13 @@ async def async_setup_entry(
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
 
     sensor_service = await client.sensor_service
-    camera_service = await client.camera_service
+    #camera_service = await client.camera_service
     irrigation_service = await client.irrigation_service
 
-    cameras = [
-        WyzeCameraMotion(camera_service, camera)
-        for camera in await camera_service.get_cameras()
-    ]
+    #cameras = [
+    #    WyzeCameraMotion(camera_service, camera)
+    #    for camera in await camera_service.get_cameras()
+    #]
     sensors = [
         WyzeSensor(sensor_service, sensor)
         for sensor in await sensor_service.get_sensors()
@@ -77,7 +77,7 @@ async def async_setup_entry(
             )
             irrigation_sensors.append(zone_sensor)
 
-    async_add_entities(cameras, True)
+    #async_add_entities(cameras, True)
     async_add_entities(sensors, True)
     async_add_entities(irrigation_sensors, True)
 
