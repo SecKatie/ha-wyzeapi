@@ -12,10 +12,15 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_track_time_change
+from datetime import datetime
 from wyzeapy import Wyzeapy, CameraService, SensorService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.sensor_service import Sensor
+from wyzeapy.services.irrigation_service import IrrigationService, Irrigation
 from wyzeapy.types import DeviceTypes
 from .token_manager import token_exception_handler
 
@@ -45,6 +50,7 @@ async def async_setup_entry(
 
     sensor_service = await client.sensor_service
     camera_service = await client.camera_service
+    irrigation_service = await client.irrigation_service
 
     cameras = [
         WyzeCameraMotion(camera_service, camera)
@@ -55,8 +61,25 @@ async def async_setup_entry(
         for sensor in await sensor_service.get_sensors()
     ]
 
+    # Get all irrigation devices and create zone running binary sensors
+    irrigation_devices = await irrigation_service.get_irrigations()
+    irrigation_sensors = []
+    for device in irrigation_devices:
+        # Update the device to get its zones
+        device = await irrigation_service.update(device)
+        # Add zone running sensors for each zone
+        for zone in device.zones:
+            zone_sensor = WyzeIrrigationZoneRunning(
+                irrigation_service, 
+                device, 
+                zone.zone_number, 
+                zone.name
+            )
+            irrigation_sensors.append(zone_sensor)
+
     async_add_entities(cameras, True)
     async_add_entities(sensors, True)
+    async_add_entities(irrigation_sensors, True)
 
 
 class WyzeSensor(BinarySensorEntity):
@@ -222,3 +245,91 @@ class WyzeCameraMotion(BinarySensorEntity):
             self._last_event = camera.last_event_ts
 
         self.schedule_update_ha_state()
+
+
+class WyzeIrrigationZoneRunning(BinarySensorEntity):
+    """Representation of a Wyze Irrigation Zone Running binary sensor."""
+
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone_number: int, zone_name: str) -> None:
+        """Initialize the irrigation zone running sensor."""
+        self._irrigation_service = irrigation_service
+        self._device = irrigation
+        self._zone_number = zone_number
+        self._zone_name = zone_name
+        self._running = False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the zone."""
+        return f"{self._zone_name}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the zone."""
+        return f"Running {self._device.mac}-zone-{self._zone_number}"
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if the zone is running."""
+        return self._running
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device.mac)},
+            name=self._device.nickname,
+            manufacturer="WyzeLabs",
+            model=self._device.product_model,
+            serial_number=self._device.sn,
+            connections={(dr.CONNECTION_NETWORK_MAC, self._device.mac)},
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra state attributes."""
+        return {
+            "zone_number": self._zone_number,
+            "zone_name": self._zone_name,
+        }
+
+    async def async_update(self) -> None:
+        """Update the sensor state."""
+        try:
+            schedule_data = await self._irrigation_service.get_schedule_runs(self._device)
+            # Check if this specific zone is running
+            if schedule_data.get("running", False):
+                running_zone_number = schedule_data.get("zone_number")
+                self._running = running_zone_number == self._zone_number
+            else:
+                self._running = False
+        except Exception as e:
+            _LOGGER.error("Failed to update zone running status for device %s zone %s: %s", 
+                         self._device.mac, self._zone_number, str(e))
+            self._running = False
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to updates and set up periodic updates."""
+        # Set up periodic updates every minute for zone running status
+        self._unsub_periodic = async_track_time_change(
+            self.hass, 
+            self._async_periodic_update, 
+            second=0  # Update every minute at second 0
+        )
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up when removed."""
+        if hasattr(self, '_unsub_periodic') and self._unsub_periodic:
+            self._unsub_periodic()
+        return await super().async_will_remove_from_hass()
+
+    @callback
+    def _async_periodic_update(self, now: datetime) -> None:
+        """Handle periodic updates."""
+        self.hass.async_create_task(self.async_update())
+        self.async_schedule_update_ha_state()
