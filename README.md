@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 Katie Mulliken <katie@mulliken.net>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<a href="https://www.buymeacoffee.com/seckatie"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=seckatie&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" /></a>
+![Buy me a coffee](https://img.buymeacoffee.com/button-api/?emoji=&slug=seckatie&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00)
 
 
 # Home Assistant - Wyze Integration
