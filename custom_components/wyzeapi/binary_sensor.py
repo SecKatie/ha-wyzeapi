@@ -12,14 +12,15 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from wyzeapy import Wyzeapy, CameraService, SensorService
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.sensor_service import Sensor
 from wyzeapy.types import DeviceTypes
 from .token_manager import token_exception_handler
 
-from .const import DOMAIN, CONF_CLIENT
+from .const import CAMERA_UPDATED, DOMAIN, CONF_CLIENT
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
@@ -64,6 +65,9 @@ class WyzeSensor(BinarySensorEntity):
     A representation of the WyzeSensor for use in Home Assistant
     """
 
+    # Disable the sensor by default, this avoild unnecesssary traffic to the Wyze API
+    _attr_entity_registry_enabled_default = False
+
     def __init__(self, sensor_service: SensorService, sensor: Sensor):
         """Initializes the class"""
         self._sensor_service = sensor_service
@@ -71,22 +75,22 @@ class WyzeSensor(BinarySensorEntity):
         self._last_event = int(str(int(time.time())) + "000")
 
     async def async_added_to_hass(self) -> None:
-        """Registers for updates when the entity is added to Home Assistant"""
-        await self._sensor_service.register_for_updates(
-            self._sensor, self.process_update
-        )
+        """Register Updater for the sensor for every 30 seconds"""
+        self._sensor.callback_function = self.async_update_callback
+        self._sensor_service.register_updater(self._sensor, 30)
+        await self._sensor_service.start_update_manager()
 
     async def async_will_remove_from_hass(self) -> None:
-        await self._sensor_service.deregister_for_updates(self._sensor)
+        self._sensor_service.unregister_updater(self._sensor)
 
-    def process_update(self, sensor: Sensor):
+    def async_update_callback(self, sensor: Sensor):
         """
         This function processes an update for the Wyze Sensor
 
         :param sensor: The sensor with the updated values
         """
         self._sensor = sensor
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     @property
     def device_info(self):
@@ -197,21 +201,9 @@ class WyzeCameraMotion(BinarySensorEntity):
     def device_class(self):
         return BinarySensorDeviceClass.MOTION
 
-    async def async_added_to_hass(self) -> None:
-        await self._camera_service.register_for_updates(
-            self._camera, self.process_update
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        await self._camera_service.deregister_for_updates(self._camera)
-
-    @token_exception_handler
-    def process_update(self, camera: Camera) -> None:
-        """
-        Is called by the update worker for events to update the values in this sensor
-
-        :param camera: An updated version of the current camera
-        """
+    @callback
+    def handle_camera_update(self, camera: Camera) -> None:
+        """Update the camera object whenever there is an update"""
         self._camera = camera
 
         if camera.last_event_ts > self._last_event:
@@ -221,4 +213,13 @@ class WyzeCameraMotion(BinarySensorEntity):
             self._is_on = False
             self._last_event = camera.last_event_ts
 
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{CAMERA_UPDATED}-{self._camera.mac}",
+                self.handle_camera_update,
+            )
+        )
