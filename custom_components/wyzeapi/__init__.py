@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
+from homeassistant.components import bluetooth
 from wyzeapy import Wyzeapy
 from wyzeapy.exceptions import AccessTokenError
 from wyzeapy.wyze_auth_lib import Token
@@ -187,6 +188,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 async def setup_coordinators(hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy):
+    """Set up coordinators for Wyze devices that require Bluetooth."""
+    # Check if Bluetooth is active and functioning
+    if bluetooth.async_scanner_count(hass, connectable=True) == 0:
+        _LOGGER.info("Bluetooth is not active or no scanners available. Skipping WyzeLockBoltCoordinator setup.")
+        return
+    
     lock_service = await client.lock_service
     for lock in await lock_service.get_locks():
         if lock.product_model == "YD_BT1":
