@@ -8,8 +8,10 @@ from bleak import BleakClient
 from bleak_retry_connector import establish_connection
 
 from homeassistant.components import bluetooth
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from wyzeapy.services.lock_service import LockService, Lock
 
 from .const import YDBLE_LOCK_STATE_UUID, YDBLE_UART_RX_UUID, YDBLE_UART_TX_UUID
 from .token_manager import token_exception_handler
@@ -21,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 class WyzeLockBoltCoordinator(DataUpdateCoordinator):
     """Manages fetching data from BLE periodically."""
 
-    def __init__(self, hass, lock_service, lock) -> None:
+    def __init__(self, hass: HomeAssistant, lock_service: LockService, lock: Lock) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -52,6 +54,9 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             return self.data
 
         client = await self._get_ble_client()
+        if client is None:
+            raise UpdateFailed(f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range.")
+
         try:
             value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
             return self._parse_state(value)
@@ -65,6 +70,8 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self._current_command = command
         self.async_update_listeners()
         client = await self._get_ble_client()
+        if client is None:
+            raise Exception(f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range.")
 
         # disconnect in 10 seconds in case of error
         asyncio.create_task(self._disconnect(delay=10))
@@ -147,13 +154,16 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
                         f" l2_data={binascii.hexlify(l2_data)}")
         
 
-    async def _get_ble_client(self) -> BleakClient:
+    async def _get_ble_client(self) -> BleakClient | None:
         if not self._bleak_client or not self._bleak_client.is_connected:
             if not self._mac:
                 raise PlatformNotReady("Not initialized")
             ble_device = bluetooth.async_ble_device_from_address(
                 self.hass, self._mac, connectable=True
             )
+            if ble_device is None:
+                return None
+
             self._bleak_client = await establish_connection(BleakClient, ble_device, ble_device.address)
         return self._bleak_client
 
