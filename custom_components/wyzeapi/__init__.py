@@ -36,6 +36,7 @@ PLATFORMS = [
     "switch",
     "lock",
     "climate",
+    "binary_sensor",
     "alarm_control_panel",
     "sensor",
     "siren",
