@@ -301,6 +301,7 @@ class WyzePlugEnergySensor(RestoreSensor):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
     _attr_should_poll = False
+    _attr_name = "Total Energy Usage"
     _previous_hour = None
     _previous_value = None
     _past_hours_previous_value = None
@@ -315,11 +316,6 @@ class WyzePlugEnergySensor(RestoreSensor):
         self._switch = switch
         self._switch_usage_service = switch_usage_service
         self._switch.usage_history = None  # type: ignore[attr-defined]
-
-    @property
-    def name(self) -> str:
-        """Get the name of the sensor."""
-        return "Total Energy Usage"
 
     @property
     def unique_id(self):
@@ -445,15 +441,11 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
+    _attr_name = "Daily Energy Usage"
 
     def __init__(self, switch: Switch) -> None:
         """Initialize a daily energy sensor."""
         self._switch = switch
-
-    @property
-    def name(self) -> str:
-        """Get the name of the sensor."""
-        return "Daily Energy Usage"
 
     @property
     def unique_id(self):
