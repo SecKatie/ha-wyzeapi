@@ -41,7 +41,7 @@ PLATFORMS = [
     "siren",
     "cover",
     "number",
-    "button"
+    "button",
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,7 +133,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         _LOGGER.error(e)
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
 
-    hass.data[DOMAIN][config_entry.entry_id] = {CONF_CLIENT: client, "key_id": KEY_ID, "api_key": API_KEY}
+    hass.data[DOMAIN][config_entry.entry_id] = {
+        CONF_CLIENT: client,
+        "key_id": KEY_ID,
+        "api_key": API_KEY,
+    }
     await setup_coordinators(hass, config_entry, client)
 
     options_dict = {
@@ -187,16 +191,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-async def setup_coordinators(hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy):
+
+async def setup_coordinators(
+    hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy
+):
     """Set up coordinators for Wyze devices that require Bluetooth."""
     # Check if Bluetooth is active and functioning
     if bluetooth.async_scanner_count(hass, connectable=True) == 0:
-        _LOGGER.info("Bluetooth is not active or no scanners available. Skipping WyzeLockBoltCoordinator setup.")
+        _LOGGER.info(
+            "Bluetooth is not active or no scanners available. Skipping WyzeLockBoltCoordinator setup."
+        )
         return
-    
+
     lock_service = await client.lock_service
     for lock in await lock_service.get_locks():
         if lock.product_model == "YD_BT1":
-            coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault("coordinators", {})
+            coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault(
+                "coordinators", {}
+            )
             coordinators[lock.mac] = WyzeLockBoltCoordinator(hass, lock_service, lock)
             await coordinators[lock.mac].update_lock_info()

@@ -2,34 +2,44 @@
 
 """Platform for switch integration."""
 
-import logging
+from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Callable, List, Union
+import logging
+from typing import Any
+
 from aiohttp.client_exceptions import ClientConnectionError
+from wyzeapy import BulbService, CameraService, SwitchService, Wyzeapy
+from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
+from wyzeapy.services.bulb_service import Bulb
+from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.switch_service import Switch
+from wyzeapy.types import Device, DeviceTypes, Event
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_send,
-    async_dispatcher_connect,
-)
 from homeassistant.helpers import device_registry as dr
-from wyzeapy import CameraService, SwitchService, Wyzeapy, BulbService
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.switch_service import Switch
-from wyzeapy.services.bulb_service import Bulb
-from wyzeapy.types import Device, Event, DeviceTypes
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 
-from .const import CAMERA_UPDATED, LIGHT_UPDATED
-from .const import DOMAIN, CONF_CLIENT, WYZE_CAMERA_EVENT, WYZE_NOTIFICATION_TOGGLE
+from .const import (
+    CAMERA_UPDATED,
+    CONF_CLIENT,
+    DOMAIN,
+    LIGHT_UPDATED,
+    WYZE_CAMERA_EVENT,
+    WYZE_NOTIFICATION_TOGGLE,
+)
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
+OUTDOOR_PLUGS = "WLPPO"
+OUTDOOR_PLUG_INDIVUAL_OUTLETS = "WLPPO-SUB"
 MOTION_SWITCH_UNSUPPORTED = [
     "GW_BE1",
     "GW_GC1",
@@ -41,15 +51,15 @@ NOTIFICATION_SWITCH_UNSUPPORTED = {
     "GW_GC2",
 }  # OG and OG 3x Telephoto models currently unsupported due to InvalidSignature2 error
 
+
 # noinspection DuplicatedCode
 @token_exception_handler
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: Callable[[List[Any], bool], None],
+    async_add_entities: Callable[[list[Any], bool], None],
 ) -> None:
-    """
-    This function sets up the config entry
+    """This function sets up the config entry.
 
     :param hass: The Home Assistant Instance
     :param config_entry: The current config entry
@@ -64,10 +74,18 @@ async def async_setup_entry(
     camera_service = await client.camera_service
     bulb_service = await client.bulb_service
 
-    switches: List[SwitchEntity] = [
+    switches: list[SwitchEntity] = []
+
+    base_switches = await switch_service.get_switches()
+    # The outdoor plug has a dummy switch that doesn't control anything
+    # on the device. So we add non-outdoor plug switches and then
+    # the switches for each individual outlet on the outdoor plug.
+    switches.extend(
         WyzeSwitch(switch_service, switch)
-        for switch in await switch_service.get_switches()
-    ]
+        for switch in base_switches
+        if switch.product_model not in OUTDOOR_PLUGS
+        or switch.product_model.endswith("-SUB")  # Outdoor plug individual outlet
+    )
 
     switches.extend(
         WyzeSwitch(wall_switch_service, switch)
@@ -91,15 +109,23 @@ async def async_setup_entry(
     switches.append(WyzeNotifications(client))
 
     bulb_switches = await bulb_service.get_bulbs()
-    for bulb in bulb_switches:
-        if bulb.type is DeviceTypes.LIGHTSTRIP:
-            switches.append(WzyeLightstripSwitch(bulb_service, bulb))
+    switches.extend(
+        WzyeLightstripSwitch(bulb_service, bulb)
+        for bulb in bulb_switches
+        if bulb.type is DeviceTypes.LIGHTSTRIP
+    )
 
     async_add_entities(switches, True)
 
 
 class WyzeNotifications(SwitchEntity):
-    def __init__(self, client: Wyzeapy):
+    """Class for notification switch."""
+
+    _attr_should_poll = False
+    _attr_name = "Wyze Notifications"
+
+    def __init__(self, client: Wyzeapy) -> None:
+        """Initialize the switch."""
         self._client = client
         self._is_on = False
         self._uid = WYZE_NOTIFICATION_TOGGLE
@@ -107,16 +133,12 @@ class WyzeNotifications(SwitchEntity):
 
     @property
     def is_on(self) -> bool:
+        """Return if the switch is on."""
         return self._is_on
-
-    def turn_on(self, **kwargs: Any) -> None:
-        pass
-
-    def turn_off(self, **kwargs: Any) -> None:
-        pass
 
     @property
     def device_info(self):
+        """Return the device info."""
         return {
             "identifiers": {(DOMAIN, self._uid)},
             "name": "Wyze Notifications",
@@ -124,11 +146,8 @@ class WyzeNotifications(SwitchEntity):
             "model": "WyzeNotificationToggle",
         }
 
-    @property
-    def should_poll(self) -> bool:
-        return False
-
     async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the switch."""
         try:
             await self._client.enable_notifications()
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -141,6 +160,7 @@ class WyzeNotifications(SwitchEntity):
             self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the switch."""
         try:
             await self._client.disable_notifications()
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -153,20 +173,17 @@ class WyzeNotifications(SwitchEntity):
             self.async_schedule_update_ha_state()
 
     @property
-    def name(self):
-        """Return the display name of this switch."""
-        return "Wyze Notifications"
-
-    @property
     def available(self):
-        """Return the connection status of this switch"""
+        """Return the connection status of this switch."""
         return True
 
     @property
     def unique_id(self):
+        """Return the unique ID."""
         return self._uid
 
     async def async_update(self):
+        """Update the switch."""
         if not self._just_updated:
             self._is_on = await self._client.notifications_are_on
         else:
@@ -180,8 +197,9 @@ class WyzeSwitch(SwitchEntity):
     _available: bool
     _just_updated = False
     _old_event_ts: int = 0  # preload with 0 so that we know when it's been updated
+    _attr_should_poll = False
 
-    def __init__(self, service: Union[CameraService, SwitchService], device: Device):
+    def __init__(self, service: CameraService | SwitchService, device: Device) -> None:
         """Initialize a Wyze Bulb."""
         self._device = device
         self._service = service
@@ -193,6 +211,25 @@ class WyzeSwitch(SwitchEntity):
 
     @property
     def device_info(self):
+        """Return the device info.
+
+        Outdoor plug needs its own setup based on how the MAC's are
+        displayed and to keep the plugs organized by device.
+        """
+        if self._device.product_model == OUTDOOR_PLUG_INDIVUAL_OUTLETS:
+            mac = self._device.mac.split("-")[0]
+            return {
+                "identifiers": {(DOMAIN, mac)},
+                "connections": {
+                    (
+                        dr.CONNECTION_NETWORK_MAC,
+                        mac,
+                    )
+                },
+                "name": f"Outdoor Plug {mac}",
+                "manufacturer": "WyzeLabs",
+                "model": self._device.product_model,
+            }
         return {
             "identifiers": {(DOMAIN, self._device.mac)},
             "connections": {
@@ -206,12 +243,9 @@ class WyzeSwitch(SwitchEntity):
             "model": self._device.product_model,
         }
 
-    @property
-    def should_poll(self) -> bool:
-        return False
-
     @token_exception_handler
     async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the switch."""
         try:
             await self._service.turn_on(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -225,6 +259,7 @@ class WyzeSwitch(SwitchEntity):
 
     @token_exception_handler
     async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the switch."""
         try:
             await self._service.turn_off(self._device)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
@@ -241,12 +276,11 @@ class WyzeSwitch(SwitchEntity):
         """Return the display name of this switch."""
         if type(self._device) is Camera:
             return f"{self._device.nickname} Power"
-        else:
-            return self._device.nickname
+        return self._device.nickname
 
     @property
     def available(self):
-        """Return the connection status of this switch"""
+        """Return the connection status of this switch."""
         return self._device.available
 
     @property
@@ -256,7 +290,8 @@ class WyzeSwitch(SwitchEntity):
 
     @property
     def unique_id(self):
-        return "{}-switch".format(self._device.mac)
+        """Return the unique ID."""
+        return f"{self._device.mac}-switch"
 
     @property
     def extra_state_attributes(self):
@@ -336,6 +371,7 @@ class WyzeSwitch(SwitchEntity):
         return await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
+        """Unregister updated on removal."""
         self._service.unregister_updater(self._device)
 
 
@@ -344,7 +380,7 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
 
     _available: bool
 
-    def __init__(self, service: CameraService, device: Camera):
+    def __init__(self, service: CameraService, device: Camera) -> None:
         """Initialize a Wyze Notification Switch."""
         self._service = service
         self._device = device
@@ -406,7 +442,7 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
     @property
     def unique_id(self):
         """Add a unique ID to the switch."""
-        return "{}-notification_switch".format(self._device.mac)
+        return f"{self._device.mac}-notification_switch"
 
     @callback
     def handle_camera_update(self, camera: Camera) -> None:
@@ -492,7 +528,7 @@ class WyzeCameraMotionSwitch(SwitchEntity):
     @property
     def unique_id(self):
         """Add a unique ID to the switch."""
-        return "{}-motion_switch".format(self._device.mac)
+        return f"{self._device.mac}-motion_switch"
 
     @callback
     def handle_camera_update(self, camera: Camera) -> None:
@@ -576,7 +612,7 @@ class WzyeLightstripSwitch(SwitchEntity):
     @property
     def unique_id(self):
         """Add a unique ID to the switch."""
-        return "{}-music_mode".format(self._device.mac)
+        return f"{self._device.mac}-music_mode"
 
     @callback
     def handle_light_update(self, bulb: Bulb) -> None:
