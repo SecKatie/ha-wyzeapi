@@ -15,7 +15,14 @@ from wyzeapy.services.lock_service import LockService, Lock
 
 from .const import YDBLE_LOCK_STATE_UUID, YDBLE_UART_RX_UUID, YDBLE_UART_TX_UUID
 from .token_manager import token_exception_handler
-from .ydble_utils import decrypt_ecb, pack_l1, pack_l2_dict, pack_l2_lock_unlock, parse_l1, parse_l2_dict
+from .ydble_utils import (
+    decrypt_ecb,
+    pack_l1,
+    pack_l2_dict,
+    pack_l2_lock_unlock,
+    parse_l1,
+    parse_l2_dict,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +30,9 @@ _LOGGER = logging.getLogger(__name__)
 class WyzeLockBoltCoordinator(DataUpdateCoordinator):
     """Manages fetching data from BLE periodically."""
 
-    def __init__(self, hass: HomeAssistant, lock_service: LockService, lock: Lock) -> None:
+    def __init__(
+        self, hass: HomeAssistant, lock_service: LockService, lock: Lock
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -33,19 +42,19 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         )
         self._lock_service = lock_service
         self._lock = lock
-        # The `mac` in the original response should be UUID. 
+        # The `mac` in the original response should be UUID.
         # The actual MAC address should be retrieved from another API.
         self._uuid = lock.mac
         self._mac = None
         self._bleak_client = None
         self._current_command = None
-        
+
     @token_exception_handler
     async def update_lock_info(self):
         self._lock = await self._lock_service.update(self._lock)
         mac = self._lock.raw_dict["hardware_info"]["mac"]
         # The mac is stored reverse ordered and no colon, e.g. mac="ab8967452301"
-        self._mac = ":".join(mac[i-2:i] for i in range(12, 0, -2)).upper()
+        self._mac = ":".join(mac[i - 2 : i] for i in range(12, 0, -2)).upper()
 
     async def _async_update_data(self):
         """Fetch the latest data from BLE device."""
@@ -55,7 +64,9 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
 
         client = await self._get_ble_client()
         if client is None:
-            raise UpdateFailed(f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range.")
+            raise UpdateFailed(
+                f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
+            )
 
         try:
             value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
@@ -71,12 +82,15 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self.async_update_listeners()
         client = await self._get_ble_client()
         if client is None:
-            raise Exception(f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range.")
+            raise Exception(
+                f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
+            )
 
         # disconnect in 10 seconds in case of error
         asyncio.create_task(self._disconnect(delay=10))
 
         context = {"command": command, "stage": 0}
+
         async def _handle_uart_rx_context(sender, data):
             await self._handle_uart_rx(sender, data, client, context)
 
@@ -85,17 +99,19 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         await self._request_challenge(client)
 
     async def _request_challenge(self, client: BleakClient):
-        l2_content = pack_l2_dict(0x91, 0, {10: b'\x27'})
+        l2_content = pack_l2_dict(0x91, 0, {10: b"\x27"})
         req = pack_l1(0, 1, l2_content)
         await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
     async def _send_lock_unlock(self, client: BleakClient, challenge, command):
-        l2_content = pack_l2_lock_unlock(self._lock.ble_id, self._lock.ble_token, challenge, command)
+        l2_content = pack_l2_lock_unlock(
+            self._lock.ble_id, self._lock.ble_token, challenge, command
+        )
         req = pack_l1(0, 2, l2_content)
         await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
-    async def _send_ack(self, client:BleakClient, seq_no: int):
-        req = pack_l1(0x08, seq_no, b'')
+    async def _send_ack(self, client: BleakClient, seq_no: int):
+        req = pack_l1(0x08, seq_no, b"")
         await client.write_gatt_char(YDBLE_UART_TX_UUID, req, response=False)
 
     async def _handle_state(self, sender, data: bytearray):
@@ -107,11 +123,13 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         data = decrypt_ecb(self._uuid[-16:].lower(), state_data)
         result = {
             "state": data[0],
-            "timestamp": datetime.fromtimestamp(int.from_bytes(data[1:5]))
+            "timestamp": datetime.fromtimestamp(int.from_bytes(data[1:5])),
         }
         return result
 
-    async def _handle_uart_rx(self, sender, data: bytearray, client: BleakClient, context: Dict):
+    async def _handle_uart_rx(
+        self, sender, data: bytearray, client: BleakClient, context: Dict
+    ):
         # Process for unfinished data
         if "l1_unfinished" in context:
             data = context["l1_unfinished"] + data
@@ -120,7 +138,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         if remain:
             context["l1_unfinished"] = data
             return
-        
+
         # Process messages
         if context["stage"] == 0:
             # Ack for request chanllenge
@@ -131,9 +149,9 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             if l1_flags == 0x40:
                 # Process L2 dict
                 cmd, l2_flags, l2_dict = parse_l2_dict(l2_data)
-                if cmd == 0x86 and 0xd2 in l2_dict:
+                if cmd == 0x86 and 0xD2 in l2_dict:
                     # Got generated chanllenge
-                    challenge = l2_dict[0xd2]
+                    challenge = l2_dict[0xD2]
                     await self._send_ack(client, seq_no=seq_no)
                     await self._send_lock_unlock(client, challenge, context["command"])
                     context["stage"] = 2
@@ -149,10 +167,11 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
                 if cmd == 0x04:
                     await self._send_ack(client, seq_no=seq_no)
                     return
-        _LOGGER.warning(f"Unexpected message: stage={context['stage']}"
-                        f" flags={l1_flags:01x}, seq_no={seq_no:02x},"
-                        f" l2_data={binascii.hexlify(l2_data)}")
-        
+        _LOGGER.warning(
+            f"Unexpected message: stage={context['stage']}"
+            f" flags={l1_flags:01x}, seq_no={seq_no:02x},"
+            f" l2_data={binascii.hexlify(l2_data)}"
+        )
 
     async def _get_ble_client(self) -> BleakClient | None:
         if not self._bleak_client or not self._bleak_client.is_connected:
@@ -164,7 +183,9 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             if ble_device is None:
                 return None
 
-            self._bleak_client = await establish_connection(BleakClient, ble_device, ble_device.address)
+            self._bleak_client = await establish_connection(
+                BleakClient, ble_device, ble_device.address
+            )
         return self._bleak_client
 
     async def _disconnect(self, delay=0):
