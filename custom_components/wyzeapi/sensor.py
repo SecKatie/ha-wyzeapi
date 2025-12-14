@@ -1,42 +1,47 @@
 """Platform for sensor integration."""
 
-import logging
+from collections.abc import Callable
+import datetime
 import json
-from typing import Any, Callable, List
-from datetime import datetime
+import logging
+from typing import Any
 
 from wyzeapy import Wyzeapy
 from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.services.switch_service import Switch, SwitchUsageService
-from wyzeapy.services.irrigation_service import IrrigationService, Irrigation
 
 from homeassistant.components.sensor import (
+    RestoreSensor,
+    SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
-    RestoreSensor,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     PERCENTAGE,
-    UnitOfEnergy,
     EntityCategory,
+    UnitOfEnergy,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-)
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
+import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
 )
-from homeassistant.helpers.entity_registry import async_get
-from homeassistant.helpers.entity import DeviceInfo
 
-from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED, CAMERA_UPDATED
+from .const import (
+    CAMERA_UPDATED,
+    CONF_CLIENT,
+    DOMAIN,
+    LOCK_UPDATED,
+    RESET_BUTTON_PRESSED,
+)
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,10 +54,9 @@ OUTDOOR_PLUGS = ["WLPPO"]
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: Callable[[List[Any], bool], None],
+    async_add_entities: Callable[[list[Any], bool], None],
 ) -> None:
-    """
-    This function sets up the config_entry
+    """This function sets up the config_entry.
 
     :param hass: Home Assistant instance
     :param config_entry: The current config_entry
@@ -77,9 +81,13 @@ async def async_setup_entry(
         )
 
     cameras = await camera_service.get_cameras()
-    for camera in cameras:
-        if camera.product_model in CAMERAS_WITH_BATTERIES:
-            sensors.append(WyzeCameraBatterySensor(camera))
+    sensors.extend(
+        [
+            WyzeCameraBatterySensor(camera)
+            for camera in cameras
+            if camera.product_model in CAMERAS_WITH_BATTERIES
+        ]
+    )
 
     plugs = await switch_usage_service.get_switches()
     for plug in plugs:
@@ -89,25 +97,28 @@ async def async_setup_entry(
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
-    
+
     # Create sensor entities for each irrigation device
     for device in irrigation_devices:
         # Update the device to get its properties
         device = await irrigation_service.update(device)
-        sensors.extend([
-            WyzeIrrigationRSSI(irrigation_service, device),
-            WyzeIrrigationIP(irrigation_service, device),
-            WyzeIrrigationSSID(irrigation_service, device),
-        ])
+        sensors.extend(
+            [
+                WyzeIrrigationRSSI(irrigation_service, device),
+                WyzeIrrigationIP(irrigation_service, device),
+                WyzeIrrigationSSID(irrigation_service, device),
+            ]
+        )
 
     async_add_entities(sensors, True)
 
 
 class WyzeLockBatterySensor(SensorEntity):
-    """Representation of a Wyze Lock or Lock Keypad Battery"""
+    """Representation of a Wyze Lock or Lock Keypad Battery."""
 
     @property
     def enabled(self):
+        """Return if the sensor is enabled."""
         return self._enabled
 
     LOCK_BATTERY = "lock_battery"
@@ -115,8 +126,10 @@ class WyzeLockBatterySensor(SensorEntity):
 
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_should_poll = False
 
-    def __init__(self, lock, battery_type):
+    def __init__(self, lock, battery_type) -> None:
+        """Initialize the sensor."""
         self._enabled = None
         self._lock = lock
         self._battery_type = battery_type
@@ -126,10 +139,9 @@ class WyzeLockBatterySensor(SensorEntity):
 
     @callback
     def handle_lock_update(self, lock: Lock) -> None:
-        """
-        Helper function to
-        Enable lock when Keypad has battery and
-        Make it avaliable when either the lock battery or keypad battery exists
+        """Helper function to Enable lock when Keypad has a battery.
+
+        Make it avaliable when either the lock battery or keypad battery exists.
         """
         self._lock = lock
         if self._lock.raw_dict.get("power") and self._battery_type == self.LOCK_BATTERY:
@@ -144,6 +156,7 @@ class WyzeLockBatterySensor(SensorEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
+        """Add listener on startup."""
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
@@ -154,23 +167,23 @@ class WyzeLockBatterySensor(SensorEntity):
 
     @property
     def name(self) -> str:
+        """Name of the Sensor."""
         battery_type = self._battery_type.replace("_", " ").title()
         return f"{self._lock.nickname} {battery_type}"
 
     @property
     def unique_id(self):
+        """Unique ID of the sensor."""
         return f"{self._lock.nickname}.{self._battery_type}"
 
     @property
     def available(self) -> bool:
+        """Return if the sensor is available."""
         return self._available
 
     @property
-    def should_poll(self) -> bool:
-        return False
-
-    @property
     def entity_registry_enabled_default(self) -> bool:
+        """Return if the entity should be enabled."""
         if self._battery_type == self.KEYPAD_BATTERY:
             # The keypad battery may not be available if the lock has no keypad
             return False
@@ -179,6 +192,7 @@ class WyzeLockBatterySensor(SensorEntity):
 
     @property
     def device_info(self):
+        """Return the device info."""
         return {
             "identifiers": {(DOMAIN, self._lock.mac)},
             "connections": {
@@ -203,7 +217,7 @@ class WyzeLockBatterySensor(SensorEntity):
         """Return the state of the device."""
         if self._battery_type == self.LOCK_BATTERY:
             return str(self._lock.raw_dict.get("power"))
-        elif self._battery_type == self.KEYPAD_BATTERY:
+        if self._battery_type == self.KEYPAD_BATTERY:
             return str(self._lock.raw_dict.get("keypad", {}).get("power"))
         return 0
 
@@ -213,20 +227,24 @@ class WyzeLockBatterySensor(SensorEntity):
 
 
 class WyzeCameraBatterySensor(SensorEntity):
-    """Representation of a Wyze Camera Battery"""
+    """Representation of a Wyze Camera Battery."""
 
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_should_poll = False
 
-    def __init__(self, camera):
+    def __init__(self, camera) -> None:
+        """Initialize the sensor."""
         self._camera = camera
 
     @callback
     def handle_camera_update(self, camera: Camera) -> None:
+        """Handle camera updates."""
         self._camera = camera
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
+        """Add listener on startup."""
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
@@ -237,15 +255,13 @@ class WyzeCameraBatterySensor(SensorEntity):
 
     @property
     def name(self) -> str:
+        """Return the entity name."""
         return f"{self._camera.nickname} Battery"
 
     @property
     def unique_id(self):
+        """Unique ID of the sensor."""
         return f"{self._camera.nickname}.battery"
-
-    @property
-    def should_poll(self) -> bool:
-        return False
 
     @property
     def device_info(self):
@@ -273,6 +289,7 @@ class WyzeCameraBatterySensor(SensorEntity):
 
     @property
     def native_value(self):
+        """Return the value of the sensor."""
         return self._camera.device_params.get("electricity")
 
 
@@ -283,6 +300,8 @@ class WyzePlugEnergySensor(RestoreSensor):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
+    _attr_should_poll = False
+    _attr_name = "Total Energy Usage"
     _previous_hour = None
     _previous_value = None
     _past_hours_previous_value = None
@@ -296,22 +315,12 @@ class WyzePlugEnergySensor(RestoreSensor):
         """Initialize an energy sensor."""
         self._switch = switch
         self._switch_usage_service = switch_usage_service
-        self._switch.usage_history = None
-
-    @property
-    def name(self) -> str:
-        """Get the name of the sensor."""
-        return "Total Energy Usage"
+        self._switch.usage_history = None  # type: ignore[attr-defined]
 
     @property
     def unique_id(self):
         """Get the unique ID of the sensor."""
         return f"{self._switch.nickname}.energy-{self._switch.mac}"
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed."""
-        return False
 
     @property
     def device_info(self):
@@ -323,7 +332,7 @@ class WyzePlugEnergySensor(RestoreSensor):
 
     def update_energy(self):
         """Update the energy sensor."""
-        _now = int(datetime.utcnow().hour)
+        _now = int(datetime.datetime.now(datetime.UTC).hour)
         self._hourly_energy_usage_added = 0
 
         if (
@@ -391,6 +400,14 @@ class WyzePlugEnergySensor(RestoreSensor):
         self._attr_native_value += self._hourly_energy_usage_added
         self.async_write_ha_state()
 
+    @callback
+    def reset_energy_use(self, switch: Switch):
+        """Reset the Energy Usage."""
+        _LOGGER.debug("Resetting Usage of %s to 0", self._switch.nickname)
+        self._switch = switch
+        self._attr_native_value = 0
+        self.async_write_ha_state()
+
     async def async_added_to_hass(self) -> None:
         """Register Updater for the sensor and get previous data."""
         state = await self.async_get_last_sensor_data()
@@ -404,6 +421,14 @@ class WyzePlugEnergySensor(RestoreSensor):
         )  # Every 2 minutes seems to work fine, probably could be longer
         await self._switch_usage_service.start_update_manager()
 
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{RESET_BUTTON_PRESSED}-{self._switch.mac}",
+                self.reset_energy_use,
+            )
+        )
+
     async def async_will_remove_from_hass(self) -> None:
         """Remove updater."""
         self._switch_usage_service.unregister_updater(self._switch)
@@ -416,15 +441,11 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_suggested_display_precision = 3
+    _attr_name = "Daily Energy Usage"
 
     def __init__(self, switch: Switch) -> None:
         """Initialize a daily energy sensor."""
         self._switch = switch
-
-    @property
-    def name(self) -> str:
-        """Get the name of the sensor."""
-        return "Daily Energy Usage"
 
     @property
     def unique_id(self):
@@ -458,7 +479,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
         self._attr_native_value += updated_energy
         self.async_write_ha_state()
 
-    async def _async_reset_at_midnight(self, now: datetime):
+    async def _async_reset_at_midnight(self, now: datetime) -> None:
         """Reset the daily sensor."""
         self._attr_native_value = 0
         _LOGGER.debug("Resetting daily energy sensor %s to 0", self._switch.mac)
@@ -473,7 +494,7 @@ class WyzePlugDailyEnergySensor(RestoreSensor):
         else:
             self._attr_native_value = 0
 
-        registry = async_get(self.hass)
+        registry = er.async_get(self.hass)
         entity_id_total_sensor = registry.async_get_entity_id(
             "sensor", DOMAIN, f"{self._switch.nickname}.energy-{self._switch.mac}"
         )
@@ -497,7 +518,9 @@ class WyzeIrrigationBaseSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation
+    ) -> None:
         """Initialize the irrigation base sensor."""
         self._irrigation_service = irrigation_service
         self._device = irrigation

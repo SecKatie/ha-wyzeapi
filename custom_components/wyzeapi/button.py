@@ -1,35 +1,38 @@
 """Platform for button integration."""
 
+from collections.abc import Callable
 import logging
-from typing import Any, Callable, List
+from typing import Any
+
 from aiohttp.client_exceptions import ClientConnectionError
-
-from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.entity_registry import async_get
 from wyzeapy import Wyzeapy
-from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
-from wyzeapy.types import Device, Event, DeviceTypes
+from wyzeapy.services.irrigation_service import Irrigation, IrrigationService, Zone
+from wyzeapy.services.switch_service import Switch
 
-from .const import DOMAIN, CONF_CLIENT
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_registry import EntityCategory
+
+from .const import CONF_CLIENT, DOMAIN, RESET_BUTTON_PRESSED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 ATTRIBUTION = "Data provided by Wyze"
+OUTDOOR_PLUGS = ["WLPPO"]
+
 
 @token_exception_handler
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: Callable[[List[Any], bool], None],
+    async_add_entities: Callable[[list[Any], bool], None],
 ) -> None:
-    """
-    This function sets up the config entry
+    """This function sets up the config entry.
 
     :param hass: The Home Assistant Instance
     :param config_entry: The current config entry
@@ -37,23 +40,38 @@ async def async_setup_entry(
     :return:
     """
 
-    _LOGGER.debug("""Creating new WyzeApi irrigation button component""")
+    _LOGGER.debug("""Creating new Wyze button component""")
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     irrigation_service = await client.irrigation_service
+    switch_service = await client.switch_service
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
-    
+
     # Create a button entity for each zone in each irrigation device
     buttons = []
     for device in irrigation_devices:
         # Update the device to get its zones
         device = await irrigation_service.update(device)
-        for zone in device.zones:
-            if zone.enabled:
-                buttons.append(WyzeIrrigationZoneButton(irrigation_service, device, zone))
+        # Add a button entity for each enabled zone in the irrigation device
+        buttons.extend(
+            [
+                WyzeIrrigationZoneButton(irrigation_service, device, zone)
+                for zone in device.zones
+                if zone.enabled
+            ]
+        )
         # Add a stop all schedules button for each irrigation device, not each zone
         buttons.append(WyzeIrrigationStopAllButton(irrigation_service, device))
+
+    plugs = await switch_service.get_switches()
+    buttons.extend(
+        [
+            WyzePowerSensorResetButton(plug)
+            for plug in plugs
+            if plug.product_model in OUTDOOR_PLUGS
+        ]
+    )
 
     async_add_entities(buttons, True)
 
@@ -63,7 +81,9 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone
+    ) -> None:
         """Initialize the irrigation zone button."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
@@ -126,10 +146,12 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             # The quickrun duration field doesnt exist in the Wyze API
             # It has been created in Home Assistant as a number entity
             # to conveniently trigger a zone start with a specific duration
-            
+
             # Get the device registry and find the device
             device_registry = dr.async_get(self.hass)
-            device = device_registry.async_get_device(identifiers={(DOMAIN, self._device.mac)})
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, self._device.mac)}
+            )
             if not device:
                 raise HomeAssistantError(f"Device not found for MAC {self._device.mac}")
 
@@ -138,20 +160,26 @@ class WyzeIrrigationZoneButton(ButtonEntity):
 
             # Find the matching number entity using the zone number and device MAC
             # The number entities have unique_id pattern: {device.mac}-zone-{zone.zone_number}-quickrun-duration
-            expected_unique_id = f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
-            
+            expected_unique_id = (
+                f"{self._device.mac}-zone-{self._zone.zone_number}-quickrun-duration"
+            )
+
             matching_entity = None
             for entity_id, entity in entity_registry.entities.items():
-                if (entity.device_id == device.id 
-                    and entity.platform == DOMAIN 
+                if (
+                    entity.device_id == device.id
+                    and entity.platform == DOMAIN
                     and entity_id.startswith("number.")
-                    and entity.unique_id == expected_unique_id):
+                    and entity.unique_id == expected_unique_id
+                ):
                     matching_entity = entity_id
                     break
-            
-            _LOGGER.debug(f"Looking for number entity with unique_id: {expected_unique_id}")
-            _LOGGER.debug(f"Found matching entity: {matching_entity}")
-            
+
+            _LOGGER.debug(
+                "Looking for number entity with unique_id: %s", expected_unique_id
+            )
+            _LOGGER.debug("Found matching entity: %s", matching_entity)
+
             if not matching_entity:
                 raise HomeAssistantError(
                     f"No number entity found for zone {self._zone.name} (zone {self._zone.zone_number}, device: {self._device.mac})"
@@ -160,7 +188,9 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             # Get the current state of the number entity
             state = self.hass.states.get(matching_entity)
             if state is None or state.state in ["unavailable", "unknown"]:
-                raise HomeAssistantError(f"Number entity {matching_entity} is unavailable or unknown")
+                raise HomeAssistantError(
+                    f"Number entity {matching_entity} is unavailable or unknown"
+                )
 
             # Convert duration from minutes to seconds
             try:
@@ -174,15 +204,16 @@ class WyzeIrrigationZoneButton(ButtonEntity):
                 ) from err
 
             _LOGGER.debug(
-                f"Starting zone {self._zone.name} (zone {self._zone.zone_number}) "
-                f"for {duration_minutes} minutes ({duration_seconds} seconds)"
+                "Starting zone %s (zone %s) for %s minutes (%s seconds)",
+                self._zone.name,
+                self._zone.zone_number,
+                duration_minutes,
+                duration_seconds,
             )
 
             # Start the zone with the specified duration
             await self._irrigation_service.start_zone(
-                self._device,
-                self._zone.zone_number,
-                duration_seconds
+                self._device, self._zone.zone_number, duration_seconds
             )
 
         except HomeAssistantError as err:
@@ -190,21 +221,22 @@ class WyzeIrrigationZoneButton(ButtonEntity):
             raise
         except Exception as err:
             _LOGGER.error("Unexpected error starting zone %s: %s", self._zone.name, err)
-            raise HomeAssistantError(f"Failed to start zone {self._zone.name}: {err}") from err
+            raise HomeAssistantError(
+                f"Failed to start zone {self._zone.name}: {err}"
+            ) from err
 
 
 class WyzeIrrigationStopAllButton(ButtonEntity):
     """Representation of a Wyze Irrigation Stop All Schedules Button."""
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation) -> None:
+    _attr_name = "Stop All Zones"
+
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation
+    ) -> None:
         """Initialize the irrigation stop all button."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
-
-    @property
-    def name(self) -> str:
-        """Return the name of the button."""
-        return f"Stop All Zones"
 
     @property
     def unique_id(self) -> str:
@@ -235,10 +267,10 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Stop all running irrigation schedules.
-        
+
         This method is called when the button is pressed in Home Assistant.
         It will stop all running irrigation schedules for the device.
-        
+
         Raises:
             HomeAssistantError: If the schedules cannot be stopped.
         """
@@ -249,3 +281,37 @@ class WyzeIrrigationStopAllButton(ButtonEntity):
         except Exception as err:
             _LOGGER.error("Error stopping schedules: %s", err)
             raise HomeAssistantError(f"Failed to stop schedules: {err}") from err
+
+
+class WyzePowerSensorResetButton(ButtonEntity):
+    """Wyze Power Sensor Reset Button."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_name = "Energy Usage Reset"
+
+    def __init__(self, switch: Switch) -> None:
+        """Initialize a power sensor reset button."""
+        self._switch = switch
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._switch.mac)},
+            name=self._switch.nickname,
+        )
+
+    @property
+    def unique_id(self) -> str:
+        """Create a unique ID for the button."""
+        return f"{self._switch.mac} Reset button"
+
+    async def async_press(self) -> None:
+        """Reset the sensor usage."""
+        async_dispatcher_send(
+            self.hass,
+            f"{RESET_BUTTON_PRESSED}-{self._switch.mac}",
+            self._switch,
+        )
