@@ -8,9 +8,12 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: "ubuntu-latest"
     steps:
-        - uses: actions/checkout@v6
-        - uses: home-assistant/actions/hassfest@master
+        - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        - uses: home-assistant/actions/hassfest@87c064c607f3c5cc673a24258d0c98d23033bfc3 # master
