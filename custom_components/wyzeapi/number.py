@@ -10,7 +10,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
-    async_dispatcher_send
+    async_dispatcher_send,
 )
 from wyzeapy import Wyzeapy
 from wyzeapy.services.irrigation_service import IrrigationService, Irrigation, Zone
@@ -19,6 +19,7 @@ from .const import DOMAIN, CONF_CLIENT
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
+
 
 @token_exception_handler
 async def async_setup_entry(
@@ -33,7 +34,7 @@ async def async_setup_entry(
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
-    
+
     # Create a number entity for each zone in each irrigation device
     entities = []
     for device in irrigation_devices:
@@ -41,16 +42,21 @@ async def async_setup_entry(
         device = await irrigation_service.update(device)
         for zone in device.zones:
             if zone.enabled:
-                entities.append(WyzeIrrigationQuickrunDuration(irrigation_service, device, zone))
+                entities.append(
+                    WyzeIrrigationQuickrunDuration(irrigation_service, device, zone)
+                )
 
     async_add_entities(entities, True)
+
 
 class WyzeIrrigationQuickrunDuration(RestoreNumber):
     """Representation of a Wyze Irrigation Zone Quickrun Duration."""
 
     _attr_has_entity_name = True
 
-    def __init__(self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone) -> None:
+    def __init__(
+        self, irrigation_service: IrrigationService, irrigation: Irrigation, zone: Zone
+    ) -> None:
         """Initialize the irrigation zone quickrun duration."""
         self._irrigation_service = irrigation_service
         self._device = irrigation
@@ -118,9 +124,7 @@ class WyzeIrrigationQuickrunDuration(RestoreNumber):
         # Convert minutes to seconds for the API
         seconds = int(value * 60)
         await self._irrigation_service.set_zone_quickrun_duration(
-            self._device,
-            self._zone.zone_number,
-            seconds
+            self._device, self._zone.zone_number, seconds
         )
         self._zone.quickrun_duration = seconds
         self.async_write_ha_state()
@@ -136,7 +140,7 @@ class WyzeIrrigationQuickrunDuration(RestoreNumber):
                 return
             except (ValueError, TypeError):
                 pass
-        
+
         # If no valid state exists, update from irrigation service
         self._device = await self._irrigation_service.update(self._device)
         for zone in self._device.zones:

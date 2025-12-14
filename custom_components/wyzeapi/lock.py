@@ -52,12 +52,17 @@ async def async_setup_entry(
 
     all_locks = await lock_service.get_locks()
 
-    locks = [WyzeLock(lock_service, lock) for lock in all_locks
-             if lock.product_model != "YD_BT1"]
+    locks = [
+        WyzeLock(lock_service, lock)
+        for lock in all_locks
+        if lock.product_model != "YD_BT1"
+    ]
     lock_bolts = []
     for lock in all_locks:
         if lock.product_model == "YD_BT1":
-            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][lock.mac]
+            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][
+                lock.mac
+            ]
             lock_bolts.append(WyzeLockBolt(coordinator))
 
     async_add_entities(locks + lock_bolts, True)
@@ -205,7 +210,6 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
         self._lock_service.unregister_updater(self._lock)
 
 
-
 class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
     def __init__(self, coordinator):
         super().__init__(coordinator)
@@ -223,26 +227,18 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {
-                (DOMAIN, self._lock.mac)
-            },
+            "identifiers": {(DOMAIN, self._lock.mac)},
             "name": self._lock.nickname,
             "connections": {
                 (
                     dr.CONNECTION_NETWORK_MAC,
                     self.coordinator._mac,
                 ),
-                (
-                    "uuid",
-                    self.coordinator._uuid
-                ),
-                (
-                    "serial_number",
-                    self._lock.raw_dict["hardware_info"]["sn"]
-                )
+                ("uuid", self.coordinator._uuid),
+                ("serial_number", self._lock.raw_dict["hardware_info"]["sn"]),
             },
             "manufacturer": "WyzeLabs",
-            "model": self._lock.product_model
+            "model": self._lock.product_model,
         }
 
     @property
@@ -251,7 +247,7 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
 
     async def async_lock(self, **kwargs):
         return await self.coordinator.lock_unlock(command="lock")
-    
+
     async def async_unlock(self, **kwargs):
         return await self.coordinator.lock_unlock(command="unlock")
 
@@ -265,6 +261,4 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
 
     @property
     def state_attributes(self):
-        return {
-            "last_operated": self.coordinator.data["timestamp"]
-        }
+        return {"last_operated": self.coordinator.data["timestamp"]}
