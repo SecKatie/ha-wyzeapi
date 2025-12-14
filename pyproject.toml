@@ -26,3 +26,12 @@ packages = ["custom_components"]
 dev = [
     "ruff>=0.12.1",
 ]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
