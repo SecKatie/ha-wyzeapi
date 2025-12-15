@@ -16,7 +16,7 @@ jobs:
     name: Ruff Format Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
 
       - name: Check formatting with ruff
         uses: astral-sh/ruff-action@57714a7c8a2e59f32539362ba31877a1957dded1 # v3
