@@ -4,7 +4,7 @@
 
 [project]
 name = "ha-wyzeapi"
-version = "0.1.36rc1"
+version = "0.1.36rc2"
 description = "A Home Assistant integration for Wyze devices"
 authors = [{ name = "Katie Mulliken", email = "katie@mulliken.net" }]
 license = { text = "Apache-2.0" }
