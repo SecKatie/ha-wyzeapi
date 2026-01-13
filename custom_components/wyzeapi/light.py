@@ -71,7 +71,10 @@ async def async_setup_entry(
     ]
 
     for camera in await camera_service.get_cameras():
-        if (
+        if camera.product_model == "HL_BC":
+            # Wyze Bulb Cam has integrated light
+            lights.append(WyzeCamerafloodlight(camera, camera_service, "bulbcam"))
+        elif (
             camera.product_model == "WYZE_CAKP2JFUS"
             and camera.device_params["dongle_product_model"] == "HL_CFL"
             or camera.product_model in ("LD_CFP", "HL_CFL2")  # Floodlight v2
@@ -426,7 +429,13 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def name(self) -> str:
         """Return the device name."""
-        return f"{self._device.nickname} {'Lamp Socket' if self._light_type == 'lampsocket' else ('Floodlight' if self._light_type == 'floodlight' else 'Spotlight')}"
+        light_type_names = {
+            "lampsocket": "Lamp Socket",
+            "floodlight": "Floodlight",
+            "spotlight": "Spotlight",
+            "bulbcam": "Light",
+        }
+        return f"{self._device.nickname} {light_type_names.get(self._light_type, 'Light')}"
 
     @property
     def device_info(self):
@@ -463,16 +472,13 @@ class WyzeCamerafloodlight(LightEntity):
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-
-        return (
-            "mdi:lightbulb"
-            if self._light_type == "lampsocket"
-            else (
-                "mdi:track-light"
-                if self._light_type == "floodlight"
-                else "mdi:spotlight"
-            )
-        )
+        icons = {
+            "lampsocket": "mdi:lightbulb",
+            "floodlight": "mdi:track-light",
+            "spotlight": "mdi:spotlight",
+            "bulbcam": "mdi:lightbulb",
+        }
+        return icons.get(self._light_type, "mdi:lightbulb")
 
     @property
     def color_mode(self):
