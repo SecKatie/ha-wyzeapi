@@ -64,5 +64,15 @@
             "already_configured": "Device is already configured",
             "reauth_successful": "Reauthentication Successful"
         }
+    },
+    "issues": {
+        "entity_changed": {
+            "title": "Wyze Entity Error",
+            "description": "{automation} may neeed attention. {entity} may have changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue."
+        },
+        "device_changed": {
+            "title": "Wyze Device Error",
+            "description": "{automation} may need attention. A device has changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue."
+        }
     }
 }
