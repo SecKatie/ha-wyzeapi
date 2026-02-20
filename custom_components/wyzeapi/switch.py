@@ -15,15 +15,25 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.switch_service import Switch
 from wyzeapy.types import Device, DeviceTypes, Event
 
+from homeassistant.components.automation import (
+    automations_with_device,
+    automations_with_entity,
+)
+from homeassistant.components.script import scripts_with_device, scripts_with_entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
+from homeassistant.helpers.issue_registry import IssueSeverity
 
 from .const import (
     CAMERA_UPDATED,
@@ -75,6 +85,7 @@ async def async_setup_entry(
     bulb_service = await client.bulb_service
 
     switches: list[SwitchEntity] = []
+    has_outdoor_plug: bool = False
 
     base_switches = await switch_service.get_switches()
     # The outdoor plug has a dummy switch that doesn't control anything
@@ -83,9 +94,13 @@ async def async_setup_entry(
     switches.extend(
         WyzeSwitch(switch_service, switch)
         for switch in base_switches
-        if switch.product_model not in OUTDOOR_PLUGS
-        or switch.product_model.endswith("-SUB")  # Outdoor plug individual outlet
+        if switch.product_model not in [OUTDOOR_PLUGS, OUTDOOR_PLUG_INDIVUAL_OUTLETS]
     )
+
+    for switch in base_switches:
+        if switch.product_model in [OUTDOOR_PLUG_INDIVUAL_OUTLETS]:
+            has_outdoor_plug = True
+            switches.append(WyzeSwitch(switch_service, switch))
 
     switches.extend(
         WyzeSwitch(wall_switch_service, switch)
@@ -115,7 +130,90 @@ async def async_setup_entry(
         if bulb.type is DeviceTypes.LIGHTSTRIP
     )
 
+    # Catch old outdoor plug devices and entities and remove.
+    # This can be removed at a later date.
+    if has_outdoor_plug:
+        devices_to_migrate = []
+        device_registry = dr.async_get(hass)
+        devices = dr.async_entries_for_config_entry(
+            device_registry, config_entry.entry_id
+        )
+        for device in devices:
+            for identifier in device.identifiers:
+                mac = identifier[1]
+            if (
+                "-" in mac and device.model == OUTDOOR_PLUG_INDIVUAL_OUTLETS
+            ):  # The old devices have a '-' in the mac
+                devices_to_migrate.append(device.id)
+
+    # Also catch the old dummy switch to remove below.
+    # Should only happen once while the old devices are still around.
+    if devices_to_migrate:
+        devices_to_migrate.extend(
+            device.id for device in devices if device.model == OUTDOOR_PLUGS
+        )
+        await async_migrate_switch_data(
+            hass, config_entry, devices_to_migrate, device_registry
+        )
+
     async_add_entities(switches, True)
+
+
+async def async_migrate_switch_data(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    device_list,
+    device_registry,
+):
+    """Remove redundant switch devices and entities and flag for repair.
+
+    This can be removed in the future.
+    """
+
+    entity_registry = er.async_get(hass)
+    entities = er.async_entries_for_config_entry(entity_registry, config_entry.entry_id)
+
+    for entity in entities:
+        if entity.device_id in device_list and entity.domain == "switch":
+            entity_automations = automations_with_entity(hass, entity.entity_id)
+            entity_automations.extend(scripts_with_entity(hass, entity.entity_id))
+            if entity_automations:
+                for issue in entity_automations:
+                    ir.async_create_issue(
+                        hass,
+                        DOMAIN,
+                        issue_id=f"{issue}-entity-issue",
+                        is_fixable=False,
+                        is_persistent=True,
+                        severity=IssueSeverity.ERROR,
+                        learn_more_url="https://github.com/SecKatie/ha-wyzeapi/issues/789",
+                        translation_key="entity_changed",
+                        translation_placeholders={
+                            "entity": entity.entity_id,
+                            "automation": issue,
+                        },
+                    )
+            entity_registry.async_remove(entity.id)
+
+    for device in device_list:
+        device_automations = automations_with_device(hass, device)
+        device_automations.extend(scripts_with_device(hass, device))
+        if device_automations:
+            for issue in device_automations:
+                ir.async_create_issue(
+                    hass,
+                    DOMAIN,
+                    issue_id=f"{issue}-device-issue",
+                    is_fixable=False,
+                    is_persistent=True,
+                    severity=IssueSeverity.ERROR,
+                    learn_more_url="https://github.com/SecKatie/ha-wyzeapi/issues/789",
+                    translation_key="device_changed",
+                    translation_placeholders={
+                        "automation": issue,
+                    },
+                )
+        device_registry.async_remove_device(device)
 
 
 class WyzeNotifications(SwitchEntity):
