@@ -65,6 +65,7 @@ class WyzeCamera(CameraEntity):
 
     def __init__(self, camera_service: CameraService, camera: Camera):
         """Initialize the camera."""
+        super().__init__()
         self._camera_service = camera_service
         self._camera = camera
         self._attr_name = camera.nickname
