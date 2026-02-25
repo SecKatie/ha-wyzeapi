@@ -72,6 +72,7 @@ class WyzeCamera(CameraEntity):
         self.brand = "Wyze"
         self.model = camera.product_model
         self.supported_features = CameraEntityFeature.STREAM
+        self._webrtc_provider = None
 
     @property
     def is_streaming(self) -> bool:
