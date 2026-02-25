@@ -113,7 +113,7 @@ class WyzeCamera(CameraEntity):
 
     def async_close_session(self, session_id: str) -> None:
         # Implement the logic to close the WebRTC session
-        if session_id in self..sessions:
+        if session_id in self.sessions:
             session = self.sessions[session_id]
             session.close_connection()
             del self.sessions[session_id]
