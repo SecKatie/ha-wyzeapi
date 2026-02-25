@@ -42,20 +42,21 @@ async def async_setup_entry(
     camera_service = await client.camera_service
     camera_devices = await camera_service.get_cameras()
 
-    # Create a button entity for each zone in each irrigation device
-    buttons = []
+    # Create a camera entity for each camera device
+    cameras = []
     for device in camera_devices:
         # Update the device to get its zones
         device = await camera_service.update(device)
-        # Add a button entity for each enabled zone in the irrigation device
-        buttons.extend(
+        cameras.extend(
             [
                 WyzeCamera(camera_service, device)
             ]
         )
 
-    async_add_entities(buttons, True)
+    _LOGGER.warning("Wyze camera component setup complete")
+    async_add_entities(cameras, True)
     provider = WyzeCameraWebRTCProvider()
+    _LOGGER.warning("Registering Wyze camera WebRTC provider")
     remove_provider = async_register_webrtc_provider(hass, provider)
 
 
@@ -195,6 +196,8 @@ class WyzeCameraWebRTCProvider(CameraWebRTCProvider):
         return stream_source == 'wyze'
 
     async def async_handle_async_webrtc_offer(self, camera: CameraEntity, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
+
+        _LOGGER.debug(f"Handling WebRTC offer for camera {camera.name} with session ID {session_id}")
         # Implement the logic to handle the WebRTC offer and send the answer back using send_message
         if not isinstance(camera, WyzeCamera):
             raise ValueError("Camera must be an instance of WyzeCamera")
