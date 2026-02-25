@@ -100,7 +100,6 @@ class WyzeCamera(CameraEntity):
         # Implement the logic to handle the WebRTC offer and send the answer back using send_message
 
         self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message)
-        await self.sessions[session_id].connect()
 
         await self.sessions[session_id].send_offer(offer_sdp)
 
@@ -131,12 +130,12 @@ class WyzeCameraWebRTCSession:
 
     async def connect(self):
         self.config = await self.camera._camera_service.get_stream_info(self.camera._camera)
-        self.websocket = await websocket_connect(self.config['signaling_url'])
+        self.websocket = await websocket_connect(self.config['signaling_url'], logger=_LOGGER)
         asyncio.run(self.run_loop())
 
     async def send_offer(self, offer_sdp: str):
         if self.websocket is None:
-            raise ConnectionError("WebSocket connection not established")
+            await self.connect()
         # Create an offer for Kinesis
         payload = {
             "action": "SDP_OFFER",
@@ -153,7 +152,7 @@ class WyzeCameraWebRTCSession:
         }"""
         # Take RTCIceCandidateInit, convert it to the format in the messagePayload above, and send it to the client using the callback
         if self.websocket is None:
-            raise ConnectionError("WebSocket connection not established")
+            await self.connect()
         candidate_dict = asdict(candidate)
         payload = {
             "action": "ICE_CANDIDATE",
