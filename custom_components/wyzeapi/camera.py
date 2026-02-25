@@ -8,7 +8,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
-from homeassistant.components.camera.webrtc import WebRTCSendMessage, CameraWebRTCProvider, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
+from homeassistant.components.camera.webrtc import WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
 from webrtc_models import RTCIceCandidateInit
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
@@ -55,9 +55,6 @@ async def async_setup_entry(
 
     _LOGGER.warning("Wyze camera component setup complete")
     async_add_entities(cameras, True)
-    provider = WyzeCameraWebRTCProvider()
-    _LOGGER.warning("Registering Wyze camera WebRTC provider")
-    remove_provider = async_register_webrtc_provider(hass, provider)
 
 
 class WyzeCamera(CameraEntity):
@@ -74,7 +71,7 @@ class WyzeCamera(CameraEntity):
         self.model = camera.product_model
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
-        self.stream_options = 
+        self.sessions = {}
 
     @property
     def is_streaming(self) -> bool:
@@ -94,8 +91,32 @@ class WyzeCamera(CameraEntity):
     def is_recording(self) -> bool:
         return True
 
-    async def stream_source(self) -> str:
-        return 'pipe:0'
+    async def stream_source(self) -> None:
+        return None
+
+    async def async_handle_async_webrtc_offer(self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
+
+        _LOGGER.debug(f"Handling WebRTC offer for camera {self._attr_name} with session ID {session_id}")
+        # Implement the logic to handle the WebRTC offer and send the answer back using send_message
+
+        self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message)
+        await self.sessions[session_id].connect()
+
+        await self.sessions[session_id].send_offer(offer_sdp)
+
+    async def async_on_webrtc_candidate(self, session_id: str, candidate: RTCIceCandidateInit) -> None:
+        # Implement the logic to handle the WebRTC candidate and send it to the camera's WebRTC session
+        if session_id not in self.sessions:
+            raise ValueError("Session ID not found")
+
+        await self.sessions[session_id].send_candidate(candidate)
+
+    def async_close_session(self, session_id: str) -> None:
+        # Implement the logic to close the WebRTC session
+        if session_id in self..sessions:
+            session = self.sessions[session_id]
+            session.close_connection()
+            del self.sessions[session_id]
 
 
 class WyzeCameraWebRTCSession:
@@ -185,41 +206,3 @@ class WyzeCameraWebRTCSession:
                     self.callback(wrtcanswer)
                     break
 
-
-class WyzeCameraWebRTCProvider(CameraWebRTCProvider):
-    """WebRTC provider for Wyze cameras."""
-    sessions: dict[str, WyzeCameraWebRTCSession] = {}
-
-
-    @property
-    def domain(self) -> str:
-        return DOMAIN
-
-    def async_is_supported(self, stream_source: str) -> bool:
-        return stream_source == 'pipe:0'
-
-    async def async_handle_async_webrtc_offer(self, camera: CameraEntity, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
-
-        _LOGGER.debug(f"Handling WebRTC offer for camera {camera.name} with session ID {session_id}")
-        # Implement the logic to handle the WebRTC offer and send the answer back using send_message
-        if not isinstance(camera, WyzeCamera):
-            raise ValueError("Camera must be an instance of WyzeCamera")
-
-        WyzeCameraWebRTCProvider.sessions[session_id] = WyzeCameraWebRTCSession(session_id, camera, send_message)
-        await WyzeCameraWebRTCProvider.sessions[session_id].connect()
-
-        await WyzeCameraWebRTCProvider.sessions[session_id].send_offer(offer_sdp)
-
-    async def async_on_webrtc_candidate(self, session_id: str, candidate: RTCIceCandidateInit) -> None:
-        # Implement the logic to handle the WebRTC candidate and send it to the camera's WebRTC session
-        if session_id not in WyzeCameraWebRTCProvider.sessions:
-            raise ValueError("Session ID not found")
-
-        await WyzeCameraWebRTCProvider.sessions[session_id].send_candidate(candidate)
-
-    def async_close_session(self, session_id: str) -> None:
-        # Implement the logic to close the WebRTC session
-        if session_id in WyzeCameraWebRTCProvider.sessions:
-            session = WyzeCameraWebRTCProvider.sessions[session_id]
-            session.close_connection()
-            del WyzeCameraWebRTCProvider.sessions[session_id]
