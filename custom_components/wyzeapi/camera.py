@@ -8,7 +8,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
-from homeassistant.components.camera.webrtc import WebRTCSendMessage, CameraWebRTCProvider, WebRTCAnswer, WebRTCCandidate
+from homeassistant.components.camera.webrtc import WebRTCSendMessage, CameraWebRTCProvider, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
 from webrtc_models import RTCIceCandidateInit
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
@@ -37,7 +37,7 @@ async def async_setup_entry(
     :return:
     """
 
-    _LOGGER.debug("""Creating new Wyze button component""")
+    _LOGGER.debug("""Creating new Wyze camera component""")
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     camera_service = await client.camera_service
     camera_devices = await camera_service.get_cameras()
@@ -55,6 +55,8 @@ async def async_setup_entry(
         )
 
     async_add_entities(buttons, True)
+    provider = WyzeCameraWebRTCProvider()
+    remove_provider = async_register_webrtc_provider(hass, provider)
 
 
 class WyzeCamera(CameraEntity):
@@ -183,6 +185,11 @@ class WyzeCameraWebRTCSession:
 class WyzeCameraWebRTCProvider(CameraWebRTCProvider):
     """WebRTC provider for Wyze cameras."""
     sessions: dict[str, WyzeCameraWebRTCSession] = {}
+
+
+    @property
+    def domain(self) -> str:
+        return DOMAIN
 
     def async_is_supported(self, stream_source: str) -> bool:
         return stream_source == 'wyze'
