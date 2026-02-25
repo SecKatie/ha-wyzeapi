@@ -74,6 +74,7 @@ class WyzeCamera(CameraEntity):
         self.model = camera.product_model
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
+        self.stream_options = 
 
     @property
     def is_streaming(self) -> bool:
@@ -91,10 +92,10 @@ class WyzeCamera(CameraEntity):
 
     @property
     def is_recording(self) -> bool:
-        raise NotImplementedError
+        return True
 
     async def stream_source(self) -> str:
-        return 'wyze'
+        return 'pipe:0'
 
 
 class WyzeCameraWebRTCSession:
@@ -195,7 +196,7 @@ class WyzeCameraWebRTCProvider(CameraWebRTCProvider):
         return DOMAIN
 
     def async_is_supported(self, stream_source: str) -> bool:
-        return stream_source == 'wyze'
+        return stream_source == 'pipe:0'
 
     async def async_handle_async_webrtc_offer(self, camera: CameraEntity, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
 
