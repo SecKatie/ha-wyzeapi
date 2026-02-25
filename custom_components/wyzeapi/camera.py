@@ -131,6 +131,7 @@ class WyzeCameraWebRTCSession:
     async def connect(self):
         self.config = await self.camera._camera_service.get_stream_info(self.camera._camera)
         self.websocket = await websocket_connect(self.config['signaling_url'], logger=_LOGGER)
+        _LOGGER.warning(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
         asyncio.run(self.run_loop())
 
     async def send_offer(self, offer_sdp: str):
@@ -142,6 +143,7 @@ class WyzeCameraWebRTCSession:
             "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
             "messagePayload": base64.b64encode(offer_sdp.encode()).decode(),
         }
+        _LOGGER.warning(f"Sending SDP offer for camera {self.camera._attr_name} with session ID {self.session_id}")
         await self.websocket.send(json.dumps(payload).encode('utf-8'))
 
     async def send_candidate(self, candidate: RTCIceCandidateInit):
@@ -159,6 +161,7 @@ class WyzeCameraWebRTCSession:
             "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
             "messagePayload": base64.b64encode(json.dumps(candidate_dict).encode()).decode(),
         }
+        _LOGGER.warning(f"Sending ICE candidate for camera {self.camera._attr_name} with session ID {self.session_id}")
         await self.websocket.send(json.dumps(payload).encode('utf-8'))
 
     def close_connection(self):
@@ -177,6 +180,7 @@ class WyzeCameraWebRTCSession:
         self.close = close
         async for message in self.websocket:
             data = json.loads(message)
+            _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {data}")
             match data.get("messageType"):
                 case "ICE_CANDIDATE":
                     """
