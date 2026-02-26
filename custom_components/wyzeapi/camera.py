@@ -195,7 +195,11 @@ class WyzeCameraWebRTCSession:
                 _LOGGER.warning(f"Received empty message for camera {self.camera._attr_name} with session ID {self.session_id}")
                 continue
             _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {message}")
-            data = json.loads(message)
+            try:
+                data = json.loads(message)
+            except json.JSONDecodeError as e:
+                _LOGGER.error(f"Failed to decode JSON message for camera {self.camera._attr_name} with session ID {self.session_id}: {e}")
+                continue
             _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {data}")
             match data.get("messageType"):
                 case "ICE_CANDIDATE":
