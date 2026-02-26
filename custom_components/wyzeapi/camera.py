@@ -116,8 +116,8 @@ class WyzeCamera(CameraEntity):
             _LOGGER.warning(f"Adding ICE server for camera {self._attr_name}: {server}")
             ice_servers.append(RTCIceServer.from_dict({
                 "urls": server['url'],
-                "username": server["ice_username"],
-                "credential": server["ice_password"],
+                "username": server["username"],
+                "credential": server["password"],
             }))
 
         _LOGGER.warning(f"ICE servers for camera {self._attr_name}: {ice_servers}")
