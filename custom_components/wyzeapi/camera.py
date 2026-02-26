@@ -140,9 +140,11 @@ class WyzeCameraWebRTCSession:
 
     async def send_offer(self, offer_sdp: str):
         async with self.lock:
-            _LOGGER.warning("Conecting to websocket from send_offer")
             if self.websocket is None:
+                _LOGGER.warning("Conecting to websocket from send_offer")
                 await self.connect()
+        if self.websocket is None:
+            raise ConnectionError("WebSocket connection not established")
         # Create an offer for Kinesis
         payload = {
             "action": "SDP_OFFER",
@@ -150,7 +152,7 @@ class WyzeCameraWebRTCSession:
             "messagePayload": base64.b64encode(offer_sdp.encode()).decode(),
         }
         _LOGGER.warning(f"Sending SDP offer for camera {self.camera._attr_name} with session ID {self.session_id}")
-        await self.websocket.send(json.dumps(payload).encode('utf-8'))
+        await self.websocket.send(json.dumps(payload), text=True)
 
     async def send_candidate(self, candidate: RTCIceCandidateInit):
         """{
@@ -160,9 +162,11 @@ class WyzeCameraWebRTCSession:
         }"""
         # Take RTCIceCandidateInit, convert it to the format in the messagePayload above, and send it to the client using the callback
         async with self.lock:
-            _LOGGER.warning("Conecting to websocket from send_candidate")
             if self.websocket is None:
+                _LOGGER.warning("Conecting to websocket from send_candidate")
                 await self.connect()
+        if self.websocket is None:
+            raise ConnectionError("WebSocket connection not established")
         candidate_dict = asdict(candidate)
         payload = {
             "action": "ICE_CANDIDATE",
@@ -170,7 +174,7 @@ class WyzeCameraWebRTCSession:
             "messagePayload": base64.b64encode(json.dumps(candidate_dict).encode()).decode(),
         }
         _LOGGER.warning(f"Sending ICE candidate for camera {self.camera._attr_name} with session ID {self.session_id}")
-        await self.websocket.send(json.dumps(payload).encode('utf-8'))
+        await self.websocket.send(json.dumps(payload), text=True)
 
     def close_connection(self):
         if self.close is not None:
