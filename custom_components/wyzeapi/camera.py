@@ -25,6 +25,14 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 
+def call_async(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    else:
+        return loop.run_until_complete(coro)
+
 
 @token_exception_handler
 async def async_setup_entry(
@@ -75,6 +83,7 @@ class WyzeCamera(CameraEntity):
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
+        self.next_config = None
 
     @property
     def is_streaming(self) -> bool:
@@ -94,20 +103,16 @@ class WyzeCamera(CameraEntity):
     def is_recording(self) -> bool:
         return True
 
-    async def stream_source(self) -> None:
-        return None
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
-        if (self.sessions is None) or (len(self.sessions) == 0):
-            raise HomeAssistantError("No active WebRTC sessions for this camera")
-        session = next(iter(self.sessions.values()))
-        config = session.config
+        if self.next_config is None:
+            self.next_config = call_async(self._camera_service.get_stream_info(self._camera))
+        config = self.next_config
         if config is None:
             raise HomeAssistantError("WebRTC session configuration not available")
         
 
-        _LOGGER.debug(f"Getting WebRTC client configuration for camera {self._attr_name} with session ID {session.session_id}")
-        _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name} with session ID {session.session_id}: {config}")
+        _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name}: {config}")
         ice_servers = [
             RTCIceServer(
                 urls=[server['url']],
@@ -126,8 +131,13 @@ class WyzeCamera(CameraEntity):
 
         _LOGGER.debug(f"Handling WebRTC offer for camera {self._attr_name} with session ID {session_id}")
         # Implement the logic to handle the WebRTC offer and send the answer back using send_message
+        config = self.next_config
+        self.next_config = None
 
-        self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message)
+        if config is None:
+            config = await self._camera_service.get_stream_info(self._camera)
+
+        self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message, config)
 
         await self.sessions[session_id].send_offer(offer_sdp)
 
@@ -148,7 +158,7 @@ class WyzeCamera(CameraEntity):
 
 class WyzeCameraWebRTCSession:
     """Represents a WebRTC session for a Wyze camera."""
-    def __init__(self, session_id: str, camera: WyzeCamera, callback: WebRTCSendMessage):
+    def __init__(self, session_id: str, camera: WyzeCamera, callback: WebRTCSendMessage, config: dict):
         self.session_id = session_id
         self.camera = camera
         self.websocket = None  # This will hold the WebSocket connection
@@ -157,9 +167,9 @@ class WyzeCameraWebRTCSession:
         self.close = None
         self.lock = asyncio.Lock()
         self.task = None
+        self.config = config
 
     async def connect(self):
-        self.config = await self.camera._camera_service.get_stream_info(self.camera._camera)
         self.websocket = await websocket_connect(unquote(self.config['signaling_url']), logger=_LOGGER)
         _LOGGER.warning(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
         asyncio.create_task(self.run_loop())
