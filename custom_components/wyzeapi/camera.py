@@ -99,6 +99,7 @@ class WyzeCamera(CameraEntity):
 
     async def get_config(self):
         self.next_config = await self._camera_service.get_stream_info(self._camera)
+        _LOGGER.warning(f"Fetched new WebRTC session configuration for camera {self._attr_name}: {self.next_config}")
 
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
@@ -108,7 +109,7 @@ class WyzeCamera(CameraEntity):
         config = self.next_config
         
 
-        _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name}: {config}")
+        _LOGGER.warning(f"WebRTC session configuration for camera {self._attr_name}: {config}")
         ice_servers = [
             RTCIceServer(
                 urls=[server['url']],
