@@ -110,14 +110,17 @@ class WyzeCamera(CameraEntity):
         
 
         _LOGGER.warning(f"WebRTC session configuration for camera {self._attr_name}: {config}")
-        ice_servers = [
-            RTCIceServer(
-                urls=[server['url']],
-                username=server.get("ice_username"),
-                credential=server.get("ice_password"),
+        ice_servers = []
+
+        for server in config.get("ice_servers", []):
+            _LOGGER.warning(f"Adding ICE server for camera {self._attr_name}: {server}")
+            ice_servers.append(
+                RTCIceServer(
+                    urls=[server['url']],
+                    username=server.get("ice_username"),
+                    credential=server.get("ice_password"),
+                )
             )
-            for server in config.get("ice_servers", [])
-        ]
         configuration = RTCConfiguration(ice_servers=ice_servers)
         webrtc_config = WebRTCClientConfiguration(
             configuration=configuration
