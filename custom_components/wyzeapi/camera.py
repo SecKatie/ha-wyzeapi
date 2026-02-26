@@ -8,9 +8,10 @@ import logging
 from urllib.parse import unquote
 
 
+from webrtc_models import RTCConfiguration, RTCIceServer
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
-from homeassistant.components.camera.webrtc import WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
+from homeassistant.components.camera.webrtc import WebRTCClientConfiguration, WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
 from webrtc_models import RTCIceCandidateInit
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
@@ -73,7 +74,7 @@ class WyzeCamera(CameraEntity):
         self.model = camera.product_model
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
-        self.sessions = {}
+        self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
 
     @property
     def is_streaming(self) -> bool:
@@ -95,6 +96,31 @@ class WyzeCamera(CameraEntity):
 
     async def stream_source(self) -> None:
         return None
+
+    def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
+        if (self.sessions is None) or (len(self.sessions) == 0):
+            raise HomeAssistantError("No active WebRTC sessions for this camera")
+        session = next(iter(self.sessions.values()))
+        config = session.config
+        if config is None:
+            raise HomeAssistantError("WebRTC session configuration not available")
+        
+
+        _LOGGER.debug(f"Getting WebRTC client configuration for camera {self._attr_name} with session ID {session.session_id}")
+        _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name} with session ID {session.session_id}: {config}")
+        ice_servers = [
+            RTCIceServer(
+                urls=[server['url']],
+                username=server.get("ice_username"),
+                credential=server.get("ice_password"),
+            )
+            for server in config.get("ice_servers", [])
+        ]
+        configuration = RTCConfiguration(ice_servers=ice_servers)
+        webrtc_config = WebRTCClientConfiguration(
+            configuration=configuration
+        )
+        return webrtc_config
 
     async def async_handle_async_webrtc_offer(self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
 
