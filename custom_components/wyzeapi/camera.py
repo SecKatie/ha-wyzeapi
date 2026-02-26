@@ -191,6 +191,10 @@ class WyzeCameraWebRTCSession:
                 return loop.create_task(self.websocket.close())
         self.close = close
         async for message in self.websocket:
+            if len(message) == 0:
+                _LOGGER.warning(f"Received empty message for camera {self.camera._attr_name} with session ID {self.session_id}")
+                continue
+            _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {message}")
             data = json.loads(message)
             _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {data}")
             match data.get("messageType"):
