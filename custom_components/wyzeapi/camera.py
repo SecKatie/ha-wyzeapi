@@ -25,13 +25,6 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 
-def call_async(coro):
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    else:
-        return loop.run_until_complete(coro)
 
 
 @token_exception_handler
@@ -84,6 +77,7 @@ class WyzeCamera(CameraEntity):
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
         self.next_config = None
+        asyncio.create_task(self.get_config())
 
     @property
     def is_streaming(self) -> bool:
@@ -103,13 +97,15 @@ class WyzeCamera(CameraEntity):
     def is_recording(self) -> bool:
         return True
 
+    async def get_config(self):
+        self.next_config = await self._camera_service.get_stream_info(self._camera)
+
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         if self.next_config is None:
-            self.next_config = call_async(self._camera_service.get_stream_info(self._camera))
+            asyncio.create_task(self.get_config())
+            raise HomeAssistantError("WebRTC session configuration not available, fetching new configuration")
         config = self.next_config
-        if config is None:
-            raise HomeAssistantError("WebRTC session configuration not available")
         
 
         _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name}: {config}")
