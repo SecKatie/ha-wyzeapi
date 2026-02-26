@@ -129,16 +129,20 @@ class WyzeCameraWebRTCSession:
         self.camera_service = None
         self.callback = callback
         self.close = None
+        self.lock = asyncio.Lock()
+        self.task = None
 
     async def connect(self):
         self.config = await self.camera._camera_service.get_stream_info(self.camera._camera)
         self.websocket = await websocket_connect(unquote(self.config['signaling_url']), logger=_LOGGER)
         _LOGGER.warning(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
-        asyncio.run(self.run_loop())
+        asyncio.create_task(self.run_loop())
 
     async def send_offer(self, offer_sdp: str):
-        if self.websocket is None:
-            await self.connect()
+        async with self.lock:
+            _LOGGER.warning("Conecting to websocket from send_offer")
+            if self.websocket is None:
+                await self.connect()
         # Create an offer for Kinesis
         payload = {
             "action": "SDP_OFFER",
@@ -155,8 +159,10 @@ class WyzeCameraWebRTCSession:
             "messagePayload": "eyJjYW5kaWRhdGUiOiJjYW5kaWRhdGU6MzI5NzAwNjk2IDEgdWRwIDE2Nzc3MzIwOTUgMjYwMToyNDY6NWI3ZjpiMTAxOjoxMGU4IDQ4OTE4IHR5cCBzcmZseCByYWRkciA6OiBycG9ydCAwIGdlbmVyYXRpb24gMCB1ZnJhZyBJZ0M1IG5ldHdvcmstY29zdCA5OTkiLCJzZHBNaWQiOiIxIiwic2RwTUxpbmVJbmRleCI6MSwidXNlcm5hbWVGcmFnbWVudCI6IklnQzUifQ=="
         }"""
         # Take RTCIceCandidateInit, convert it to the format in the messagePayload above, and send it to the client using the callback
-        if self.websocket is None:
-            await self.connect()
+        async with self.lock:
+            _LOGGER.warning("Conecting to websocket from send_candidate")
+            if self.websocket is None:
+                await self.connect()
         candidate_dict = asdict(candidate)
         payload = {
             "action": "ICE_CANDIDATE",
