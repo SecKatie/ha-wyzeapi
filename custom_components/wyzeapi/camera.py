@@ -5,6 +5,8 @@ from dataclasses import asdict
 from collections.abc import Callable
 from typing import Any
 import logging
+from urllib.parse import unquote
+
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
@@ -130,7 +132,7 @@ class WyzeCameraWebRTCSession:
 
     async def connect(self):
         self.config = await self.camera._camera_service.get_stream_info(self.camera._camera)
-        self.websocket = await websocket_connect(self.config['signaling_url'], logger=_LOGGER)
+        self.websocket = await websocket_connect(unquote(self.config['signaling_url']), logger=_LOGGER)
         _LOGGER.warning(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
         asyncio.run(self.run_loop())
 
