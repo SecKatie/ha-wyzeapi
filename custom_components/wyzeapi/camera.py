@@ -5,7 +5,9 @@ from dataclasses import asdict
 from collections.abc import Callable
 from typing import Any
 import logging
+import uuid
 from urllib.parse import unquote
+import re
 
 
 from webrtc_models import RTCConfiguration, RTCIceServer
@@ -57,7 +59,7 @@ async def async_setup_entry(
             ]
         )
 
-    _LOGGER.warning("Wyze camera component setup complete")
+    _LOGGER.debug("Wyze camera component setup complete")
     async_add_entities(cameras, True)
 
 
@@ -76,8 +78,28 @@ class WyzeCamera(CameraEntity):
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
-        self.next_config = None
-        asyncio.create_task(self.get_config())
+        # Always holds an in-flight Task[dict] for the next config fetch.
+        # _async_get_webrtc_client_configuration reads the result when ready;
+        # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
+        self._config_task: asyncio.Task | None = None
+        self._schedule_config_fetch()
+
+    def _schedule_config_fetch(self) -> None:
+        """Start a background fetch of a fresh KVS stream config."""
+        self._config_task = asyncio.create_task(
+            self._camera_service.get_stream_info(self._camera)
+        )
+        self._config_task.add_done_callback(self._on_config_fetched)
+
+    def _on_config_fetched(self, task: asyncio.Task) -> None:
+        if task.exception():
+            _LOGGER.error(
+                f"Failed to fetch WebRTC config for {self._attr_name}: {task.exception()}"
+            )
+        else:
+            _LOGGER.debug(
+                f"Fetched new WebRTC session configuration for camera {self._attr_name}: {task.result()}"
+            )
 
     @property
     def is_streaming(self) -> bool:
@@ -97,48 +119,53 @@ class WyzeCamera(CameraEntity):
     def is_recording(self) -> bool:
         return True
 
-    async def get_config(self):
-        self.next_config = await self._camera_service.get_stream_info(self._camera)
-        _LOGGER.warning(f"Fetched new WebRTC session configuration for camera {self._attr_name}: {self.next_config}")
-
-
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
-        if self.next_config is None:
-            asyncio.create_task(self.get_config())
-            raise HomeAssistantError("WebRTC session configuration not available, fetching new configuration")
-        config = self.next_config
-        
+        # If the prefetch task isn't done yet, tell HA to retry shortly.
+        if self._config_task is None or not self._config_task.done():
+            if self._config_task is None:
+                self._schedule_config_fetch()
+            raise HomeAssistantError(
+                "WebRTC session configuration not available, fetching new configuration"
+            )
 
-        _LOGGER.warning(f"WebRTC session configuration for camera {self._attr_name}: {config}")
+        # Task is done — pull the result and immediately kick off a fresh fetch
+        # so the *next* call to this method (or the next stream open) is pre-warmed.
+        try:
+            config = self._config_task.result()
+        except Exception as e:
+            self._schedule_config_fetch()
+            raise HomeAssistantError(f"Failed to get WebRTC config: {e}") from e
+
+        # Kick off fresh fetch for next time (the current config will be consumed
+        # by async_handle_async_webrtc_offer which awaits _config_task directly).
+        self._schedule_config_fetch()
+
+        _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name}: {config}")
         ice_servers = []
-
         for server in config.get("ice_servers", []):
-            _LOGGER.warning(f"Adding ICE server for camera {self._attr_name}: {server}")
+            _LOGGER.debug(f"Adding ICE server for camera {self._attr_name}: {server}")
             ice_servers.append(RTCIceServer.from_dict({
                 "urls": server['url'],
                 "username": server["username"],
-                "credential": server["password"],
+                "credential": server["credential"],
             }))
 
-        _LOGGER.warning(f"ICE servers for camera {self._attr_name}: {ice_servers}")
+        _LOGGER.debug(f"ICE servers for camera {self._attr_name}: {ice_servers}")
         configuration = RTCConfiguration(ice_servers=ice_servers)
-        webrtc_config = WebRTCClientConfiguration(
-            configuration=configuration
-        )
-        return webrtc_config
+        return WebRTCClientConfiguration(configuration=configuration, data_channel="data")
 
     async def async_handle_async_webrtc_offer(self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage) -> None:
-
         _LOGGER.debug(f"Handling WebRTC offer for camera {self._attr_name} with session ID {session_id}")
-        # Implement the logic to handle the WebRTC offer and send the answer back using send_message
-        config = self.next_config
-        self.next_config = None
 
-        if config is None:
-            config = await self._camera_service.get_stream_info(self._camera)
+        # Always fetch a truly fresh config so the signaling URL and ICE servers
+        # are never stale — KVS signed URLs are single-use and short-lived.
+        config = await self._camera_service.get_stream_info(self._camera)
+        _LOGGER.debug(f"Fresh config for offer on camera {self._attr_name}: {config}")
+
+        # Pre-warm the next call to _async_get_webrtc_client_configuration.
+        self._schedule_config_fetch()
 
         self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message, config)
-
         await self.sessions[session_id].send_offer(offer_sdp)
 
     async def async_on_webrtc_candidate(self, session_id: str, candidate: RTCIceCandidateInit) -> None:
@@ -149,6 +176,7 @@ class WyzeCamera(CameraEntity):
         await self.sessions[session_id].send_candidate(candidate)
 
     def async_close_session(self, session_id: str) -> None:
+        _LOGGER.debug(f"Closing webRTC session {session_id}")
         # Implement the logic to close the WebRTC session
         if session_id in self.sessions:
             session = self.sessions[session_id]
@@ -168,27 +196,40 @@ class WyzeCameraWebRTCSession:
         self.lock = asyncio.Lock()
         self.task = None
         self.config = config
+        # Set once connect() succeeds; send_candidate waits on this instead of reconnecting
+        self._connected = asyncio.Event()
 
     async def connect(self):
-        self.websocket = await websocket_connect(unquote(self.config['signaling_url']), logger=_LOGGER)
-        _LOGGER.warning(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
+        # The signaling_url from get_stream_info() is double-encoded (%253A).
+        # A single unquote produces %3A, which matches the browser's working URL format
+        # and preserves the SigV4 percent-encoding that AWS signature verification requires.
+        signaling_url = unquote(self.config['signaling_url'])
+        self.websocket = await websocket_connect(signaling_url, logger=_LOGGER)
+        _LOGGER.debug(f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}")
+        self._connected.set()
         asyncio.create_task(self.run_loop())
 
     async def send_offer(self, offer_sdp: str):
         async with self.lock:
             if self.websocket is None:
-                _LOGGER.warning("Conecting to websocket from send_offer")
+                _LOGGER.debug("Connecting to websocket from send_offer")
                 await self.connect()
         if self.websocket is None:
             raise ConnectionError("WebSocket connection not established")
         # Create an offer for Kinesis
+        offer = {
+                "type": "offer",
+                "sdp": offer_sdp
+                }
         payload = {
             "action": "SDP_OFFER",
             "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
-            "messagePayload": base64.b64encode(offer_sdp.encode()).decode(),
+            "messagePayload": base64.b64encode(json.dumps(offer, separators=(',', ':')).encode()).decode(),
+            "correlationId": str(uuid.uuid4())
         }
-        _LOGGER.warning(f"Sending SDP offer for camera {self.camera._attr_name} with session ID {self.session_id}")
-        await self.websocket.send(json.dumps(payload), text=True)
+        str_payload = json.dumps(payload)
+        _LOGGER.debug(f"Sending SDP offer for camera {self.camera._attr_name} with session ID {self.session_id}, {str_payload}")
+        await self.websocket.send(str_payload)
 
     async def send_candidate(self, candidate: RTCIceCandidateInit):
         """{
@@ -197,20 +238,31 @@ class WyzeCameraWebRTCSession:
             "messagePayload": "eyJjYW5kaWRhdGUiOiJjYW5kaWRhdGU6MzI5NzAwNjk2IDEgdWRwIDE2Nzc3MzIwOTUgMjYwMToyNDY6NWI3ZjpiMTAxOjoxMGU4IDQ4OTE4IHR5cCBzcmZseCByYWRkciA6OiBycG9ydCAwIGdlbmVyYXRpb24gMCB1ZnJhZyBJZ0M1IG5ldHdvcmstY29zdCA5OTkiLCJzZHBNaWQiOiIxIiwic2RwTUxpbmVJbmRleCI6MSwidXNlcm5hbWVGcmFnbWVudCI6IklnQzUifQ=="
         }"""
         # Take RTCIceCandidateInit, convert it to the format in the messagePayload above, and send it to the client using the callback
-        async with self.lock:
-            if self.websocket is None:
-                _LOGGER.warning("Conecting to websocket from send_candidate")
-                await self.connect()
+        # Wait for send_offer to establish the connection — never reconnect (KVS URLs are single-use)
+        try:
+            await asyncio.wait_for(self._connected.wait(), timeout=10.0)
+        except asyncio.TimeoutError:
+            raise ConnectionError("WebSocket connection not established within timeout")
         if self.websocket is None:
             raise ConnectionError("WebSocket connection not established")
         candidate_dict = asdict(candidate)
+        candidate_payload = {
+            "candidate": candidate_dict["candidate"],
+            "sdpMid": candidate_dict['sdp_mid'],
+            "sdpMLineIndex": candidate_dict["sdp_m_line_index"],
+            "usernameFragment": candidate_dict["user_fragment"]
+        }
+        match = re.search(r"ufrag (\w{4})", candidate_payload["candidate"])
+        if match is not None:
+            candidate_payload['usernameFragment'] = match.group(1)
         payload = {
             "action": "ICE_CANDIDATE",
             "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
-            "messagePayload": base64.b64encode(json.dumps(candidate_dict).encode()).decode(),
+            "messagePayload": base64.b64encode(json.dumps(candidate_payload,separators=(',', ':')).encode()).decode(),
         }
-        _LOGGER.warning(f"Sending ICE candidate for camera {self.camera._attr_name} with session ID {self.session_id}")
-        await self.websocket.send(json.dumps(payload), text=True)
+        str_payload = json.dumps(payload)
+        _LOGGER.debug(f"Sending ICE candidate for camera {self.camera._attr_name} with session ID {self.session_id}: {str_payload}")
+        await self.websocket.send(str_payload)
 
     def close_connection(self):
         if self.close is not None:
@@ -226,42 +278,45 @@ class WyzeCameraWebRTCSession:
             if self.websocket is not None:
                 return loop.create_task(self.websocket.close())
         self.close = close
-        async for message in self.websocket:
-            if len(message) == 0:
-                _LOGGER.warning(f"Received empty message for camera {self.camera._attr_name} with session ID {self.session_id}")
-                continue
-            _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {message}")
-            try:
-                data = json.loads(message)
-            except json.JSONDecodeError as e:
-                _LOGGER.error(f"Failed to decode JSON message for camera {self.camera._attr_name} with session ID {self.session_id}: {e}")
-                continue
-            _LOGGER.warning(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {data}")
-            match data.get("messageType"):
-                case "ICE_CANDIDATE":
-                    """
-                    {
-                        "messagePayload": "eyJjYW5kaWRhdGUiOiJjYW5kaWRhdGU6MCAxIHVkcCAyMTMwNzA2NDMxIDEwLjI1NC4wLjE3MyAzNjg1MyB0eXAgaG9zdCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTkiLCJzZHBNaWQiOiIwIiwic2RwTUxpbmVJbmRleCI6MH0=",
-                        "messageType": "ICE_CANDIDATE"
-                    }
-                    """
-                    # Pass the candidate from messagePayload to a RTCIceCandidateInit and then to WebRTCCandidate, and send it back to the client using the callback
-                    candidate = base64.b64decode(data["messagePayload"]).decode()
-                    data = json.loads(candidate)
-                    rtccandidate = RTCIceCandidateInit(**data)
-                    wrtccandidate = WebRTCCandidate(candidate=rtccandidate)
-                    self.callback(wrtccandidate)
-                    break
-                case "SDP_ANSWER":
-                    """
-                    {
-                        "messagePayload": "eyJ0eXBlIjogImFuc3dlciIsICJzZHAiOiAidj0wXHJcbm89LSAxMTEyMDE2NzU5IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMCAxIDJcclxuYT1tc2lkLXNlbWFudGljOiBXTVMgbXlLdnNWaWRlb1N0cmVhbVxyXG5tPXZpZGVvIDkgVURQL1RMUy9SVFAvU0FWUEYgMTA5IDExNFxyXG5jPUlOIElQNCAxMjcuMC4wLjFcclxuYT1jYW5kaWRhdGU6MCAxIHVkcCAyMTMwNzA2NDMxIDEwLjI1NC4wLjE3MyAzNjg1MyB0eXAgaG9zdCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1tc2lkOm15S3ZzVmlkZW9TdHJlYW0gbXlWaWRlb1RyYWNrUlRYXHJcbmE9c3NyYy1ncm91cDpGSUQgNjcyOTE3OTE2IDE5NzU0Njc3ODhcclxuYT1zc3JjOjY3MjkxNzkxNiBjbmFtZTpPcUxpRVZRUlh3blNreGtkXHJcbmE9c3NyYzo2NzI5MTc5MTYgbXNpZDpteUt2c1ZpZGVvU3RyZWFtIG15VmlkZW9UcmFja1xyXG5hPXNzcmM6NjcyOTE3OTE2IG1zbGFiZWw6bXlLdnNWaWRlb1N0cmVhbVxyXG5hPXNzcmM6NjcyOTE3OTE2IGxhYmVsOm15VmlkZW9UcmFja1xyXG5hPXNzcmM6MTk3NTQ2Nzc4OCBjbmFtZTpPcUxpRVZRUlh3blNreGtkXHJcbmE9c3NyYzoxOTc1NDY3Nzg4IG1zaWQ6bXlLdnNWaWRlb1N0cmVhbSBteVZpZGVvVHJhY2tSVFhcclxuYT1zc3JjOjE5NzU0Njc3ODggbXNsYWJlbDpteUt2c1ZpZGVvU3RyZWFtUlRYXHJcbmE9c3NyYzoxOTc1NDY3Nzg4IGxhYmVsOm15VmlkZW9UcmFja1JUWFxyXG5hPXJ0Y3A6OSBJTiBJUDQgMC4wLjAuMFxyXG5hPWljZS11ZnJhZzpLUDlrXHJcbmE9aWNlLXB3ZDpEMldNeHFBSXZDdWNNSGxMVUY0QXROeDlcclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiAzMDpCMToxMToxMzpCMDpBRTpGRTpDMjozMDo2OToxNTpGNjpGRDo3Qzo2QTpFNDo2RToyODo2NDo1ODpFODpERDoyOTo3QjpBRjpBNDpGMDpFQzpCMjpGNDpCQzowRFxyXG5hPXNldHVwOmFjdGl2ZVxyXG5hPW1pZDowXHJcbmE9c2VuZG9ubHlcclxuYT1ydGNwLW11eFxyXG5hPXJ0Y3AtcnNpemVcclxuYT1ydHBtYXA6MTA5IEgyNjQvOTAwMDBcclxuYT1mbXRwOjEwOSBsZXZlbC1hc3ltbWV0cnktYWxsb3dlZD0xO3BhY2tldGl6YXRpb24tbW9kZT0xO3Byb2ZpbGUtbGV2ZWwtaWQ9NDJlMDFmXHJcbmE9cnRwbWFwOjExNCBydHgvOTAwMDBcclxuYT1mbXRwOjExNCBhcHQ9MTA5XHJcbmE9cnRjcC1mYjoxMDkgbmFja1xyXG5hPXJ0Y3AtZmI6MTA5IGdvb2ctcmVtYlxyXG5hPXJ0Y3AtZmI6MTA5IHRyYW5zcG9ydC1jY1xyXG5tPWF1ZGlvIDkgVURQL1RMUy9SVFAvU0FWUEYgMFxyXG5jPUlOIElQNCAxMjcuMC4wLjFcclxuYT1jYW5kaWRhdGU6MCAxIHVkcCAyMTMwNzA2NDMxIDEwLjI1NC4wLjE3MyAzNjg1MyB0eXAgaG9zdCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1tc2lkOm15S3ZzVmlkZW9TdHJlYW0gbXlBdWRpb1RyYWNrXHJcbmE9c3NyYzoxNDY0MzI2NzU5IGNuYW1lOk9xTGlFVlFSWHduU2t4a2RcclxuYT1zc3JjOjE0NjQzMjY3NTkgbXNpZDpteUt2c1ZpZGVvU3RyZWFtIG15QXVkaW9UcmFja1xyXG5hPXNzcmM6MTQ2NDMyNjc1OSBtc2xhYmVsOm15S3ZzVmlkZW9TdHJlYW1cclxuYT1zc3JjOjE0NjQzMjY3NTkgbGFiZWw6bXlBdWRpb1RyYWNrXHJcbmE9cnRjcDo5IElOIElQNCAwLjAuMC4wXHJcbmE9aWNlLXVmcmFnOktQOWtcclxuYT1pY2UtcHdkOkQyV014cUFJdkN1Y01IbExVRjRBdE54OVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDMwOkIxOjExOjEzOkIwOkFFOkZFOkMyOjMwOjY5OjE1OkY2OkZEOjdDOjZBOkU0OjZFOjI4OjY0OjU4OkU4OkREOjI5OjdCOkFGOkE0OkYwOkVDOkIyOkY0OkJDOjBEXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjFcclxuYT1zZW5kcmVjdlxyXG5hPXJ0Y3AtbXV4XHJcbmE9cnRjcC1yc2l6ZVxyXG5hPXJ0cG1hcDowIFBDTVUvODAwMFxyXG5hPXJ0Y3AtZmI6MCBuYWNrXHJcbmE9cnRjcC1mYjowIGdvb2ctcmVtYlxyXG5hPXJ0Y3AtZmI6MCB0cmFuc3BvcnQtY2NcclxubT1hcHBsaWNhdGlvbiA5IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDEyNy4wLjAuMVxyXG5hPWNhbmRpZGF0ZTowIDEgdWRwIDIxMzA3MDY0MzEgMTAuMjU0LjAuMTczIDM2ODUzIHR5cCBob3N0IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPXJ0Y3A6OSBJTiBJUDQgMC4wLjAuMFxyXG5hPWljZS11ZnJhZzpLUDlrXHJcbmE9aWNlLXB3ZDpEMldNeHFBSXZDdWNNSGxMVUY0QXROeDlcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDMwOkIxOjExOjEzOkIwOkFFOkZFOkMyOjMwOjY5OjE1OkY2OkZEOjdDOjZBOkU0OjZFOjI4OjY0OjU4OkU4OkREOjI5OjdCOkFGOkE0OkYwOkVDOkIyOkY0OkJDOjBEXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjJcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG4ifQ==",
-                        "messageType": "SDP_ANSWER"
-                    }
-                    """
-                    # Pass the answer from messagePayload to a WebRTCAnswer, and send it back to the client using the callback
-                    answer = base64.b64decode(data["messagePayload"]).decode()
-                    wrtcanswer = WebRTCAnswer(answer=answer)
-                    self.callback(wrtcanswer)
-                    break
+        _LOGGER.debug(f"run_loop starting for camera {self.camera._attr_name} session {self.session_id}")
+        try:
+            async for message in self.websocket:
+                if len(message) == 0:
+                    _LOGGER.debug(f"Received empty message (type={type(message).__name__}) for camera {self.camera._attr_name} session {self.session_id}")
+                    continue
+                _LOGGER.debug(f"Received message for camera {self.camera._attr_name} with session ID {self.session_id}: {message}")
+                try:
+                    data = json.loads(message)
+                except json.JSONDecodeError as e:
+                    _LOGGER.error(f"Failed to decode JSON message for camera {self.camera._attr_name} with session ID {self.session_id}: {e}")
+                    continue
+                match data.get("messageType"):
+                    case "ICE_CANDIDATE":
+                        # Decode messagePayload (base64 JSON) → RTCIceCandidateInit → WebRTCCandidate
+                        # KVS uses camelCase keys; map them to RTCIceCandidateInit's snake_case fields
+                        candidate_str = base64.b64decode(data["messagePayload"]).decode()
+                        candidate_data = json.loads(candidate_str)
+                        rtccandidate = RTCIceCandidateInit(
+                            candidate=candidate_data["candidate"],
+                            sdp_mid=candidate_data.get("sdpMid"),
+                            sdp_m_line_index=candidate_data.get("sdpMLineIndex"),
+                            user_fragment=candidate_data.get("usernameFragment"),
+                        )
+                        self.callback(WebRTCCandidate(candidate=rtccandidate))
+                    case "SDP_ANSWER":
+                        # Decode messagePayload (base64 JSON with "type"/"sdp" keys) → extract sdp string
+                        answer_str = base64.b64decode(data["messagePayload"]).decode()
+                        try:
+                            answer_obj = json.loads(answer_str)
+                            sdp = answer_obj.get("sdp", answer_str)
+                        except json.JSONDecodeError:
+                            sdp = answer_str
+                        self.callback(WebRTCAnswer(answer=sdp))
+                    case "STATUS_RESPONSE" | "GO_AWAY" | "RECONNECT_ICE_SERVER":
+                        _LOGGER.debug(f"KVS control message '{data.get('messageType')}' for session {self.session_id}: {data}")
+                    case other:
+                        _LOGGER.debug(f"Unhandled KVS message type '{other}' for session {self.session_id}: {data}")
+        except Exception as e:
+            _LOGGER.error(f"run_loop error for camera {self.camera._attr_name} session {self.session_id}: {e}", exc_info=True)
+        _LOGGER.debug(f"run_loop exited for camera {self.camera._attr_name} session {self.session_id}")
 
