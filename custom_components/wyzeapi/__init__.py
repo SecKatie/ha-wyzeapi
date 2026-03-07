@@ -42,6 +42,7 @@ PLATFORMS = [
     "cover",
     "number",
     "button",
+    "camera",
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
 
