@@ -13,7 +13,7 @@ import re
 from webrtc_models import RTCConfiguration, RTCIceServer
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
-from homeassistant.components.camera.webrtc import WebRTCClientConfiguration, WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
+from homeassistant.components.camera.webrtc import WebRTCClientConfiguration, WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate
 from webrtc_models import RTCIceCandidateInit
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from websockets.asyncio.client import connect as websocket_connect
 
-from .const import CONF_CLIENT, DOMAIN, RESET_BUTTON_PRESSED
+from .const import CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)

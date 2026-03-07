@@ -23,9 +23,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["custom_components"]
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [dependency-groups]
 dev = [
     "ruff>=0.12.1",
