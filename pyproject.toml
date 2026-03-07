@@ -12,7 +12,7 @@ requires-python = ">=3.13.2,<3.14"
 
 dependencies = [
     "homeassistant>=2025.5.0",
-    "wyzeapy>=0.5.32",
+    "wyzeapy>=0.5.32,<0.6.0",
     "websockets"
 ]
 
