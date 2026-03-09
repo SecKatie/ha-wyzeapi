@@ -13,7 +13,7 @@ import re
 from webrtc_models import RTCConfiguration, RTCIceServer
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
-from homeassistant.components.camera.webrtc import WebRTCClientConfiguration, WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate, async_register_webrtc_provider
+from homeassistant.components.camera.webrtc import WebRTCClientConfiguration, WebRTCSendMessage, WebRTCAnswer, WebRTCCandidate
 from webrtc_models import RTCIceCandidateInit
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from websockets.asyncio.client import connect as websocket_connect
 
-from .const import CONF_CLIENT, DOMAIN, RESET_BUTTON_PRESSED
+from .const import CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,6 +59,10 @@ async def async_setup_entry(
             ]
         )
 
+    for camera in cameras:
+        # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
+        await camera.config_fetch()
+
     _LOGGER.debug("Wyze camera component setup complete")
     async_add_entities(cameras, True)
 
@@ -81,25 +85,12 @@ class WyzeCamera(CameraEntity):
         # Always holds an in-flight Task[dict] for the next config fetch.
         # _async_get_webrtc_client_configuration reads the result when ready;
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
+        self._cached_config: dict | None = None
         self._config_task: asyncio.Task | None = None
-        self._schedule_config_fetch()
-
-    def _schedule_config_fetch(self) -> None:
-        """Start a background fetch of a fresh KVS stream config."""
-        self._config_task = asyncio.create_task(
-            self._camera_service.get_stream_info(self._camera)
-        )
-        self._config_task.add_done_callback(self._on_config_fetched)
-
-    def _on_config_fetched(self, task: asyncio.Task) -> None:
-        if task.exception():
-            _LOGGER.error(
-                f"Failed to fetch WebRTC config for {self._attr_name}: {task.exception()}"
-            )
-        else:
-            _LOGGER.debug(
-                f"Fetched new WebRTC session configuration for camera {self._attr_name}: {task.result()}"
-            )
+    
+    async def config_fetch(self) -> None:
+        self._cached_config = await self._camera_service.get_stream_info(self._camera)
+        _LOGGER.debug(f"Initial fetch of WebRTC session configuration complete for camera {self._attr_name}")
 
     @property
     def is_streaming(self) -> bool:
@@ -120,25 +111,11 @@ class WyzeCamera(CameraEntity):
         return True
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
-        # If the prefetch task isn't done yet, tell HA to retry shortly.
-        if self._config_task is None or not self._config_task.done():
-            if self._config_task is None:
-                self._schedule_config_fetch()
-            raise HomeAssistantError(
-                "WebRTC session configuration not available, fetching new configuration"
-            )
+        # This shouldn't happen, but throw an error if we don't have a config ready yet
+        if self._cached_config is None:
+            raise HomeAssistantError("WebRTC session configuration not available yet")
 
-        # Task is done — pull the result and immediately kick off a fresh fetch
-        # so the *next* call to this method (or the next stream open) is pre-warmed.
-        try:
-            config = self._config_task.result()
-        except Exception as e:
-            self._schedule_config_fetch()
-            raise HomeAssistantError(f"Failed to get WebRTC config: {e}") from e
-
-        # Kick off fresh fetch for next time (the current config will be consumed
-        # by async_handle_async_webrtc_offer which awaits _config_task directly).
-        self._schedule_config_fetch()
+        config = self._cached_config
 
         _LOGGER.debug(f"WebRTC session configuration for camera {self._attr_name}: {config}")
         ice_servers = []
@@ -160,10 +137,10 @@ class WyzeCamera(CameraEntity):
         # Always fetch a truly fresh config so the signaling URL and ICE servers
         # are never stale — KVS signed URLs are single-use and short-lived.
         config = await self._camera_service.get_stream_info(self._camera)
-        _LOGGER.debug(f"Fresh config for offer on camera {self._attr_name}: {config}")
 
-        # Pre-warm the next call to _async_get_webrtc_client_configuration.
-        self._schedule_config_fetch()
+        # Update cached config with the new ICE servers
+        self._cached_config = config 
+        _LOGGER.debug(f"Fresh config for offer on camera {self._attr_name}: {config}")
 
         self.sessions[session_id] = WyzeCameraWebRTCSession(session_id, self, send_message, config)
         await self.sessions[session_id].send_offer(offer_sdp)
@@ -175,9 +152,8 @@ class WyzeCamera(CameraEntity):
 
         await self.sessions[session_id].send_candidate(candidate)
 
-    def async_close_session(self, session_id: str) -> None:
+    def close_webrtc_session(self, session_id: str) -> None:
         _LOGGER.debug(f"Closing webRTC session {session_id}")
-        # Implement the logic to close the WebRTC session
         if session_id in self.sessions:
             session = self.sessions[session_id]
             session.close_connection()
