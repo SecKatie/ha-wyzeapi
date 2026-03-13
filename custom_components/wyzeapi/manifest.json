@@ -13,5 +13,6 @@
     "wyzeapy~=0.5.33rc0",
     "websockets"
   ],
+  "loggers": ["custom_components.wyzeapi"],
   "version": "0.1.36"
 }
