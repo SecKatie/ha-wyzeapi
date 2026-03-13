@@ -101,6 +101,16 @@ class WyzeCamera(CameraEntity):
         )
 
     @property
+    def device_info(self):
+        """Return the device info."""
+        return {
+            "identifiers": {(DOMAIN, self._camera.mac)},
+            "name": self._camera.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._camera.product_model,
+        }
+
+    @property
     def is_streaming(self) -> bool:
         return self._camera.on
 
@@ -113,10 +123,6 @@ class WyzeCamera(CameraEntity):
         if isinstance(self._camera.motion, bool):
             return self._camera.motion
         raise NotImplementedError
-
-    @property
-    def is_recording(self) -> bool:
-        return True
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         # This shouldn't happen, but throw an error if we don't have a config ready yet
