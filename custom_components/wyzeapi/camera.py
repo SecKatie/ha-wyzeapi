@@ -199,6 +199,7 @@ class WyzeCameraWebRTCSession:
         if self.websocket is None:
             raise ConnectionError("WebSocket connection not established")
         # Create an offer for Kinesis
+        self.sdp_offer = offer_sdp
         offer = {
                 "type": "offer",
                 "sdp": offer_sdp
