@@ -291,6 +291,7 @@ class WyzeCameraWebRTCSession:
                             sdp = answer_obj.get("sdp", answer_str)
                         except json.JSONDecodeError:
                             sdp = answer_str
+                        sdp = sdp.replace("\na=sendrecv\n", "\na=sendonly\n")
                         self.callback(WebRTCAnswer(answer=sdp))
                     case "STATUS_RESPONSE" | "GO_AWAY" | "RECONNECT_ICE_SERVER":
                         _LOGGER.debug(f"KVS control message '{data.get('messageType')}' for session {self.session_id}: {data}")
