@@ -269,13 +269,10 @@ class WyzeCameraWebRTCSession:
             )
 
             sdp_direction_offers = re.finditer(sdp_pattern, self.sdp_offer)
-            _LOGGER.debug(f"Found {len(list(re.finditer(sdp_pattern, self.sdp_offer)))} media sections in offer SDP for camera {self.camera._attr_name} session {self.session_id}")
 
             for offer in sdp_direction_offers:
                 sdp_answers = re.finditer(sdp_pattern, self.sdp_answer)
-                _LOGGER.debug(f"Found {len(list(re.finditer(sdp_pattern, self.sdp_answer)))} media sections in answer SDP for camera {self.camera._attr_name} session {self.session_id}")
                 for answer in sdp_answers:
-                    _LOGGER.debug(f"Comparing offer and answer media sections for camera {self.camera._attr_name} session {self.session_id}: offer kind={offer.group('kind')} direction={offer.group('direction')}, answer kind={answer.group('kind')} direction={answer.group('direction')}")
                     if (
                         offer.group("kind") == answer.group("kind")
                         and offer.group("direction") == "recvonly"
