@@ -61,7 +61,11 @@ async def async_setup_entry(
 
     for camera in cameras:
         # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
-        await camera.config_fetch()
+        try:
+          await camera.config_fetch()
+        except Exception as e:
+            # Don't block startup if the config fetch fails, but log the error
+            _LOGGER.warning(f"Error fetching WebRTC session configuration for camera {camera._attr_name}: {e}")
 
     _LOGGER.debug("Wyze camera component setup complete")
     async_add_entities(cameras, True)
