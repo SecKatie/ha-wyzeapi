@@ -176,6 +176,8 @@ class WyzeCameraWebRTCSession:
         self.lock = asyncio.Lock()
         self.task = None
         self.config = config
+        self.sdp_offer = None
+        self.sdp_answer = None
         # Set once connect() succeeds; send_candidate waits on this instead of reconnecting
         self._connected = asyncio.Event()
 
@@ -248,6 +250,39 @@ class WyzeCameraWebRTCSession:
         if self.close is not None:
             self.close()
 
+    def force_correct_sdp_answer(self) -> None:
+        """Force the sdp response to have the valid answer.
+
+        The Kinesis WebRTC Stream responses to certain offers do not
+        follow the spec defined in https://www.ietf.org/rfc/rfc3264.txt
+        An offer of recvonly must be answered with sendonly or inactive.
+        """
+        _LOGGER.debug("Attempt to fix sdp answer...")
+        if isinstance(self.sdp_answer, str) and isinstance(self.sdp_offer, str):
+            sdp_kinds = ["audio", "video", "application"]
+            sdp_directions = ["sendrecv", "sendonly", "recvonly", "inactive"]
+            sdp_pattern = (
+                "m=(?P<kind>{})(.|\n)+?a=(?P<direction>{})(\r|\n|\r\n)".format(
+                    "|".join(sdp_kinds), "|".join(sdp_directions)
+                )
+            )
+
+            sdp_direction_offers = re.finditer(sdp_pattern, self.sdp_offer)
+            sdp_answers = re.finditer(sdp_pattern, self.sdp_answer)
+
+            for offer in sdp_direction_offers:
+                for answer in sdp_answers:
+                    if (
+                        offer.group("kind") == answer.group("kind")
+                        and offer.group("direction") == "recvonly"
+                        and answer.group("direction") == "sendrecv"
+                    ):
+                        correct_answer = re.sub(
+                            "a=sendrecv", "a=sendonly", answer.group(0)
+                        )
+                        _LOGGER.debug("Replacing answer with: %s", str(correct_answer))
+                        self.sdp_answer = self.sdp_answer.replace(answer.group(0), correct_answer)
+
     async def run_loop(self):
         if self.websocket is None:
             raise ConnectionError("WebSocket connection not established")
@@ -291,8 +326,9 @@ class WyzeCameraWebRTCSession:
                             sdp = answer_obj.get("sdp", answer_str)
                         except json.JSONDecodeError:
                             sdp = answer_str
-                        sdp = sdp.replace("\na=sendrecv\n", "\na=sendonly\n")
-                        self.callback(WebRTCAnswer(answer=sdp))
+                        self.sdp_answer = sdp
+                        self.force_correct_sdp_answer()
+                        self.callback(WebRTCAnswer(answer=self.sdp_answer))
                     case "STATUS_RESPONSE" | "GO_AWAY" | "RECONNECT_ICE_SERVER":
                         _LOGGER.debug(f"KVS control message '{data.get('messageType')}' for session {self.session_id}: {data}")
                     case other:
