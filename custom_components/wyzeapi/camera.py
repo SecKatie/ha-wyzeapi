@@ -268,9 +268,9 @@ class WyzeCameraWebRTCSession:
             )
 
             sdp_direction_offers = re.finditer(sdp_pattern, self.sdp_offer)
-            sdp_answers = re.finditer(sdp_pattern, self.sdp_answer)
 
             for offer in sdp_direction_offers:
+                sdp_answers = re.finditer(sdp_pattern, self.sdp_answer)
                 for answer in sdp_answers:
                     if (
                         offer.group("kind") == answer.group("kind")
