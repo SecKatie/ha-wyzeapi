@@ -120,7 +120,7 @@ class WyzeCamera(CameraEntity):
         return self._camera.on
 
     @property
-    def motion_detection_enabled(self) -> bool:
+    def motion_detection_enabled(self) -> bool: | None
         motion = getattr(self._camera, "motion", None)
         if isinstance(motion, bool):
             return motion
