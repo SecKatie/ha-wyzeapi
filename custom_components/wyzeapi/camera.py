@@ -127,7 +127,11 @@ class WyzeCamera(CameraEntity):
         # Some Wyze camera models / API responses don't expose motion state.
         # Return None so HA omits/marks the attribute as unknown instead of crashing.
         return None
-
+    async def async_camera_image(
+        self, width: int | None = None, height: int | None = None
+    ) -> bytes | None:
+        """Return bytes of camera image."""
+        return None
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         # This shouldn't happen, but throw an error if we don't have a config ready yet
         if self._cached_config is None:
