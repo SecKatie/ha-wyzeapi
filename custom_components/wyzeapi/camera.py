@@ -121,9 +121,12 @@ class WyzeCamera(CameraEntity):
 
     @property
     def motion_detection_enabled(self) -> bool:
-        if isinstance(self._camera.motion, bool):
-            return self._camera.motion
-        raise NotImplementedError
+        motion = getattr(self._camera, "motion", None)
+        if isinstance(motion, bool):
+            return motion
+        # Some Wyze camera models / API responses don't expose motion state.
+        # Return None so HA omits/marks the attribute as unknown instead of crashing.
+        return None
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         # This shouldn't happen, but throw an error if we don't have a config ready yet
