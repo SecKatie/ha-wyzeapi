@@ -234,10 +234,16 @@ class WyzeCameraWebRTCSession:
         self._connected = asyncio.Event()
 
     async def connect(self):
-        # The signaling_url from get_stream_info() is double-encoded (%253A).
-        # A single unquote produces %3A, which matches the browser's working URL format
-        # and preserves the SigV4 percent-encoding that AWS signature verification requires.
-        signaling_url = unquote(self.config["signaling_url"])
+        # The signaling_url from get_stream_info() is often *double*-percent-encoded
+        # (e.g. "%253A" instead of "%3A"). We must NOT fully URL-decode it because
+        # that can change SigV4 canonical encoding and make KVS reject the handshake.
+        # Instead, only "undouble" percent-escapes by converting "%25xx" -> "%xx",
+        # leaving "%3A", "%2F", etc. intact.
+        signaling_url = self.config["signaling_url"]
+        for _ in range(3):
+            if "%25" not in signaling_url:
+                break
+            signaling_url = signaling_url.replace("%25", "%")
         self.websocket = await websocket_connect(signaling_url, logger=_LOGGER)
         _LOGGER.debug(
             f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}"
