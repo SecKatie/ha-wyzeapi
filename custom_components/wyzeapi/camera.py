@@ -177,7 +177,7 @@ class WyzeCamera(CameraEntity):
         )
         await self.sessions[session_id].send_offer(offer_sdp)
         
-    pending = self._pending_candidates.pop(session_id, None)
+        pending = self._pending_candidates.pop(session_id, None)
         if pending:
             _LOGGER.debug(
                 "Flushing %d buffered ICE candidates for camera %s session %s",
