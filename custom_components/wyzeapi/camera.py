@@ -88,6 +88,7 @@ class WyzeCamera(CameraEntity):
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
+        self._pending_candidates: dict[str, list[RTCIceCandidateInit]] = {}
         # Always holds an in-flight Task[dict] for the next config fetch.
         # _async_get_webrtc_client_configuration reads the result when ready;
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
@@ -172,18 +173,36 @@ class WyzeCamera(CameraEntity):
             session_id, self, send_message, config
         )
         await self.sessions[session_id].send_offer(offer_sdp)
+        
+    pending = self._pending_candidates.pop(session_id, None)
+        if pending:
+            _LOGGER.debug(
+                "Flushing %d buffered ICE candidates for camera %s session %s",
+                len(pending),
+                self._attr_name,
+                session_id,
+            )
+            for cand in pending:
+                await self.sessions[session_id].send_candidate(cand)
 
     async def async_on_webrtc_candidate(
         self, session_id: str, candidate: RTCIceCandidateInit
     ) -> None:
         # Implement the logic to handle the WebRTC candidate and send it to the camera's WebRTC session
         if session_id not in self.sessions:
-            raise ValueError("Session ID not found")
+            self._pending_candidates.setdefault(session_id, []).append(candidate)
+            _LOGGER.debug(
+                "Buffered ICE candidate for camera %s session %s (session not ready yet)",
+                self._attr_name,
+                session_id,
+            )
+            return
 
         await self.sessions[session_id].send_candidate(candidate)
 
     def close_webrtc_session(self, session_id: str) -> None:
         _LOGGER.debug(f"Closing webRTC session {session_id}")
+        self._pending_candidates.pop(session_id, None)
         if session_id in self.sessions:
             session = self.sessions[session_id]
             session.close_connection()
