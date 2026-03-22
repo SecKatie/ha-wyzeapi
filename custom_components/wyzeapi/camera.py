@@ -88,6 +88,7 @@ class WyzeCamera(CameraEntity):
         self.supported_features = CameraEntityFeature.STREAM
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
+        self._pending_candidates: dict[str, list[RTCIceCandidateInit]] = {}
         # Always holds an in-flight Task[dict] for the next config fetch.
         # _async_get_webrtc_client_configuration reads the result when ready;
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
@@ -119,11 +120,18 @@ class WyzeCamera(CameraEntity):
         return self._camera.on
 
     @property
-    def motion_detection_enabled(self) -> bool:
-        if isinstance(self._camera.motion, bool):
-            return self._camera.motion
-        raise NotImplementedError
-
+    def motion_detection_enabled(self) -> bool: | None
+        motion = getattr(self._camera, "motion", None)
+        if isinstance(motion, bool):
+            return motion
+        # Some Wyze camera models / API responses don't expose motion state.
+        # Return None so HA omits/marks the attribute as unknown instead of crashing.
+        return None
+    async def async_camera_image(
+        self, width: int | None = None, height: int | None = None
+    ) -> bytes | None:
+        """Return bytes of camera image."""
+        return None
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         # This shouldn't happen, but throw an error if we don't have a config ready yet
         if self._cached_config is None:
@@ -172,18 +180,36 @@ class WyzeCamera(CameraEntity):
             session_id, self, send_message, config
         )
         await self.sessions[session_id].send_offer(offer_sdp)
+        
+        pending = self._pending_candidates.pop(session_id, None)
+        if pending:
+            _LOGGER.debug(
+                "Flushing %d buffered ICE candidates for camera %s session %s",
+                len(pending),
+                self._attr_name,
+                session_id,
+            )
+            for cand in pending:
+                await self.sessions[session_id].send_candidate(cand)
 
     async def async_on_webrtc_candidate(
         self, session_id: str, candidate: RTCIceCandidateInit
     ) -> None:
         # Implement the logic to handle the WebRTC candidate and send it to the camera's WebRTC session
         if session_id not in self.sessions:
-            raise ValueError("Session ID not found")
+            self._pending_candidates.setdefault(session_id, []).append(candidate)
+            _LOGGER.debug(
+                "Buffered ICE candidate for camera %s session %s (session not ready yet)",
+                self._attr_name,
+                session_id,
+            )
+            return
 
         await self.sessions[session_id].send_candidate(candidate)
 
     def close_webrtc_session(self, session_id: str) -> None:
         _LOGGER.debug(f"Closing webRTC session {session_id}")
+        self._pending_candidates.pop(session_id, None)
         if session_id in self.sessions:
             session = self.sessions[session_id]
             session.close_connection()
@@ -215,10 +241,16 @@ class WyzeCameraWebRTCSession:
         self._connected = asyncio.Event()
 
     async def connect(self):
-        # The signaling_url from get_stream_info() is double-encoded (%253A).
-        # A single unquote produces %3A, which matches the browser's working URL format
-        # and preserves the SigV4 percent-encoding that AWS signature verification requires.
-        signaling_url = unquote(self.config["signaling_url"])
+        # The signaling_url from get_stream_info() is often *double*-percent-encoded
+        # (e.g. "%253A" instead of "%3A"). We must NOT fully URL-decode it because
+        # that can change SigV4 canonical encoding and make KVS reject the handshake.
+        # Instead, only "undouble" percent-escapes by converting "%25xx" -> "%xx",
+        # leaving "%3A", "%2F", etc. intact.
+        signaling_url = self.config["signaling_url"]
+        for _ in range(3):
+            if "%25" not in signaling_url:
+                break
+            signaling_url = signaling_url.replace("%25", "%")
         self.websocket = await websocket_connect(signaling_url, logger=_LOGGER)
         _LOGGER.debug(
             f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}"
