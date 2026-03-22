@@ -24,7 +24,7 @@ from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-
+from homeassistant.util.ssl import get_default_context
 from websockets.asyncio.client import connect as websocket_connect
 
 from .const import CONF_CLIENT, DOMAIN
@@ -251,7 +251,9 @@ class WyzeCameraWebRTCSession:
             if "%25" not in signaling_url:
                 break
             signaling_url = signaling_url.replace("%25", "%")
-        self.websocket = await websocket_connect(signaling_url, logger=_LOGGER)
+        self.websocket = await websocket_connect(
+            signaling_url, ssl=get_default_context(), logger=_LOGGER
+        )
         _LOGGER.debug(
             f"WebSocket connection established for camera {self.camera._attr_name} with session ID {self.session_id}"
         )
