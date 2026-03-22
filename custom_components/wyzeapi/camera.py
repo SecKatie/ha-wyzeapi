@@ -10,7 +10,6 @@ import logging
 import uuid
 import re
 
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
 from homeassistant.components.camera.webrtc import (
@@ -19,9 +18,9 @@ from homeassistant.components.camera.webrtc import (
     WebRTCAnswer,
     WebRTCCandidate,
 )
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.util.ssl import get_default_context
 from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
