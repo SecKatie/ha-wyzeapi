@@ -120,18 +120,20 @@ class WyzeCamera(CameraEntity):
         return self._camera.on
 
     @property
-    def motion_detection_enabled(self) -> bool: | None
+    def motion_detection_enabled(self) -> bool | None:
         motion = getattr(self._camera, "motion", None)
         if isinstance(motion, bool):
             return motion
         # Some Wyze camera models / API responses don't expose motion state.
         # Return None so HA omits/marks the attribute as unknown instead of crashing.
         return None
+
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
         """Return bytes of camera image."""
         return None
+
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         # This shouldn't happen, but throw an error if we don't have a config ready yet
         if self._cached_config is None:
@@ -180,7 +182,7 @@ class WyzeCamera(CameraEntity):
             session_id, self, send_message, config
         )
         await self.sessions[session_id].send_offer(offer_sdp)
-        
+
         pending = self._pending_candidates.pop(session_id, None)
         if pending:
             _LOGGER.debug(
