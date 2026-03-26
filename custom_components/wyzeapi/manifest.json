@@ -9,10 +9,10 @@
   "documentation": "https://github.com/SecKatie/ha-wyzeapi#readme",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/SecKatie/ha-wyzeapi/issues",
+  "loggers": ["custom_components.wyzeapi"],
   "requirements": [
     "wyzeapy~=0.5.33rc0",
     "websockets"
   ],
-  "loggers": ["custom_components.wyzeapi"],
   "version": "0.1.36"
 }

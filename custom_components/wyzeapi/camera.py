@@ -18,9 +18,10 @@ from homeassistant.components.camera.webrtc import (
     WebRTCAnswer,
     WebRTCCandidate,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util.ssl import get_default_context
 from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
@@ -28,7 +29,7 @@ from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
 
-from .const import CONF_CLIENT, DOMAIN
+from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -116,12 +117,34 @@ class WyzeCamera(CameraEntity):
             "model": self._camera.product_model,
         }
 
+    @property
+    def available(self) -> bool:
+        """Return if the camera is available."""
+        return self._camera.available
+
     @cached_property
     def is_streaming(self) -> bool:
         """Return True if the camera is currently streaming."""
         return self._camera.on
 
-    @cached_property
+
+    @callback
+    def handle_camera_update(self, camera: Camera) -> None:
+        """Update the camera whenever there is an update."""
+        self._camera = camera
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Listen for camera updates."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{CAMERA_UPDATED}-{self._camera.mac}",
+                self.handle_camera_update,
+            )
+        )
+
+    @property
     def is_on(self) -> bool:
         """Return True if the camera is currently on."""
         return self._camera.on
@@ -142,7 +165,7 @@ class WyzeCamera(CameraEntity):
         """Enable motion detection."""
         await self._camera_service.turn_on_motion_detection(self._camera)
 
-    @cached_property
+    @property
     def motion_detection_enabled(self) -> bool | None:
         """Return True if motion detection is enabled, False if disabled, or None if unknown/not supported."""
         motion = getattr(self._camera, "motion", None)
