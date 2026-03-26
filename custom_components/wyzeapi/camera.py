@@ -127,7 +127,6 @@ class WyzeCamera(CameraEntity):
         """Return True if the camera is currently streaming."""
         return self._camera.on
 
-
     @callback
     def handle_camera_update(self, camera: Camera) -> None:
         """Update the camera whenever there is an update."""
