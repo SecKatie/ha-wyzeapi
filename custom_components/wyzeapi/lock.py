@@ -22,7 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
+from .const import CONF_CLIENT, DOMAIN, IOT3_MODELS, LOCK_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,20 +52,35 @@ async def async_setup_entry(
 
     all_locks = await lock_service.get_locks()
 
+    skip_models = {"YD_BT1"} | IOT3_MODELS
+
     locks = [
         WyzeLock(lock_service, lock)
         for lock in all_locks
-        if lock.product_model != "YD_BT1"
+        if lock.product_model not in skip_models
     ]
+
     lock_bolts = []
     for lock in all_locks:
         if lock.product_model == "YD_BT1":
-            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][
-                lock.mac
-            ]
-            lock_bolts.append(WyzeLockBolt(coordinator))
+            coordinator = hass.data[DOMAIN][config_entry.entry_id].get(
+                "coordinators", {}
+            ).get(lock.mac)
+            if coordinator:
+                lock_bolts.append(WyzeLockBolt(coordinator))
 
-    async_add_entities(locks + lock_bolts, True)
+    # IoT3 devices (DX_LB2, DX_PVLOC) are discovered from the full device list
+    # since they have product_type "Common" and don't appear in get_locks()
+    lock_bolts_v2 = []
+    iot3_devices = hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", [])
+    for device in iot3_devices:
+        coordinator = hass.data[DOMAIN][config_entry.entry_id].get(
+            "coordinators", {}
+        ).get(device.mac)
+        if coordinator:
+            lock_bolts_v2.append(WyzeLockBoltV2(coordinator))
+
+    async_add_entities(locks + lock_bolts + lock_bolts_v2, True)
 
 
 class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
@@ -262,3 +277,66 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
     @property
     def state_attributes(self):
         return {"last_operated": self.coordinator.data["timestamp"]}
+
+
+class WyzeLockBoltV2(CoordinatorEntity, homeassistant.components.lock.LockEntity):
+    """Representation of a Wyze Lock Bolt v2 (DX_LB2) via IoT3 cloud API."""
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._lock = coordinator._lock
+
+    @property
+    def name(self):
+        return self._lock.nickname
+
+    @property
+    def unique_id(self):
+        return self._lock.mac
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._lock.mac)},
+            "name": self._lock.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._lock.product_model,
+        }
+
+    @property
+    def is_locked(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("locked", None)
+
+    @property
+    def available(self):
+        if self.coordinator.data is None:
+            return False
+        return self.coordinator.data.get("online", False)
+
+    @property
+    def is_locking(self):
+        return self.coordinator._current_command == "lock"
+
+    @property
+    def is_unlocking(self):
+        return self.coordinator._current_command == "unlock"
+
+    @property
+    def extra_state_attributes(self):
+        attrs = {ATTR_ATTRIBUTION: ATTRIBUTION}
+        if self.coordinator.data:
+            if self.coordinator.data.get("battery_level") is not None:
+                attrs["battery_level"] = self.coordinator.data["battery_level"]
+            if self.coordinator.data.get("firmware_ver") is not None:
+                attrs["firmware_version"] = self.coordinator.data["firmware_ver"]
+            if self.coordinator.data.get("door_open") is not None:
+                attrs["door_open"] = self.coordinator.data["door_open"]
+        return attrs
+
+    async def async_lock(self, **kwargs):
+        await self.coordinator.lock_unlock(command="lock")
+
+    async def async_unlock(self, **kwargs):
+        await self.coordinator.lock_unlock(command="unlock")

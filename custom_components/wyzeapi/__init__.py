@@ -29,6 +29,8 @@ from .const import (
     API_KEY,
 )
 from .coordinator import WyzeLockBoltCoordinator
+from .iot3_coordinator import WyzeLockBoltV2Coordinator
+from .iot3_service import Iot3Service
 from .token_manager import TokenManager
 
 PLATFORMS = [
@@ -195,19 +197,46 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def setup_coordinators(
     hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy
 ):
-    """Set up coordinators for Wyze devices that require Bluetooth."""
-    # Check if Bluetooth is active and functioning
-    if bluetooth.async_scanner_count(hass, connectable=True) == 0:
-        _LOGGER.info(
-            "Bluetooth is not active or no scanners available. Skipping WyzeLockBoltCoordinator setup."
-        )
-        return
+    """Set up coordinators for Wyze Lock Bolt devices (BLE and IoT3)."""
+    from .const import IOT3_MODELS
 
     lock_service = await client.lock_service
-    for lock in await lock_service.get_locks():
-        if lock.product_model == "YD_BT1":
-            coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault(
-                "coordinators", {}
+    all_locks = await lock_service.get_locks()
+    coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault(
+        "coordinators", {}
+    )
+
+    # IoT3 devices have product_type "Common" so get_locks() won't find them.
+    # Search the full device list by product_model instead.
+    all_devices = await lock_service.get_object_list()
+    iot3_devices = [d for d in all_devices if d.product_model in IOT3_MODELS]
+    # Store them so lock.py can find them later
+    hass.data[DOMAIN][config_entry.entry_id]["iot3_devices"] = iot3_devices
+
+    # IoT3 coordinators for DX-family locks (no Bluetooth needed)
+    iot3_locks = iot3_devices
+    if iot3_locks:
+        iot3_service = Iot3Service(hass, config_entry)
+        hass.data[DOMAIN][config_entry.entry_id]["iot3_service"] = iot3_service
+        for lock in iot3_locks:
+            _LOGGER.info(
+                "Setting up IoT3 coordinator for %s (%s)",
+                lock.nickname,
+                lock.product_model,
             )
+            coordinators[lock.mac] = WyzeLockBoltV2Coordinator(
+                hass, iot3_service, lock
+            )
+
+    # BLE coordinators for YD_BT1 Lock Bolt v1
+    if bluetooth.async_scanner_count(hass, connectable=True) == 0:
+        if any(l.product_model == "YD_BT1" for l in all_locks):
+            _LOGGER.info(
+                "Bluetooth is not active. Skipping WyzeLockBoltCoordinator setup."
+            )
+        return
+
+    for lock in all_locks:
+        if lock.product_model == "YD_BT1":
             coordinators[lock.mac] = WyzeLockBoltCoordinator(hass, lock_service, lock)
             await coordinators[lock.mac].update_lock_info()
