@@ -35,10 +35,13 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
     CAMERA_UPDATED,
     CONF_CLIENT,
     DOMAIN,
+    IOT3_MODELS,
     LOCK_UPDATED,
     RESET_BUTTON_PRESSED,
 )
@@ -110,7 +113,91 @@ async def async_setup_entry(
             ]
         )
 
+    # IoT3 lock sensors (battery, firmware) via coordinator
+    iot3_devices = hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", [])
+    for device in iot3_devices:
+        coordinator = hass.data[DOMAIN][config_entry.entry_id].get(
+            "coordinators", {}
+        ).get(device.mac)
+        if coordinator:
+            sensors.append(WyzeIot3BatterySensor(coordinator))
+            sensors.append(WyzeIot3FirmwareSensor(coordinator))
+
     async_add_entities(sensors, True)
+
+
+class WyzeIot3BatterySensor(CoordinatorEntity, SensorEntity):
+    """Battery sensor for IoT3 devices (Lock Bolt v2, Palm Lock)."""
+
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._device = coordinator._lock
+
+    @property
+    def name(self):
+        return f"{self._device.nickname} Battery"
+
+    @property
+    def unique_id(self):
+        return f"{self._device.mac}-battery"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._device.mac)},
+            "name": self._device.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model,
+        }
+
+    @property
+    def available(self):
+        if self.coordinator.data is None:
+            return False
+        return self.coordinator.data.get("online", False)
+
+    @property
+    def native_value(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("battery_level")
+
+
+class WyzeIot3FirmwareSensor(CoordinatorEntity, SensorEntity):
+    """Firmware version sensor for IoT3 devices."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._device = coordinator._lock
+
+    @property
+    def name(self):
+        return f"{self._device.nickname} Firmware"
+
+    @property
+    def unique_id(self):
+        return f"{self._device.mac}-firmware"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._device.mac)},
+            "name": self._device.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model,
+        }
+
+    @property
+    def native_value(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("firmware_ver")
 
 
 class WyzeLockBatterySensor(SensorEntity):
