@@ -24,7 +24,7 @@ packages = ["custom_components"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.1",
+    "ruff>=0.15.10",
 ]
 
 [tool.ruff]
