@@ -208,16 +208,24 @@ class WyzeThermostat(ClimateEntity):
         target_temp_high = kwargs["target_temp_high"]
 
         try:
-            if target_temp_low != self._thermostat.heat_set_point:
-                await self._thermostat_service.set_heat_point(
-                    self._thermostat, int(target_temp_low)
-                )
-                self._thermostat.heat_set_point = int(target_temp_low)
-            if target_temp_high != self._thermostat.cool_set_point:
-                await self._thermostat_service.set_cool_point(
-                    self._thermostat, int(target_temp_high)
-                )
-                self._thermostat.cool_set_point = int(target_temp_high)
+            # Always send setpoints unconditionally rather than guarding against
+            # the cached heat_set_point/cool_set_point value. The equality check
+            # causes a silent no-op whenever the cache is stale (e.g. after a mode
+            # change resets the physical device to firmware defaults, or after a
+            # Wyze cloud/app-driven reset), leaving the physical thermostat at the
+            # wrong setpoint while HA and the Wyze cloud both report the correct one.
+            # The _server_out_of_sync flag compounds this by delaying the cache
+            # refresh by up to 60 s after any command. The underlying API call
+            # (set_iot_prop_by_topic) is idempotent, so always sending is safe.
+            # See: https://github.com/SecKatie/ha-wyzeapi/issues/813
+            await self._thermostat_service.set_heat_point(
+                self._thermostat, int(target_temp_low)
+            )
+            self._thermostat.heat_set_point = int(target_temp_low)
+            await self._thermostat_service.set_cool_point(
+                self._thermostat, int(target_temp_high)
+            )
+            self._thermostat.cool_set_point = int(target_temp_high)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
