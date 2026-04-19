@@ -86,6 +86,9 @@ async def async_setup_entry(
 
     switches: list[SwitchEntity] = []
     has_outdoor_plug: bool = False
+    devices_to_migrate: list[str] = []
+    devices = []
+    device_registry = dr.async_get(hass)
 
     base_switches = await switch_service.get_switches()
     # The outdoor plug has a dummy switch that doesn't control anything
@@ -133,8 +136,6 @@ async def async_setup_entry(
     # Catch old outdoor plug devices and entities and remove.
     # This can be removed at a later date.
     if has_outdoor_plug:
-        devices_to_migrate = []
-        device_registry = dr.async_get(hass)
         devices = dr.async_entries_for_config_entry(
             device_registry, config_entry.entry_id
         )

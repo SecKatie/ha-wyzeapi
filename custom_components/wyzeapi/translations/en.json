@@ -3,12 +3,12 @@
     "config": {
         "abort": {
             "already_configured": "Device is already configured",
-            "reauth_successful": "Reauthentication Successful"
+            "reauth_successful": "Reauthentication Successful",
         },
         "error": {
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
+            "unknown": "Unexpected error",
         },
         "step": {
             "user": {
@@ -17,20 +17,18 @@
                     "username": "Email",
                     "password": "Password",
                     "key_id": "Keyid",
-                    "api_key": "Apikey"
+                    "api_key": "Apikey",
                 },
                 "data_description": {
                     "username": "Wyze or 3rd party OAuth email address",
-                    "password": "Wyze or 3rd party OAuth password"
-                  }
+                    "password": "Wyze or 3rd party OAuth password",
+                },
             },
             "2fa": {
                 "title": "Enter Wyze 2FA Verification Code",
-                "data": {
-                    "verification_code": "2FA Verification Code"
-                }
-            }
-        }
+                "data": {"verification_code": "2FA Verification Code"},
+            },
+        },
     },
     "options": {
         "step": {
@@ -45,34 +43,32 @@
                     "username": "Email",
                     "password": "Password",
                     "key_id": "Keyid",
-                    "api_key": "Apikey"
-                }
+                    "api_key": "Apikey",
+                },
             },
             "2fa": {
                 "title": "Enter Wyze 2FA Verification Code",
-                "data": {
-                    "verification_code": "2FA Verification Code"
-                }
-            }
+                "data": {"verification_code": "2FA Verification Code"},
+            },
         },
         "error": {
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
+            "unknown": "Unexpected error",
         },
         "abort": {
             "already_configured": "Device is already configured",
-            "reauth_successful": "Reauthentication Successful"
-        }
+            "reauth_successful": "Reauthentication Successful",
+        },
     },
     "issues": {
         "entity_changed": {
             "title": "Wyze Entity Error",
-            "description": "{automation} may neeed attention. {entity} may have changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue."
+            "description": "{automation} may need attention. {entity} may have changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue.",
         },
         "device_changed": {
             "title": "Wyze Device Error",
-            "description": "{automation} may need attention. A device has changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue."
-        }
-    }
+            "description": "{automation} may need attention. A device has changed or been removed. This is due to a change in outdoor plug devices. Once fixed you can ignore this issue.",
+        },
+    },
 }
