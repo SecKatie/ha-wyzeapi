@@ -58,11 +58,17 @@ async def async_setup_entry(
         if lock.product_model != "YD_BT1"
     ]
     lock_bolts = []
+    coordinators = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {})
     for lock in all_locks:
         if lock.product_model == "YD_BT1":
-            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinators"][
-                lock.mac
-            ]
+            coordinator = coordinators.get(lock.mac)
+            if coordinator is None:
+                _LOGGER.warning(
+                    "No coordinator found for Lock Bolt %s (%s), skipping",
+                    lock.nickname,
+                    lock.mac,
+                )
+                continue
             lock_bolts.append(WyzeLockBolt(coordinator))
 
     async_add_entities(locks + lock_bolts, True)

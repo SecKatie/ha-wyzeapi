@@ -137,6 +137,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         CONF_CLIENT: client,
         "key_id": KEY_ID,
         "api_key": API_KEY,
+        "coordinators": {},
     }
     await setup_coordinators(hass, config_entry, client)
 
