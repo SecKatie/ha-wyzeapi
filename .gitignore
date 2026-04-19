@@ -144,3 +144,6 @@ workflow/
 .dccache
 .vscode/
 .aider*
+
+# Local workspace artifacts
+.claude/
