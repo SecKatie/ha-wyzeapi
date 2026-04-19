@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-"""Platform for light integration."""
+"""Platform for lock integration."""
 
 from abc import ABC
 from datetime import timedelta
@@ -55,8 +55,9 @@ async def async_setup_entry(
     locks = [
         WyzeLock(lock_service, lock)
         for lock in all_locks
-        if lock.product_model != "YD_BT1"
+        if lock.product_model not in ["YD_BT1", "DX_LB2"]
     ]
+
     lock_bolts = []
     coordinators = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {})
     for lock in all_locks:
@@ -71,7 +72,13 @@ async def async_setup_entry(
                 continue
             lock_bolts.append(WyzeLockBolt(coordinator))
 
-    async_add_entities(locks + lock_bolts, True)
+    lock_bolt_v2s = [
+        WyzeLockBoltV2(lock_service, lock)
+        for lock in all_locks
+        if lock.product_model == "DX_LB2"
+    ]
+
+    async_add_entities(locks + lock_bolts + lock_bolt_v2s, True)
 
 
 class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
@@ -208,6 +215,117 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     async def async_added_to_hass(self) -> None:
         """Subscribe to update events."""
         self._lock.callback_function = self.async_update_callback
+        self._lock_service.register_updater(self._lock, 10)
+        await self._lock_service.start_update_manager()
+        return await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._lock_service.unregister_updater(self._lock)
+
+
+class WyzeLockBoltV2(homeassistant.components.lock.LockEntity):
+    """Representation of a Wyze Lock Bolt v2 (DX_LB2).
+
+    This device uses the devicemgmt API for state monitoring.
+    Lock/unlock control is not yet supported.
+    """
+
+    def __init__(self, lock_service: LockService, lock: Lock):
+        """Initialize a Wyze Lock Bolt v2."""
+        self._lock = lock
+        self._lock_service = lock_service
+        self._out_of_sync_count = 0
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._lock.mac)},
+            "name": self._lock.nickname,
+            "connections": {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    self._lock.mac,
+                )
+            },
+            "manufacturer": "WyzeLabs",
+            "model": self._lock.product_model,
+        }
+
+    @property
+    def name(self):
+        """Return the display name of this lock."""
+        return self._lock.nickname
+
+    @property
+    def unique_id(self):
+        return self._lock.mac
+
+    @property
+    def available(self):
+        """Return the connection status of this lock."""
+        return self._lock.available
+
+    @property
+    def is_locked(self):
+        """Return true if lock is locked."""
+        return not self._lock.unlocked
+
+    @property
+    def is_locking(self):
+        return self._lock.locking
+
+    @property
+    def is_unlocking(self):
+        return self._lock.unlocking
+
+    @property
+    def supported_features(self):
+        return None
+
+    @property
+    def extra_state_attributes(self):
+        """Return device attributes of the entity."""
+        dev_info = {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
+        if self._lock.battery_level is not None:
+            dev_info["battery_level"] = self._lock.battery_level
+        return dev_info
+
+    def lock(self, **kwargs):
+        raise NotImplementedError
+
+    def unlock(self, **kwargs):
+        raise NotImplementedError
+
+    async def async_lock(self, **kwargs):
+        raise HomeAssistantError(
+            "Lock control is not yet supported for the Wyze Lock Bolt v2."
+        )
+
+    async def async_unlock(self, **kwargs):
+        raise HomeAssistantError(
+            "Unlock control is not yet supported for the Wyze Lock Bolt v2."
+        )
+
+    @token_exception_handler
+    async def async_update(self):
+        """Update the lock state from the devicemgmt API."""
+        try:
+            lock = await self._lock_service.update(self._lock)
+            if (
+                lock.unlocked == self._lock.unlocked
+                or self._out_of_sync_count >= MAX_OUT_OF_SYNC_COUNT
+            ):
+                self._lock = lock
+                self._out_of_sync_count = 0
+            else:
+                self._out_of_sync_count += 1
+        except Exception as err:
+            _LOGGER.error("Error updating Wyze Lock Bolt v2: %s", err)
+
+    async def async_added_to_hass(self) -> None:
+        """Register update callbacks."""
         self._lock_service.register_updater(self._lock, 10)
         await self._lock_service.start_update_manager()
         return await super().async_added_to_hass()
