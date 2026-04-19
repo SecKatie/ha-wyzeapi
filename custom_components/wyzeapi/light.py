@@ -435,7 +435,9 @@ class WyzeCamerafloodlight(LightEntity):
             "spotlight": "Spotlight",
             "bulbcam": "Light",
         }
-        return f"{self._device.nickname} {light_type_names.get(self._light_type, 'Light')}"
+        return (
+            f"{self._device.nickname} {light_type_names.get(self._light_type, 'Light')}"
+        )
 
     @property
     def device_info(self):
