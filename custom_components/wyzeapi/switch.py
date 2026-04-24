@@ -157,7 +157,7 @@ async def async_setup_entry(
             hass, config_entry, devices_to_migrate, device_registry
         )
 
-    async_add_entities(switches, True)
+    async_add_entities(switches, False)
 
 
 async def async_migrate_switch_data(
