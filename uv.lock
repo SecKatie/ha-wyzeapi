@@ -821,7 +821,7 @@ wheels = [
 
 [[package]]
 name = "ha-wyzeapi"
-version = "0.1.37rc1"
+version = "0.1.37"
 source = { editable = "." }
 dependencies = [
     { name = "homeassistant" },
