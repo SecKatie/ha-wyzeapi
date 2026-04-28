@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 from bleak import BleakClient
-from bleak_retry_connector import establish_connection
+from bleak.exc import BleakCharacteristicNotFoundError, BleakError
+from bleak_retry_connector import BleakNotFoundError, establish_connection
 
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
@@ -62,15 +63,24 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         if self._current_command:
             return self.data
 
-        client = await self._get_ble_client()
-        if client is None:
-            raise UpdateFailed(
-                f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
-            )
-
         try:
+            client = await self._get_ble_client()
+            if client is None:
+                raise UpdateFailed(
+                    f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
+                )
             value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
             return self._parse_state(value)
+        except BleakCharacteristicNotFoundError as err:
+            raise UpdateFailed(
+                f"Could not read lock state from {self._lock.nickname} ({self._mac}): "
+                f"characteristic {YDBLE_LOCK_STATE_UUID} was not found."
+            ) from err
+        except (BleakError, BleakNotFoundError, TimeoutError) as err:
+            raise UpdateFailed(
+                f"Could not connect to BLE device {self._lock.nickname} with address "
+                f"{self._mac}. Device may not be in range."
+            ) from err
         finally:
             await self._disconnect()
 
@@ -80,23 +90,27 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
             raise Exception(f"Waiting for {self._current_command} command to complete")
         self._current_command = command
         self.async_update_listeners()
-        client = await self._get_ble_client()
-        if client is None:
-            raise Exception(
-                f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
-            )
+        try:
+            client = await self._get_ble_client()
+            if client is None:
+                raise Exception(
+                    f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
+                )
 
-        # disconnect in 10 seconds in case of error
-        asyncio.create_task(self._disconnect(delay=10))
+            # disconnect in 10 seconds in case of error
+            asyncio.create_task(self._disconnect(delay=10))
 
-        context = {"command": command, "stage": 0}
+            context = {"command": command, "stage": 0}
 
-        async def _handle_uart_rx_context(sender, data):
-            await self._handle_uart_rx(sender, data, client, context)
+            async def _handle_uart_rx_context(sender, data):
+                await self._handle_uart_rx(sender, data, client, context)
 
-        await client.start_notify(YDBLE_UART_RX_UUID, _handle_uart_rx_context)
-        await client.start_notify(YDBLE_LOCK_STATE_UUID, self._handle_state)
-        await self._request_challenge(client)
+            await client.start_notify(YDBLE_UART_RX_UUID, _handle_uart_rx_context)
+            await client.start_notify(YDBLE_LOCK_STATE_UUID, self._handle_state)
+            await self._request_challenge(client)
+        except Exception:
+            await self._disconnect()
+            raise
 
     async def _request_challenge(self, client: BleakClient):
         l2_content = pack_l2_dict(0x91, 0, {10: b"\x27"})

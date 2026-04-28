@@ -71,7 +71,7 @@ async def async_setup_entry(
                 continue
             lock_bolts.append(WyzeLockBolt(coordinator))
 
-    async_add_entities(locks + lock_bolts, True)
+    async_add_entities(locks + lock_bolts, False)
 
 
 class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
@@ -249,7 +249,15 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
 
     @property
     def is_locked(self):
+        if self.coordinator.data is None:
+            return None
         return self.coordinator.data["state"] == 1
+
+    @property
+    def available(self):
+        return (
+            self.coordinator.last_update_success and self.coordinator.data is not None
+        )
 
     async def async_lock(self, **kwargs):
         return await self.coordinator.lock_unlock(command="lock")
@@ -267,4 +275,10 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
 
     @property
     def state_attributes(self):
+        if self.coordinator.data is None:
+            return {}
         return {"last_operated": self.coordinator.data["timestamp"]}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.hass.async_create_task(self.coordinator.async_request_refresh())
