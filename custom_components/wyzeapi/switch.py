@@ -157,7 +157,7 @@ async def async_setup_entry(
             hass, config_entry, devices_to_migrate, device_registry
         )
 
-    async_add_entities(switches, True)
+    async_add_entities(switches, False)
 
 
 async def async_migrate_switch_data(
@@ -226,12 +226,12 @@ class WyzeNotifications(SwitchEntity):
     def __init__(self, client: Wyzeapy) -> None:
         """Initialize the switch."""
         self._client = client
-        self._is_on = False
+        self._is_on = None
         self._uid = WYZE_NOTIFICATION_TOGGLE
         self._just_updated = False
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return if the switch is on."""
         return self._is_on
 
@@ -274,7 +274,7 @@ class WyzeNotifications(SwitchEntity):
     @property
     def available(self):
         """Return the connection status of this switch."""
-        return True
+        return self._is_on is not None
 
     @property
     def unique_id(self):
@@ -287,6 +287,10 @@ class WyzeNotifications(SwitchEntity):
             self._is_on = await self._client.notifications_are_on
         else:
             self._just_updated = False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_schedule_update_ha_state(True)
 
 
 class WyzeSwitch(SwitchEntity):
