@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 from bleak import BleakClient
+from bleak.exc import BleakCharacteristicNotFoundError
 from bleak_retry_connector import establish_connection
 
 from homeassistant.components import bluetooth
@@ -48,6 +49,8 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self._mac = None
         self._bleak_client = None
         self._current_command = None
+        # Initialize data to prevent errors during setup
+        self.data = {"state": None, "timestamp": None}
 
     @token_exception_handler
     async def update_lock_info(self):
@@ -71,6 +74,11 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         try:
             value = await client.read_gatt_char(YDBLE_LOCK_STATE_UUID)
             return self._parse_state(value)
+        except BleakCharacteristicNotFoundError as e:
+            raise UpdateFailed(
+                f"Characteristic {YDBLE_LOCK_STATE_UUID} not found on device {self._lock.nickname}. "
+                "Device may be locked, have firmware issues, or require pairing."
+            ) from e
         finally:
             await self._disconnect()
 
