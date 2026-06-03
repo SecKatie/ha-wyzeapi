@@ -456,6 +456,8 @@ class WyzeSwitch(SwitchEntity):
                         "device_mac": switch.mac,
                         "ai_tag_list": _ai_tag_list,
                         "tag_list": event.tag_list,
+                        "event_category": getattr(event, "event_category", None),
+                        "event_value": getattr(event, "event_value", None),
                         "event_screenshot": _screenshot_url,
                         "event_video": _video_url,
                     },
