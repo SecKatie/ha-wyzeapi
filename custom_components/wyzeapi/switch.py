@@ -41,6 +41,7 @@ from .const import (
     DOMAIN,
     LIGHT_UPDATED,
     WYZE_CAMERA_EVENT,
+    WYZE_EVENT_TAG_MAP,
     WYZE_NOTIFICATION_TOGGLE,
 )
 from .token_manager import token_exception_handler
@@ -448,6 +449,14 @@ class WyzeSwitch(SwitchEntity):
                         _screenshot_url = resource["url"]
                     elif resource["type"] == 2:
                         _video_url = resource["url"]
+                # Map the raw integer tag_list codes to friendly object-class
+                # labels (person/vehicle/pet/package/...); unknown codes fall
+                # back to "tag_<code>". The raw tag_list is still emitted for
+                # backward compatibility.
+                _tag_labels = [
+                    WYZE_EVENT_TAG_MAP.get(tag, f"tag_{tag}")
+                    for tag in (event.tag_list or [])
+                ]
                 _LOGGER.debug("Camera: %s has a new event", switch.nickname)
                 self.hass.bus.fire(
                     WYZE_CAMERA_EVENT,
@@ -456,6 +465,7 @@ class WyzeSwitch(SwitchEntity):
                         "device_mac": switch.mac,
                         "ai_tag_list": _ai_tag_list,
                         "tag_list": event.tag_list,
+                        "tag_labels": _tag_labels,
                         "event_screenshot": _screenshot_url,
                         "event_video": _video_url,
                     },
