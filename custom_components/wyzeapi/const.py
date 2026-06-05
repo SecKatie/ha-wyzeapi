@@ -19,6 +19,22 @@ RESET_BUTTON_PRESSED = f"{DOMAIN}.reset_button_pressed"
 # EVENT NAMES
 WYZE_CAMERA_EVENT = "wyze_camera_event"
 
+# Cam Plus AI smart-detection object-class codes seen in ``event.tag_list``.
+# Wyze publishes no official map; these are community-documented and
+# cross-corroborated by two independent reverse-engineering efforts:
+# shauntarves/wyze-sdk's ``AiEventType`` enum and JoshuaMulliken/ha-wyzeapi#187.
+# Unknown codes fall back to ``tag_<code>`` so novel kinds still surface.
+WYZE_EVENT_TAG_MAP = {
+    101: "person",
+    102: "vehicle",
+    103: "pet",
+    104: "package",
+    101001: "face",
+    800001: "baby_crying",
+    800002: "dog_barking",
+    800003: "cat_meowing",
+}
+
 BULB_LOCAL_CONTROL = "bulb_local_control"
 DEFAULT_LOCAL_CONTROL = True
 
