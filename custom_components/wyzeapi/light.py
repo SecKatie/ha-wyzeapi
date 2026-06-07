@@ -179,9 +179,8 @@ class WyzeLight(LightEntity):
                 self._bulb.color_mode = "2"
 
             self._bulb.color_temp = color_temp
-            self._bulb.color = color_util.color_rgb_to_hex(
-                *color_util.color_temperature_to_rgb(color_temp)
-            )
+            r, g, b = color_util.color_temperature_to_rgb(color_temp)
+            self._bulb.color = color_util.color_rgb_to_hex(int(r), int(g), int(b))
 
         if kwargs.get(ATTR_HS_COLOR) is not None and (
             self._device_type is DeviceTypes.MESH_LIGHT
