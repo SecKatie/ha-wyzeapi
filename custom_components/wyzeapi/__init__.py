@@ -34,6 +34,7 @@ from .token_manager import TokenManager
 PLATFORMS = [
     "light",
     "switch",
+    "fan",
     "lock",
     "climate",
     "alarm_control_panel",
