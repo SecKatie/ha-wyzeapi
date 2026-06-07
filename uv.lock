@@ -838,7 +838,7 @@ dev = [
 requires-dist = [
     { name = "homeassistant", specifier = ">=2026.1.0" },
     { name = "websockets" },
-    { name = "wyzeapy", specifier = ">=0.5.33,<0.6.0" },
+    { name = "wyzeapy", specifier = ">=0.6.0,<0.7.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2369,16 +2369,16 @@ wheels = [
 
 [[package]]
 name = "wyzeapy"
-version = "0.5.33"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiodns" },
     { name = "aiohttp" },
     { name = "pycryptodome" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/2d/8190a7938182577b27c17d5f6882f7ddf32b27e52445b43de72f3f58aafc/wyzeapy-0.5.33.tar.gz", hash = "sha256:4f32a284a992aabfff617b2c7b7d8fdda95da5c5cec4edb8d14fa6aa3f7a3413", size = 628819, upload-time = "2026-04-19T18:00:59.729Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/25/3684f60f57d1f09fadfd4f39e2d1e524da60ac3a9e2640d7088a16e14179/wyzeapy-0.6.0.tar.gz", hash = "sha256:900944dee5e055b2db44f38c075893b63df5825275a823ee26e8129d463826a8", size = 632081, upload-time = "2026-06-07T18:56:13.246Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/9a/10332d958c159411f2226f979feb52686d04083842c3ef0a390025ea0944/wyzeapy-0.5.33-py3-none-any.whl", hash = "sha256:79bcf77295fde285e675b319e51a16d1f5c5d42aedfc08d0639001f637bf8d64", size = 49140, upload-time = "2026-04-19T18:00:58.746Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/85/11b6124c5902225a08806701407e175db696a3ebf2987d62963e0edefc4b/wyzeapy-0.6.0-py3-none-any.whl", hash = "sha256:14bfd5e96c0201bf0ce0bb3c1f368fa1a0ba25fb6799927c5330226389cfd97c", size = 51453, upload-time = "2026-06-07T18:56:14.491Z" },
 ]
 
 [[package]]
