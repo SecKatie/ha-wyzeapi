@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from wyzeapy import Wyzeapy
+from wyzeapy.services.air_purifier_service import AirPurifier
 from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
 from wyzeapy.services.lock_service import Lock
@@ -36,6 +37,7 @@ from homeassistant.helpers.event import (
 )
 
 from .const import (
+    AIR_PURIFIER_UPDATED,
     CAMERA_UPDATED,
     CONF_CLIENT,
     DOMAIN,
@@ -71,6 +73,7 @@ async def async_setup_entry(
     camera_service = await client.camera_service
     switch_usage_service = await client.switch_usage_service
     irrigation_service = await client.irrigation_service
+    air_purifier_service = await client.air_purifier_service
 
     locks = await lock_service.get_locks()
     sensors = []
@@ -94,6 +97,11 @@ async def async_setup_entry(
         if plug.product_model in OUTDOOR_PLUGS:
             sensors.append(WyzePlugEnergySensor(plug, switch_usage_service))
             sensors.append(WyzePlugDailyEnergySensor(plug))
+
+    air_purifiers = await air_purifier_service.get_air_purifiers()
+    for air_purifier in air_purifiers:
+        sensors.append(WyzeAirPurifierAQISensor(air_purifier))
+        sensors.append(WyzeAirPurifierHourlyMaxAQISensor(air_purifier))
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
@@ -624,3 +632,140 @@ class WyzeIrrigationSSID(WyzeIrrigationBaseSensor):
     def native_value(self) -> str:
         """Return the SSID."""
         return self._device.ssid
+
+
+class WyzeAirPurifierAirQualitySensor(SensorEntity):
+    """Base class for Wyze Air Purifier air quality sensors."""
+
+    _attr_attribution = ATTRIBUTION
+    _attr_device_class = SensorDeviceClass.AQI
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(
+        self,
+        air_purifier: AirPurifier,
+    ) -> None:
+        """Initialize the AQI sensor."""
+        self._air_purifier = air_purifier
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._air_purifier.mac)},
+            name=self._air_purifier.nickname,
+            manufacturer="WyzeLabs",
+            model=self._air_purifier.product_model,
+        )
+        if self._air_purifier.app_version:
+            device_info["sw_version"] = self._air_purifier.app_version
+        if self._air_purifier.sn:
+            device_info["serial_number"] = self._air_purifier.sn
+        if self._air_purifier.wifi_mac:
+            device_info["connections"] = {
+                (dr.CONNECTION_NETWORK_MAC, self._air_purifier.wifi_mac)
+            }
+        return device_info
+
+    @property
+    def available(self) -> bool:
+        """Return the connection status of this sensor."""
+        return self._air_purifier.available
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "device model": self._air_purifier.product_model,
+        }
+
+    @callback
+    def handle_air_purifier_update(self, air_purifier: AirPurifier) -> None:
+        """Handle air purifier updates."""
+        self._air_purifier = air_purifier
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Add listener on startup."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{AIR_PURIFIER_UPDATED}-{self._air_purifier.mac}",
+                self.handle_air_purifier_update,
+            )
+        )
+
+
+class WyzeAirPurifierAQISensor(WyzeAirPurifierAirQualitySensor):
+    """Representation of a Wyze Air Purifier current AQI sensor."""
+
+    _attr_name = "Current AQI"
+
+    def __init__(
+        self,
+        air_purifier: AirPurifier,
+    ) -> None:
+        """Initialize the current AQI sensor."""
+        super().__init__(air_purifier)
+        self._attr_unique_id = f"{self._air_purifier.mac}-aqi"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the current AQI value."""
+        return self._air_purifier.aqi
+
+
+class WyzeAirPurifierHourlyMaxAQISensor(WyzeAirPurifierAirQualitySensor):
+    """Representation of a Wyze Air Purifier hourly max AQI sensor."""
+
+    _attr_name = "Hourly Max AQI"
+
+    def __init__(
+        self,
+        air_purifier: AirPurifier,
+    ) -> None:
+        """Initialize the hourly max AQI sensor."""
+        super().__init__(air_purifier)
+        self._attr_unique_id = f"{self._air_purifier.mac}-hourly-max-aqi"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the hourly max AQI value."""
+        return self._air_purifier.max_hourly_aqi
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return device attributes of the entity."""
+        attributes = super().extra_state_attributes
+        attributes.update(
+            {
+                "hour_start": self._timestamp_attribute(
+                    self._air_purifier.max_hourly_aqi_start_time
+                ),
+                "hour_end": self._timestamp_attribute(
+                    self._air_purifier.max_hourly_aqi_start_time,
+                    offset=datetime.timedelta(hours=1),
+                ),
+                "sampled_until": self._timestamp_attribute(
+                    self._air_purifier.max_hourly_aqi_end_time
+                ),
+            }
+        )
+        return attributes
+
+    @staticmethod
+    def _timestamp_attribute(
+        timestamp: int | None, offset: datetime.timedelta | None = None
+    ) -> str | None:
+        """Return an ISO formatted timestamp attribute."""
+        if timestamp is None:
+            return None
+
+        value = datetime.datetime.fromtimestamp(timestamp, datetime.UTC)
+        if offset is not None:
+            value += offset
+        return value.isoformat()
