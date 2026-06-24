@@ -11,6 +11,7 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.services.switch_service import Switch, SwitchUsageService
+from wyzeapy.services.scale_service import Scale, ScaleService
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -94,6 +95,22 @@ async def async_setup_entry(
         if plug.product_model in OUTDOOR_PLUGS:
             sensors.append(WyzePlugEnergySensor(plug, switch_usage_service))
             sensors.append(WyzePlugDailyEnergySensor(plug))
+    # Get all scale devices
+    scale_service = await client.scale_service
+    scales = await scale_service.get_scales()
+    for scale in scales:
+        scale = await scale_service.update(scale)
+        for user_id, record in scale.latest_by_member.items():
+            sensors.extend([
+                WyzeScaleSensor(scale, scale_service, user_id, "weight", "Weight", "kg", SensorDeviceClass.WEIGHT),
+                WyzeScaleSensor(scale, scale_service, user_id, "bmi", "BMI", None, None),
+                WyzeScaleSensor(scale, scale_service, user_id, "body_fat", "Body Fat", PERCENTAGE, None),
+                WyzeScaleSensor(scale, scale_service, user_id, "muscle", "Muscle Mass", "kg", SensorDeviceClass.WEIGHT),
+                WyzeScaleSensor(scale, scale_service, user_id, "body_water", "Body Water", PERCENTAGE, None),
+                WyzeScaleSensor(scale, scale_service, user_id, "bone_mineral", "Bone Mineral", "kg", SensorDeviceClass.WEIGHT),
+                WyzeScaleSensor(scale, scale_service, user_id, "metabolic_age", "Metabolic Age", "years", None),
+                WyzeScaleSensor(scale, scale_service, user_id, "body_vfr", "Visceral Fat", None, None),
+            ])
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
@@ -624,3 +641,47 @@ class WyzeIrrigationSSID(WyzeIrrigationBaseSensor):
     def native_value(self) -> str:
         """Return the SSID."""
         return self._device.ssid
+class WyzeScaleSensor(SensorEntity):
+    """Representation of a Wyze Scale sensor."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_should_poll = True
+
+    def __init__(self, scale: Scale, scale_service: ScaleService, user_id: str,
+                 metric: str, friendly_name: str, unit, device_class) -> None:
+        self._scale = scale
+        self._scale_service = scale_service
+        self._user_id = user_id
+        self._metric = metric
+        self._friendly_name = friendly_name
+        self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = device_class
+        self._attr_native_value = None
+
+    @property
+    def name(self) -> str:
+        return f"{self._scale.nickname} {self._friendly_name}"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._scale.mac}.{self._user_id}.{self._metric}"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._scale.mac)},
+            "name": self._scale.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._scale.product_model,
+        }
+
+    @property
+    def extra_state_attributes(self):
+        return {ATTR_ATTRIBUTION: ATTRIBUTION}
+
+    async def async_update(self):
+        """Poll for latest scale data."""
+        self._scale = await self._scale_service.update(self._scale)
+        record = self._scale.latest_by_member.get(self._user_id)
+        if record:
+            self._attr_native_value = getattr(record, self._metric, None)
