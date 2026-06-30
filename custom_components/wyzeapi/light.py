@@ -236,7 +236,12 @@ class WyzeLight(LightEntity):
 
         _LOGGER.debug("Turning on light")
         try:
-            await self._bulb_service.turn_on(self._bulb, self._local_control, options)
+            if self._device_type is DeviceTypes.LIGHT:
+                await self._bulb_service._run_action_list(
+                    self._bulb, [create_pid_pair(PropertyIDs.ON, "1")] + options
+                )
+            else:
+                await self._bulb_service.turn_on(self._bulb, self._local_control, options)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
@@ -251,7 +256,13 @@ class WyzeLight(LightEntity):
         """Turn off the light."""
         self._local_control = self._config_entry.options.get(BULB_LOCAL_CONTROL)
         try:
-            await self._bulb_service.turn_off(self._bulb, self._local_control)
+            if self._device_type is DeviceTypes.LIGHT:
+                # WLPA19 fw ignores P3 power via set_property_list; the run_action push is honored
+                await self._bulb_service._run_action_list(
+                    self._bulb, [create_pid_pair(PropertyIDs.ON, "0")]
+                )
+            else:
+                await self._bulb_service.turn_off(self._bulb, self._local_control)
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
