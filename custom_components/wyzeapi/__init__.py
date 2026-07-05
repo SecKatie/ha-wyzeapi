@@ -105,6 +105,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     key_id = config_entry.data.get(KEY_ID)
     api_key = config_entry.data.get(API_KEY)
 
+    # Pre-build wyzeapy's SSL context (certifi + pinned DigiCert Global Root
+    # CA) off the event loop. Mozilla/certifi removed that root in 2026 but
+    # Wyze's API chain is still anchored to it, so both aiohttp's default
+    # context AND HA's own client context fail with CERTIFICATE_VERIFY_FAILED.
+    # Building it here in the executor avoids a blocking-I/O-in-loop warning
+    # on the first API call.
+    try:
+        from wyzeapy.wyze_auth_lib import get_ssl_context
+
+        await hass.async_add_executor_job(get_ssl_context)
+    except ImportError:  # older wyzeapy without the shared context helper
+        _LOGGER.warning(
+            "wyzeapy does not provide get_ssl_context; TLS to the Wyze API may "
+            "fail on systems whose CA store dropped DigiCert Global Root CA"
+        )
+
     client = await Wyzeapy.create()
     token = None
     if config_entry.data.get(ACCESS_TOKEN):
