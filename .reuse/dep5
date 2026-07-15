@@ -16,3 +16,11 @@ License: Apache-2.0
 Files: .github/*
 Copyright: 2021 Katie Mulliken <katie@mulliken.net>
 License: Apache-2.0
+
+Files: tests/*
+Copyright: 2026 Katie Mulliken <katie@mulliken.net>
+License: Apache-2.0
+
+Files: uv.lock
+Copyright: 2026 Katie Mulliken <katie@mulliken.net>
+License: Apache-2.0

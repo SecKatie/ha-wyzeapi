@@ -6,7 +6,7 @@ from typing import Any
 
 from aiohttp.client_exceptions import ClientConnectionError
 from wyzeapy import Wyzeapy
-from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
+from wyzeapy.exceptions import ParameterError, UnknownApiError
 from wyzeapy.services.air_purifier_service import (
     AirPurifier,
     AirPurifierFanMode,
@@ -159,7 +159,7 @@ class WyzeAirPurifierFan(FanEntity):
 
         try:
             await self._air_purifier_service.turn_on(self._air_purifier)
-        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+        except (ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
@@ -173,7 +173,7 @@ class WyzeAirPurifierFan(FanEntity):
         """Turn off the fan."""
         try:
             await self._air_purifier_service.turn_off(self._air_purifier)
-        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+        except (ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
@@ -195,7 +195,7 @@ class WyzeAirPurifierFan(FanEntity):
             if not self._air_purifier.on:
                 await self._air_purifier_service.turn_on(self._air_purifier)
             await self._air_purifier_service.set_fan_mode(self._air_purifier, fan_mode)
-        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+        except (ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
@@ -217,7 +217,7 @@ class WyzeAirPurifierFan(FanEntity):
             await self._air_purifier_service.set_fan_mode(
                 self._air_purifier, preset_mode
             )
-        except (AccessTokenError, ParameterError, UnknownApiError) as err:
+        except (ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
