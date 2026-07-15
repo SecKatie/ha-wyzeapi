@@ -1,0 +1,70 @@
+name: Auto-approve owner pull requests
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-approve-owner-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  approve:
+    name: Approve owner pull request
+    if: >-
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      # This workflow intentionally does not check out or execute pull request
+      # code. It only uses the trusted base workflow and event metadata.
+      - name: Approve pull request
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const headSha = context.payload.pull_request.head.sha;
+            const authenticated = await github.rest.users.getAuthenticated();
+            const reviewerLogin = authenticated.data.login;
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              { owner, repo, pull_number, per_page: 100 },
+            );
+
+            const reviewerReviews = reviews
+              .filter((review) => review.user?.login === reviewerLogin)
+              .sort(
+                (left, right) =>
+                  new Date(left.submitted_at ?? 0) -
+                  new Date(right.submitted_at ?? 0),
+              );
+            const latestReviewerReview = reviewerReviews.at(-1);
+            const alreadyApproved =
+              latestReviewerReview?.state === "APPROVED" &&
+              latestReviewerReview.commit_id === headSha;
+
+            if (alreadyApproved) {
+              core.info(
+                `Already approved ${owner}/${repo}#${pull_number} at ${headSha}.`,
+              );
+              return;
+            }
+
+            await github.rest.pulls.createReview({
+              owner,
+              repo,
+              pull_number,
+              event: "APPROVE",
+              commit_id: headSha,
+              body:
+                "Automatically approved because the pull request was opened by the repository owner.",
+            });
