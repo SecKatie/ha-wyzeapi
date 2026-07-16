@@ -25,7 +25,7 @@ packages = ["custom_components"]
 
 [dependency-groups]
 dev = [
-    "aiousbwatcher==1.1.1",
+    "aiousbwatcher==1.1.2",
     "pyserial==3.5",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
