@@ -42,6 +42,7 @@ PLATFORMS = [
     "siren",
     "cover",
     "number",
+    "valve",
     "button",
     "camera",
 ]  # Fixme: Re add scene
