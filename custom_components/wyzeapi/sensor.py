@@ -123,6 +123,7 @@ async def async_setup_entry(
                 WyzeScaleBodyWaterSensor(scale),
                 WyzeScaleBoneMineralSensor(scale),
                 WyzeScaleProteinSensor(scale),
+                WyzeScaleVisceralFatSensor(scale),
                 WyzeScaleBMRSensor(scale),
                 WyzeScaleMetabolicAgeSensor(scale),
                 WyzeScaleHeartRateSensor(scale),
@@ -943,6 +944,7 @@ class WyzeScaleMuscleMassSensor(WyzeScaleBaseSensor):
     """Wyze Scale muscle mass sensor."""
 
     _attr_name = "Muscle Mass"
+    _attr_device_class = SensorDeviceClass.WEIGHT
     _attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
     _attr_suggested_display_precision = 1
     _attr_icon = "mdi:weight-lifter"
@@ -1010,6 +1012,7 @@ class WyzeScaleBoneMineralSensor(WyzeScaleOptionalBaseSensor):
     """Wyze Scale bone mineral mass sensor."""
 
     _attr_name = "Bone Mineral"
+    _attr_device_class = SensorDeviceClass.WEIGHT
     _attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
     _attr_suggested_display_precision = 2
 
@@ -1042,6 +1045,25 @@ class WyzeScaleProteinSensor(WyzeScaleOptionalBaseSensor):
         """Return protein percentage."""
         record = self._scale.latest_record
         return None if record is None else record.protein
+
+
+class WyzeScaleVisceralFatSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale visceral fat rating sensor (dimensionless index)."""
+
+    _attr_name = "Visceral Fat"
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:stomach"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the visceral fat sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-visceral-fat"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return visceral fat rating."""
+        record = self._scale.latest_record
+        return None if record is None else record.body_vfr
 
 
 class WyzeScaleBMRSensor(WyzeScaleOptionalBaseSensor):
