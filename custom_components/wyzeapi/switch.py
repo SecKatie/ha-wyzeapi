@@ -536,7 +536,7 @@ class WyzeCameraNotificationSwitch(SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self._device.notify
+        return getattr(self._device, "notify", None)
 
     @property
     def unique_id(self):
@@ -622,7 +622,7 @@ class WyzeCameraMotionSwitch(SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self._device.motion
+        return getattr(self._device, "motion", None)
 
     @property
     def unique_id(self):
