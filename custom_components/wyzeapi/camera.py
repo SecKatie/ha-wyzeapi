@@ -45,6 +45,45 @@ FALLBACK_ICE_SERVERS = [
 ]
 
 
+def strip_h264_mode0(sdp: str) -> str:
+    """Remove H.264 payload types that use packetization-mode=0 from an offer.
+
+    Battery cameras pick the mode-0 payload type when the browser offers one,
+    then send FU-A fragmented NAL units anyway. The browser's mode-0
+    depacketiser drops those, so the stream arrives and nothing decodes:
+    measured 1,757,262 bytes over 1,626 packets for framesDecoded=1, against
+    189 frames from a camera that answered mode 1. Offering only mode 1 leaves
+    the camera the payload type the browser can actually depacketise, at the
+    same profile.
+    """
+    mode0 = set()
+    for match in re.finditer(r"a=fmtp:(\d+) ([^\r\n]*packetization-mode=0[^\r\n]*)", sdp):
+        mode0.add(match.group(1))
+    if not mode0:
+        return sdp
+
+    # An rtx payload type is only useful while the type it repairs survives.
+    for match in re.finditer(r"a=fmtp:(\d+) apt=(\d+)", sdp):
+        if match.group(2) in mode0:
+            mode0.add(match.group(1))
+
+    kept_lines = []
+    for line in sdp.splitlines(keepends=True):
+        stripped = line.rstrip("\r\n")
+        if stripped.startswith("m=video "):
+            parts = stripped.split(" ")
+            head, payloads = parts[:3], parts[3:]
+            line = " ".join(head + [p for p in payloads if p not in mode0]) + "\r\n"
+        else:
+            match = re.match(r"a=(?:rtpmap|fmtp|rtcp-fb):(\d+)[ :]", stripped)
+            if match and match.group(1) in mode0:
+                continue
+        kept_lines.append(line)
+
+    _LOGGER.debug("Stripped packetization-mode=0 payload types %s", sorted(mode0))
+    return "".join(kept_lines)
+
+
 @token_exception_handler
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -290,6 +329,8 @@ class WyzeCamera(CameraEntity):
         # runs the iot-device wakeup action before sending its offer.
         # The config is always fetched fresh here: KVS signed URLs are
         # single-use and short-lived.
+        offer_sdp = strip_h264_mode0(offer_sdp)
+
         config = await self.wake_and_fetch_config()
         _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
 
@@ -511,6 +552,7 @@ class WyzeCameraWebRTCSession:
         An offer of recvonly must be answered with sendonly or inactive.
         """
         _LOGGER.debug("Attempt to fix sdp answer...")
+
         if isinstance(self.sdp_answer, str) and isinstance(self.sdp_offer, str):
             sdp_kinds = ["audio", "video", "application"]
             sdp_directions = ["sendrecv", "sendonly", "recvonly", "inactive"]
