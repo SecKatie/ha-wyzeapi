@@ -58,6 +58,8 @@ def service() -> SimpleNamespace:
         return_to_charge=AsyncMock(),
         stop=AsyncMock(),
         set_suction_level=AsyncMock(),
+        sweep_rooms=AsyncMock(),
+        get_rooms=AsyncMock(return_value={}),
         update=AsyncMock(),
     )
 
@@ -183,6 +185,23 @@ def test_availability_follows_the_device(entity, vacuum):
     assert entity.available is False
 
 
+def test_a_sleeping_vacuum_stays_unavailable_though_its_state_still_reads(
+    entity, vacuum
+):
+    """Sleep is unavailability here, deliberately, and this pins that down.
+
+    A docked JA_RO2 reports `iot_state: disconnected` while the cloud keeps
+    answering reads, so battery and mode are still populated and it is tempting to
+    call the entity available. Wyze refuses every command in that state with code
+    3000, so availability has to follow the device, not the readability of state.
+    """
+    vacuum.available = False
+
+    assert entity.available is False
+    assert entity.battery_level == 100
+    assert entity.activity is VacuumActivity.DOCKED
+
+
 @pytest.mark.asyncio
 async def test_start_sweeps(entity, service, vacuum):
     await entity.async_start()
@@ -243,6 +262,37 @@ async def test_a_service_error_surfaces_as_a_home_assistant_error(
 
 
 @pytest.mark.asyncio
+async def test_an_offline_refusal_says_the_vacuum_is_asleep(entity, service):
+    """The poll/command race gets a sentence, not the raw Wyze error dict.
+
+    Availability normally stops a command to a sleeping vacuum before it is sent,
+    so this fires when it falls asleep between the two.
+    """
+    service.sweep.side_effect = UnknownApiError(
+        {"code": 3000, "message": "Device is offline", "data": None}
+    )
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await entity.async_start()
+
+    assert "Diogee is asleep" in str(raised.value)
+
+
+@pytest.mark.asyncio
+async def test_a_non_offline_error_keeps_the_raw_detail(entity, service):
+    """Only code 3000 is translated; anything else must not lose its detail."""
+    service.sweep.side_effect = UnknownApiError(
+        {"code": 1004, "message": "Signature2 is invalid"}
+    )
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await entity.async_start()
+
+    assert "Signature2 is invalid" in str(raised.value)
+    assert "asleep" not in str(raised.value)
+
+
+@pytest.mark.asyncio
 async def test_update_skips_the_poll_right_after_a_command(entity, service):
     await entity.async_start()
     service.update.reset_mock()
@@ -254,6 +304,79 @@ async def test_update_skips_the_poll_right_after_a_command(entity, service):
     await entity.async_update()
 
     service.update.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_send_command_cleans_rooms_by_name(entity, service, vacuum):
+    entity._rooms = {"Kitchen": 16, "Laundry": 14}
+
+    await entity.async_send_command("clean_rooms", {"rooms": ["Kitchen", "Laundry"]})
+
+    service.sweep_rooms.assert_awaited_once_with(vacuum, [16, 14])
+
+
+@pytest.mark.asyncio
+async def test_send_command_accepts_room_ids(entity, service, vacuum):
+    entity._rooms = {"Kitchen": 16}
+
+    await entity.async_send_command("clean_rooms", {"rooms": [16]})
+
+    service.sweep_rooms.assert_awaited_once_with(vacuum, [16])
+
+
+@pytest.mark.asyncio
+async def test_send_command_accepts_a_bare_room_name(entity, service, vacuum):
+    entity._rooms = {"Kitchen": 16}
+
+    await entity.async_send_command("clean_rooms", {"rooms": "Kitchen"})
+
+    service.sweep_rooms.assert_awaited_once_with(vacuum, [16])
+
+
+@pytest.mark.asyncio
+async def test_send_command_matches_a_room_name_case_insensitively(
+    entity, service, vacuum
+):
+    entity._rooms = {"Master Bedroom": 12}
+
+    await entity.async_send_command("clean_rooms", {"rooms": ["master bedroom"]})
+
+    service.sweep_rooms.assert_awaited_once_with(vacuum, [12])
+
+
+@pytest.mark.asyncio
+async def test_send_command_names_the_known_rooms_when_one_is_wrong(entity, service):
+    entity._rooms = {"Kitchen": 16, "Laundry": 14}
+
+    with pytest.raises(HomeAssistantError) as err:
+        await entity.async_send_command("clean_rooms", {"rooms": ["Kitchn"]})
+
+    assert "Kitchen" in str(err.value)
+    service.sweep_rooms.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_command_rejects_an_empty_room_list(entity, service):
+    entity._rooms = {"Kitchen": 16}
+
+    with pytest.raises(HomeAssistantError):
+        await entity.async_send_command("clean_rooms", {"rooms": []})
+
+    service.sweep_rooms.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_command_rejects_an_unknown_command(entity, service):
+    with pytest.raises(HomeAssistantError):
+        await entity.async_send_command("mow_the_lawn", {})
+
+    service.sweep_rooms.assert_not_awaited()
+
+
+def test_rooms_are_exposed_as_an_attribute(entity):
+    entity._rooms = {"Kitchen": 16, "Laundry": 14}
+
+    assert entity.extra_state_attributes["rooms"] == ["Kitchen", "Laundry"]
 
 
 @pytest.mark.asyncio

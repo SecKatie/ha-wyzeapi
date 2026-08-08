@@ -31,6 +31,26 @@ ATTRIBUTION = "Data provided by Wyze"
 
 FAN_SPEEDS = [level.description for level in VacuumSuctionLevel]
 
+# Wyze refuses a command to a sleeping vacuum with this code. Availability stops
+# most such commands before they are sent; this catches the vacuum falling asleep
+# between a poll and a command, and turns the raw error dict into something the
+# owner can act on.
+OFFLINE_ERROR_CODE = 3000
+
+# `vacuum.send_command` command name for cleaning a subset of the map.
+CLEAN_ROOMS_COMMAND = "clean_rooms"
+
+
+def _is_offline_refusal(err: Exception) -> bool:
+    """Was this Wyze error the "Device is offline" refusal?"""
+    # Venus returns the code as an int, but Wyze is inconsistent about this across
+    # its services, so compare as a string rather than trusting the type.
+    for arg in err.args:
+        if isinstance(arg, dict) and str(arg.get("code")) == str(OFFLINE_ERROR_CODE):
+            return True
+    return False
+
+
 ACTIVITY_BY_MODE = {
     VacuumMode.IDLE: VacuumActivity.IDLE,
     VacuumMode.CLEANING: VacuumActivity.CLEANING,
@@ -82,6 +102,7 @@ class WyzeVacuum(StateVacuumEntity):
         | VacuumEntityFeature.FAN_SPEED
         | VacuumEntityFeature.BATTERY
         | VacuumEntityFeature.STATE
+        | VacuumEntityFeature.SEND_COMMAND
     )
     _attr_fan_speed_list = FAN_SPEEDS
     _just_updated = False
@@ -90,6 +111,7 @@ class WyzeVacuum(StateVacuumEntity):
         """Initialize the vacuum."""
         self._vacuum_service = vacuum_service
         self._vacuum = vacuum
+        self._rooms: dict[str, int] = {}
         self._attr_unique_id = f"{self._vacuum.mac}-vacuum"
 
     @property
@@ -104,19 +126,24 @@ class WyzeVacuum(StateVacuumEntity):
 
     @property
     def available(self) -> bool:
-        """Return the connection status of this vacuum."""
+        """Return the connection status of this vacuum.
+
+        The JA_RO2 sleeps on its dock and reports itself disconnected while the
+        cloud still answers reads in full. Availability follows commandability
+        rather than readability, because Wyze refuses every command to a sleeping
+        vacuum: a greyed-out button is the honest signal, where an enabled one
+        would fail at the API.
+        """
         return self._vacuum.available
 
     @property
     def activity(self) -> VacuumActivity:
         """Return what the vacuum is doing.
 
-        A recognised fault outranks the reported mode: a vacuum wedged under a
-        couch keeps reporting CLEANING, so trusting the mode alone hides the one
-        state the owner needs to act on. Only a recognised one, though. Wyze
-        publishes a fault code on every read, and a healthy docked vacuum reports
-        an undocumented non-zero code steadily; treating that as a fault would
-        pin the entity to ERROR forever.
+        A recognised fault outranks the reported mode, because a vacuum wedged
+        under a couch keeps reporting CLEANING and the fault is the state its
+        owner needs to act on. Recognition matters: `fault_code` also carries
+        routine status, so only a code the firmware documents as a fault counts.
         """
         if self._vacuum.fault is not None:
             return VacuumActivity.ERROR
@@ -140,6 +167,7 @@ class WyzeVacuum(StateVacuumEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the consumable life and last-clean detail."""
         return {
+            "rooms": sorted(self._rooms),
             "fault_code": self._vacuum.fault_code,
             "fault": self._vacuum.fault.description if self._vacuum.fault else None,
             "clean_size": self._vacuum.clean_size,
@@ -180,11 +208,68 @@ class WyzeVacuum(StateVacuumEntity):
         await self._command(self._vacuum_service.set_suction_level, level)
         self._vacuum.suction_level = level
 
+    @token_exception_handler
+    async def async_send_command(
+        self,
+        command: str,
+        params: dict[str, Any] | list[Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run a vacuum command that has no standard Home Assistant service.
+
+        Supports `clean_rooms` with a `rooms` list of room names or ids, so an
+        automation can say "clean the Kitchen" without carrying the map's ids.
+        """
+        if command != CLEAN_ROOMS_COMMAND:
+            raise HomeAssistantError(f"Unsupported vacuum command: {command}")
+
+        params = params or {}
+        rooms = params.get("rooms") if isinstance(params, dict) else None
+        if isinstance(rooms, (str, int)):
+            rooms = [rooms]
+        if not rooms:
+            raise HomeAssistantError(
+                f"{CLEAN_ROOMS_COMMAND} needs a 'rooms' list. "
+                f"Known rooms: {', '.join(sorted(self._rooms)) or 'none discovered'}"
+            )
+
+        await self._command(self._vacuum_service.sweep_rooms, self._resolve(rooms))
+
+    def _resolve(self, rooms: list[Any]) -> list[int]:
+        """Turn room names or ids into the ids the map uses."""
+        by_lower = {name.lower(): room_id for name, room_id in self._rooms.items()}
+        ids = []
+        for room in rooms:
+            if isinstance(room, int):
+                ids.append(room)
+                continue
+            room_id = by_lower.get(str(room).strip().lower())
+            if room_id is None:
+                raise HomeAssistantError(
+                    f"Unknown room {room!r}. "
+                    f"Known rooms: {', '.join(sorted(self._rooms)) or 'none discovered'}"
+                )
+            ids.append(room_id)
+        return ids
+
+    async def _refresh_rooms(self) -> None:
+        """Cache the current map's rooms, tolerating a vacuum that cannot answer."""
+        try:
+            self._rooms = await self._vacuum_service.get_rooms(self._vacuum)
+        except (ParameterError, UnknownApiError, ClientConnectionError) as err:
+            # Room names are a convenience; every other command works without them.
+            _LOGGER.debug("Could not read rooms for %s: %s", self._vacuum.nickname, err)
+
     async def _command(self, method: Callable, *args: Any) -> None:
         """Issue a vacuum command, translating Wyze failures for the UI."""
         try:
             await method(self._vacuum, *args)
         except (ParameterError, UnknownApiError) as err:
+            if _is_offline_refusal(err):
+                raise HomeAssistantError(
+                    f"{self._vacuum.nickname} is asleep and Wyze refused the "
+                    "command. Try again once it reports as available."
+                ) from err
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
@@ -208,6 +293,7 @@ class WyzeVacuum(StateVacuumEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to update events."""
+        await self._refresh_rooms()
         self._vacuum.callback_function = self.async_update_callback
         self._vacuum_service.register_updater(self._vacuum, 30)
         await self._vacuum_service.start_update_manager()
