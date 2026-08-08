@@ -194,7 +194,7 @@ async def async_migrate_switch_data(
                             "automation": issue,
                         },
                     )
-            entity_registry.async_remove(entity.id)
+            entity_registry.async_remove(entity.entity_id)
 
     for device in device_list:
         device_automations = automations_with_device(hass, device)
