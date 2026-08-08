@@ -34,6 +34,16 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 
+# Used only when a camera has no cached session config yet: the client-config
+# hook is synchronous and cannot fetch one. Public STUN is enough to gather
+# host and server-reflexive candidates; the offer that follows carries the
+# camera's own KVS TURN servers.
+FALLBACK_ICE_SERVERS = [
+    {"url": "stun:stun.kinesisvideo.us-west-2.amazonaws.com:443", "username": "", "credential": ""},
+    {"url": "stun:stun.l.google.com:19302", "username": "", "credential": ""},
+    {"url": "stun:stun1.l.google.com:19302", "username": "", "credential": ""},
+]
+
 
 @token_exception_handler
 async def async_setup_entry(
@@ -106,6 +116,52 @@ class WyzeCamera(CameraEntity):
             "Initial fetch of WebRTC session configuration complete for camera %s",
             self.name,
         )
+
+    async def wake_and_fetch_config(self) -> dict:
+        """Wake the camera if it sleeps, then fetch a fresh stream config.
+
+        A battery camera reports iot-state 0 until it has finished waking, so
+        the first get_stream_info after the wakeup action still answers
+        "offline". Poll for it instead of failing the whole request on the
+        first no.
+        """
+        battery = self._camera.product_model in DEVICEMGMT_API_MODELS
+        if battery:
+            try:
+                await self._camera_service.turn_on(self._camera)
+                _LOGGER.debug("Sent wakeup for camera %s", self.name)
+            except Exception as err:
+                _LOGGER.warning("Wakeup failed for camera %s: %s", self.name, err)
+
+        attempts = 6 if battery else 1
+        last_err: Exception | None = None
+        for attempt in range(attempts):
+            try:
+                config = await self._camera_service.get_stream_info(self._camera)
+            except Exception as err:
+                last_err = err
+                _LOGGER.debug(
+                    "Stream config attempt %d/%d failed for camera %s: %s",
+                    attempt + 1,
+                    attempts,
+                    self.name,
+                    err,
+                )
+                if attempt + 1 < attempts:
+                    await asyncio.sleep(4)
+                continue
+            self._cached_config = config
+            return config
+        raise HomeAssistantError(
+            f"Camera {self.name} did not come online for streaming: {last_err}"
+        )
+
+    async def background_config_refresh(self) -> None:
+        """Populate the config cache out of band so the next view has real ICE servers."""
+        try:
+            await self.wake_and_fetch_config()
+        except Exception as err:
+            _LOGGER.debug("Background config refresh failed for camera %s: %s", self.name, err)
 
     @cached_property
     def device_info(self) -> DeviceInfo | None:
@@ -183,11 +239,21 @@ class WyzeCamera(CameraEntity):
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the WebRTC client configuration for this camera, including ICE servers."""
-        # This shouldn't happen, but throw an error if we don't have a config ready yet
-        if self._cached_config is None:
-            raise HomeAssistantError("WebRTC session configuration not available yet")
-
+        # A camera that was asleep when the integration set up has no cached
+        # config, and this hook is synchronous so it cannot fetch one. Raising
+        # here failed the view before the offer, which is what does the
+        # wakeup, ever ran. Fall back to public STUN and refresh out of band.
         config = self._cached_config
+        if config is None:
+            _LOGGER.debug(
+                "No cached WebRTC config for camera %s, using STUN-only fallback",
+                self.name,
+            )
+            if self._config_task is None or self._config_task.done():
+                self._config_task = self.hass.async_create_task(
+                    self.background_config_refresh()
+                )
+            config = {"ice_servers": FALLBACK_ICE_SERVERS}
 
         ice_servers = []
         for server in config.get("ice_servers", []):
@@ -222,19 +288,9 @@ class WyzeCamera(CameraEntity):
         # channel; without this the offer goes to a channel with no master
         # and no answer ever arrives. Mirrors the my.wyze.com client, which
         # runs the iot-device wakeup action before sending its offer.
-        if self._camera.product_model in DEVICEMGMT_API_MODELS:
-            try:
-                await self._camera_service.turn_on(self._camera)
-                _LOGGER.debug("Sent wakeup for camera %s", self.name)
-            except Exception as err:
-                _LOGGER.warning("Wakeup failed for camera %s: %s", self.name, err)
-
-        # Always fetch a truly fresh config so the signaling URL and ICE servers
-        # are never stale — KVS signed URLs are single-use and short-lived.
-        config = await self._camera_service.get_stream_info(self._camera)
-
-        # Update cached config with the new ICE servers
-        self._cached_config = config
+        # The config is always fetched fresh here: KVS signed URLs are
+        # single-use and short-lived.
+        config = await self.wake_and_fetch_config()
         _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
 
         self.sessions[session_id] = WyzeCameraWebRTCSession(
@@ -404,7 +460,7 @@ class WyzeCameraWebRTCSession:
     async def send_candidate(self, candidate: RTCIceCandidateInit):
         """Send an ICE candidate to the Kinesis Video Streams signaling channel."""
         # Take RTCIceCandidateInit, convert it to the format in the messagePayload above, and send it to the client using the callback
-        # Wait for send_offer to establish the connection — never reconnect (KVS URLs are single-use)
+        # Wait for send_offer to establish the connection, never reconnect (KVS URLs are single-use)
         try:
             await asyncio.wait_for(self._connected.wait(), timeout=10.0)
         except asyncio.TimeoutError as exc:
