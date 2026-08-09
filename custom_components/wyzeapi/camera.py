@@ -36,6 +36,8 @@ from .const import (
     CONF_CLIENT,
     CONF_RTSP_ENABLED,
     CONF_RTSP_PASSWORD,
+    CONF_RTSP_PROFILE,
+    CONF_RTSP_PROFILES,
     CONF_RTSP_SECURE,
     CONF_RTSP_USERNAME,
     DOMAIN,
@@ -210,9 +212,11 @@ class WyzeCamera(CameraEntity):
     async def stream_source(self) -> str | None:
         """Return this camera's RTSP(S) URL, if the user has configured one.
 
-        Returns None (no snapshot support) until RTSP is set up for this
-        specific camera's MAC in the config entry's options -- configuring
-        one camera does not enable snapshots for the others.
+        Returns None (no snapshot support) until RTSP is enabled for this
+        specific camera's MAC and points at a named credential profile that
+        still exists -- configuring one camera does not enable snapshots
+        for the others, and deleting a profile safely disables any camera
+        still referencing it rather than raising.
         """
         camera_options = self._config_entry.options.get(CONF_CAMERAS, {}).get(
             self._camera.mac, {}
@@ -220,10 +224,17 @@ class WyzeCamera(CameraEntity):
         if not camera_options.get(CONF_RTSP_ENABLED):
             return None
 
+        profile_name = camera_options.get(CONF_RTSP_PROFILE)
+        profile = self._config_entry.options.get(CONF_RTSP_PROFILES, {}).get(
+            profile_name
+        )
+        if not profile:
+            return None
+
         ip = self._camera.device_params["ip"]
-        username = quote(camera_options[CONF_RTSP_USERNAME], safe="")
-        password = quote(camera_options[CONF_RTSP_PASSWORD], safe="")
-        if camera_options.get(CONF_RTSP_SECURE):
+        username = quote(profile[CONF_RTSP_USERNAME], safe="")
+        password = quote(profile[CONF_RTSP_PASSWORD], safe="")
+        if profile.get(CONF_RTSP_SECURE):
             return f"rtsps://{username}:{password}@{ip}:{RTSPS_PORT}/stream0"
         return f"rtsp://{username}:{password}@{ip}:{RTSP_PORT}/stream0"
 

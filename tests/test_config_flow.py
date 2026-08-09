@@ -1,4 +1,5 @@
-"""Tests for the Wyze options flow, focused on per-camera RTSP config."""
+"""Tests for the Wyze options flow: general settings, RTSP credential
+profiles, and per-camera RTSP configuration."""
 
 import asyncio
 from types import SimpleNamespace
@@ -13,6 +14,8 @@ from custom_components.wyzeapi.const import (
     CONF_CLIENT,
     CONF_RTSP_ENABLED,
     CONF_RTSP_PASSWORD,
+    CONF_RTSP_PROFILE,
+    CONF_RTSP_PROFILES,
     CONF_RTSP_SECURE,
     CONF_RTSP_USERNAME,
     DOMAIN,
@@ -55,16 +58,16 @@ def _flow_for(
 
 
 @pytest.mark.asyncio
-async def test_init_shows_a_menu_with_general_and_camera_options(
+async def test_init_shows_a_menu_with_all_three_options(
     config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
 ) -> None:
-    """The top-level options step is a menu, not a single form."""
+    """The top-level options step is a menu with all three areas."""
     flow = _flow_for(config_entry, cameras)
 
     result = await flow.async_step_init()
 
     assert result["type"] == FlowResultType.MENU
-    assert set(result["menu_options"]) == {"general", "camera_rtsp"}
+    assert set(result["menu_options"]) == {"general", "rtsp_profiles", "camera_rtsp"}
 
 
 @pytest.mark.asyncio
@@ -84,10 +87,86 @@ async def test_general_step_still_offers_the_bulb_local_control_toggle(
 
 
 @pytest.mark.asyncio
-async def test_camera_rtsp_step_shows_a_picker_of_live_cameras(
+async def test_rtsp_profiles_step_shows_a_blank_form_with_no_existing_profiles(
     config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
 ) -> None:
+    """Adding the first profile starts from blank defaults."""
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profiles()
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "rtsp_profiles"
+    defaults = {str(k): k.default() for k in result["data_schema"].schema}
+    assert defaults["name"] == ""
+    assert defaults[CONF_RTSP_USERNAME] == ""
+    assert defaults[CONF_RTSP_SECURE] is False
+
+
+@pytest.mark.asyncio
+async def test_saving_a_profile_creates_it_and_preserves_others(
+    cameras: list[SimpleNamespace],
+) -> None:
+    """Saving a new profile keeps any existing profiles and other options."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={
+            "bulb_local_control": False,
+            CONF_RTSP_PROFILES: {
+                "Existing": {
+                    CONF_RTSP_USERNAME: "old",
+                    CONF_RTSP_PASSWORD: "old-pass",
+                    CONF_RTSP_SECURE: False,
+                }
+            },
+        },
+    )
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profiles(
+        {
+            "name": "Wyze Account",
+            CONF_RTSP_USERNAME: "wyze",
+            CONF_RTSP_PASSWORD: "hunter2",
+            CONF_RTSP_SECURE: True,
+        }
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"]["bulb_local_control"] is False
+    profiles = result["data"][CONF_RTSP_PROFILES]
+    assert profiles["Existing"][CONF_RTSP_USERNAME] == "old"
+    assert profiles["Wyze Account"] == {
+        CONF_RTSP_USERNAME: "wyze",
+        CONF_RTSP_PASSWORD: "hunter2",
+        CONF_RTSP_SECURE: True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_camera_rtsp_aborts_when_no_profiles_exist_yet(
+    config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
+) -> None:
+    """Configuring a camera before any credential profile exists is a dead end."""
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_camera_rtsp()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "no_rtsp_profiles"
+
+
+@pytest.mark.asyncio
+async def test_camera_rtsp_step_shows_a_picker_of_live_cameras(
+    cameras: list[SimpleNamespace],
+) -> None:
     """The camera picker lists real cameras fetched from the live client."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={CONF_RTSP_PROFILES: {"Wyze Account": {}}},
+    )
     flow = _flow_for(config_entry, cameras)
 
     result = await flow.async_step_camera_rtsp()
@@ -105,9 +184,14 @@ async def test_camera_rtsp_step_shows_a_picker_of_live_cameras(
 
 @pytest.mark.asyncio
 async def test_picking_a_camera_advances_to_its_settings_form(
-    config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
+    cameras: list[SimpleNamespace],
 ) -> None:
     """Submitting the picker moves straight to that camera's own field set."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={CONF_RTSP_PROFILES: {"Wyze Account": {}}},
+    )
     flow = _flow_for(config_entry, cameras)
 
     result = await flow.async_step_camera_rtsp({"camera": "AA:BB:CC:DD:EE:FF"})
@@ -117,10 +201,45 @@ async def test_picking_a_camera_advances_to_its_settings_form(
 
 
 @pytest.mark.asyncio
+async def test_camera_settings_offers_existing_profiles_to_pick_from(
+    cameras: list[SimpleNamespace],
+) -> None:
+    """The per-camera form references profiles by name, not raw credentials."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={
+            CONF_RTSP_PROFILES: {
+                "Wyze Account": {},
+                "Guest Account": {},
+            }
+        },
+    )
+    flow = _flow_for(config_entry, cameras)
+    flow._selected_camera_mac = "AA:BB:CC:DD:EE:FF"
+
+    result = await flow.async_step_camera_rtsp_settings()
+
+    schema = result["data_schema"].schema
+    keys = {str(k) for k in schema}
+    assert keys == {CONF_RTSP_ENABLED, CONF_RTSP_PROFILE}
+    profile_key = next(k for k in schema if str(k) == CONF_RTSP_PROFILE)
+    assert dict(schema[profile_key].container) == {
+        "Wyze Account": "Wyze Account",
+        "Guest Account": "Guest Account",
+    }
+
+
+@pytest.mark.asyncio
 async def test_camera_settings_default_to_disabled_when_never_configured(
-    config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
+    cameras: list[SimpleNamespace],
 ) -> None:
     """A camera with no prior RTSP config shows blank/disabled defaults."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={CONF_RTSP_PROFILES: {"Wyze Account": {}}},
+    )
     flow = _flow_for(config_entry, cameras)
     flow._selected_camera_mac = "AA:BB:CC:DD:EE:FF"
 
@@ -129,27 +248,24 @@ async def test_camera_settings_default_to_disabled_when_never_configured(
     schema = result["data_schema"].schema
     defaults = {str(k): k.default() for k in schema}
     assert defaults[CONF_RTSP_ENABLED] is False
-    assert defaults[CONF_RTSP_USERNAME] == ""
-    assert defaults[CONF_RTSP_SECURE] is False
 
 
 @pytest.mark.asyncio
 async def test_camera_settings_prefill_from_existing_config(
     cameras: list[SimpleNamespace],
 ) -> None:
-    """Re-opening a previously configured camera shows its saved values."""
+    """Re-opening a previously configured camera shows its saved profile."""
     config_entry = SimpleNamespace(
         entry_id="entry-1",
         domain=DOMAIN,
         options={
+            CONF_RTSP_PROFILES: {"Wyze Account": {}},
             CONF_CAMERAS: {
                 "AA:BB:CC:DD:EE:FF": {
                     CONF_RTSP_ENABLED: True,
-                    CONF_RTSP_USERNAME: "wyze",
-                    CONF_RTSP_PASSWORD: "hunter2",
-                    CONF_RTSP_SECURE: True,
+                    CONF_RTSP_PROFILE: "Wyze Account",
                 }
-            }
+            },
         },
     )
     flow = _flow_for(config_entry, cameras)
@@ -160,8 +276,7 @@ async def test_camera_settings_prefill_from_existing_config(
     schema = result["data_schema"].schema
     defaults = {str(k): k.default() for k in schema}
     assert defaults[CONF_RTSP_ENABLED] is True
-    assert defaults[CONF_RTSP_USERNAME] == "wyze"
-    assert defaults[CONF_RTSP_SECURE] is True
+    assert defaults[CONF_RTSP_PROFILE] == "Wyze Account"
 
 
 @pytest.mark.asyncio
@@ -173,34 +288,29 @@ async def test_saving_camera_settings_merges_without_clobbering_other_cameras(
         entry_id="entry-1",
         domain=DOMAIN,
         options={
+            CONF_RTSP_PROFILES: {"Wyze Account": {}},
             CONF_CAMERAS: {
                 "11:22:33:44:55:66": {
                     CONF_RTSP_ENABLED: True,
-                    CONF_RTSP_USERNAME: "wyze",
-                    CONF_RTSP_PASSWORD: "existing-pass",
-                    CONF_RTSP_SECURE: False,
+                    CONF_RTSP_PROFILE: "Wyze Account",
                 }
-            }
+            },
         },
     )
     flow = _flow_for(config_entry, cameras)
     flow._selected_camera_mac = "AA:BB:CC:DD:EE:FF"
 
     result = await flow.async_step_camera_rtsp_settings(
-        {
-            CONF_RTSP_ENABLED: True,
-            CONF_RTSP_USERNAME: "wyze",
-            CONF_RTSP_PASSWORD: "new-pass",
-            CONF_RTSP_SECURE: True,
-        }
+        {CONF_RTSP_ENABLED: True, CONF_RTSP_PROFILE: "Wyze Account"}
     )
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
     saved = result["data"][CONF_CAMERAS]
-    assert saved["11:22:33:44:55:66"][CONF_RTSP_PASSWORD] == "existing-pass"
+    assert saved["11:22:33:44:55:66"] == {
+        CONF_RTSP_ENABLED: True,
+        CONF_RTSP_PROFILE: "Wyze Account",
+    }
     assert saved["AA:BB:CC:DD:EE:FF"] == {
         CONF_RTSP_ENABLED: True,
-        CONF_RTSP_USERNAME: "wyze",
-        CONF_RTSP_PASSWORD: "new-pass",
-        CONF_RTSP_SECURE: True,
+        CONF_RTSP_PROFILE: "Wyze Account",
     }

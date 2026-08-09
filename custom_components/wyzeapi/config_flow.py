@@ -22,6 +22,8 @@ from .const import (
     CONF_CLIENT,
     CONF_RTSP_ENABLED,
     CONF_RTSP_PASSWORD,
+    CONF_RTSP_PROFILE,
+    CONF_RTSP_PROFILES,
     CONF_RTSP_SECURE,
     CONF_RTSP_USERNAME,
     DEFAULT_LOCAL_CONTROL,
@@ -165,11 +167,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     _selected_camera_mac: str | None = None
 
     async def async_step_init(self, user_input=None):
-        """Show the top-level menu: general settings, or per-camera RTSP."""
+        """Show the top-level menu: general settings, RTSP credentials, or per-camera RTSP."""
         return self.async_show_menu(
             step_id="init",
             menu_options={
                 "general": "General settings",
+                "rtsp_profiles": "Manage RTSP credentials",
                 "camera_rtsp": "Configure camera RTSP snapshots",
             },
         )
@@ -191,8 +194,37 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
         return self.async_show_form(step_id="general", data_schema=data_schema)
 
+    async def async_step_rtsp_profiles(self, user_input=None):
+        """Add or overwrite a named RTSP credential profile.
+
+        Wyze RTSP logins are commonly reused across multiple cameras, so
+        credentials live here as named profiles instead of being retyped
+        on every camera's own settings form.
+        """
+        if user_input is not None:
+            updated_options = dict(self.config_entry.options)
+            updated_profiles = dict(updated_options.get(CONF_RTSP_PROFILES, {}))
+            name = user_input.pop("name")
+            updated_profiles[name] = user_input
+            updated_options[CONF_RTSP_PROFILES] = updated_profiles
+            return self.async_create_entry(title="", data=updated_options)
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("name", default=""): str,
+                vol.Optional(CONF_RTSP_USERNAME, default=""): str,
+                vol.Optional(CONF_RTSP_PASSWORD, default=""): str,
+                vol.Optional(CONF_RTSP_SECURE, default=False): bool,
+            }
+        )
+        return self.async_show_form(step_id="rtsp_profiles", data_schema=data_schema)
+
     async def async_step_camera_rtsp(self, user_input=None):
         """Show a picker for which camera's RTSP settings to configure."""
+        profiles = self.config_entry.options.get(CONF_RTSP_PROFILES, {})
+        if not profiles:
+            return self.async_abort(reason="no_rtsp_profiles")
+
         if user_input is not None:
             self._selected_camera_mac = user_input["camera"]
             return await self.async_step_camera_rtsp_settings()
@@ -211,9 +243,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(step_id="camera_rtsp", data_schema=data_schema)
 
     async def async_step_camera_rtsp_settings(self, user_input=None):
-        """Show (or save) RTSP settings for the previously-picked camera."""
+        """Show (or save) which RTSP profile this camera should use."""
         mac = self._selected_camera_mac
         existing = self.config_entry.options.get(CONF_CAMERAS, {}).get(mac, {})
+        profiles = self.config_entry.options.get(CONF_RTSP_PROFILES, {})
 
         if user_input is not None:
             updated_options = dict(self.config_entry.options)
@@ -229,17 +262,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     default=existing.get(CONF_RTSP_ENABLED, False),
                 ): bool,
                 vol.Optional(
-                    CONF_RTSP_USERNAME,
-                    default=existing.get(CONF_RTSP_USERNAME, ""),
-                ): str,
-                vol.Optional(
-                    CONF_RTSP_PASSWORD,
-                    default=existing.get(CONF_RTSP_PASSWORD, ""),
-                ): str,
-                vol.Optional(
-                    CONF_RTSP_SECURE,
-                    default=existing.get(CONF_RTSP_SECURE, False),
-                ): bool,
+                    CONF_RTSP_PROFILE,
+                    default=existing.get(CONF_RTSP_PROFILE, next(iter(profiles))),
+                ): vol.In({name: name for name in profiles}),
             }
         )
         return self.async_show_form(

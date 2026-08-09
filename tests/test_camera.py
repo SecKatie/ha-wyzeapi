@@ -9,6 +9,8 @@ from custom_components.wyzeapi.const import (
     CONF_CAMERAS,
     CONF_RTSP_ENABLED,
     CONF_RTSP_PASSWORD,
+    CONF_RTSP_PROFILE,
+    CONF_RTSP_PROFILES,
     CONF_RTSP_SECURE,
     CONF_RTSP_USERNAME,
 )
@@ -41,21 +43,27 @@ def _config_entry_with_rtsp(
     mac: str,
     *,
     enabled: bool = True,
+    profile: str = "Wyze Account",
     username: str = "wyze",
     password: str = "hunter2",
     secure: bool = False,
 ) -> SimpleNamespace:
-    """Return a config entry with one camera's RTSP options set."""
+    """Return a config entry with one camera pointed at one credential profile."""
     return SimpleNamespace(
         options={
             CONF_CAMERAS: {
                 mac: {
                     CONF_RTSP_ENABLED: enabled,
+                    CONF_RTSP_PROFILE: profile,
+                }
+            },
+            CONF_RTSP_PROFILES: {
+                profile: {
                     CONF_RTSP_USERNAME: username,
                     CONF_RTSP_PASSWORD: password,
                     CONF_RTSP_SECURE: secure,
                 }
-            }
+            },
         }
     )
 
@@ -89,8 +97,28 @@ async def test_stream_source_is_none_for_a_different_camera(
 
 
 @pytest.mark.asyncio
+async def test_stream_source_is_none_when_profile_was_deleted(
+    camera: SimpleNamespace,
+) -> None:
+    """A camera referencing a since-deleted profile safely yields no source."""
+    config_entry = SimpleNamespace(
+        options={
+            CONF_CAMERAS: {
+                camera.mac: {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: "Deleted Profile",
+                }
+            },
+            CONF_RTSP_PROFILES: {},
+        }
+    )
+    entity = WyzeCamera(SimpleNamespace(), camera, config_entry)
+    assert await entity.stream_source() is None
+
+
+@pytest.mark.asyncio
 async def test_stream_source_builds_plain_rtsp_url(camera: SimpleNamespace) -> None:
-    """An insecure RTSP config builds a port-554 rtsp:// URL from the camera's IP."""
+    """An insecure profile builds a port-554 rtsp:// URL from the camera's IP."""
     config_entry = _config_entry_with_rtsp(camera.mac, secure=False)
     entity = WyzeCamera(SimpleNamespace(), camera, config_entry)
     assert await entity.stream_source() == "rtsp://wyze:hunter2@10.0.3.184:554/stream0"
@@ -98,7 +126,7 @@ async def test_stream_source_builds_plain_rtsp_url(camera: SimpleNamespace) -> N
 
 @pytest.mark.asyncio
 async def test_stream_source_builds_secure_rtsps_url(camera: SimpleNamespace) -> None:
-    """A secure RTSP config builds a port-322 rtsps:// URL from the camera's IP."""
+    """A secure profile builds a port-322 rtsps:// URL from the camera's IP."""
     config_entry = _config_entry_with_rtsp(camera.mac, secure=True)
     entity = WyzeCamera(SimpleNamespace(), camera, config_entry)
     assert await entity.stream_source() == "rtsps://wyze:hunter2@10.0.3.184:322/stream0"
@@ -120,6 +148,49 @@ async def test_stream_source_percent_encodes_special_characters(
     entity = WyzeCamera(SimpleNamespace(), camera, config_entry)
     source = await entity.stream_source()
     assert source == "rtsps://wyze:p%40ss%21w%5Erd@10.0.3.184:322/stream0"
+
+
+@pytest.mark.asyncio
+async def test_stream_source_two_cameras_sharing_one_profile(
+    camera: SimpleNamespace,
+) -> None:
+    """The common case: multiple cameras reusing the same named profile."""
+    other_mac = "11:22:33:44:55:66"
+    config_entry = SimpleNamespace(
+        options={
+            CONF_CAMERAS: {
+                camera.mac: {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: "Wyze Account",
+                },
+                other_mac: {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: "Wyze Account",
+                },
+            },
+            CONF_RTSP_PROFILES: {
+                "Wyze Account": {
+                    CONF_RTSP_USERNAME: "wyze",
+                    CONF_RTSP_PASSWORD: "hunter2",
+                    CONF_RTSP_SECURE: True,
+                }
+            },
+        }
+    )
+    entity = WyzeCamera(SimpleNamespace(), camera, config_entry)
+    other_camera = SimpleNamespace(
+        mac=other_mac,
+        nickname="Other Cam",
+        product_model="WYZE_CAKP2JFUS",
+        device_params={"ip": "10.0.3.69"},
+    )
+    other_entity = WyzeCamera(SimpleNamespace(), other_camera, config_entry)
+
+    assert await entity.stream_source() == "rtsps://wyze:hunter2@10.0.3.184:322/stream0"
+    assert (
+        await other_entity.stream_source()
+        == "rtsps://wyze:hunter2@10.0.3.69:322/stream0"
+    )
 
 
 def test_use_stream_for_stills_is_always_true(entity: WyzeCamera) -> None:
