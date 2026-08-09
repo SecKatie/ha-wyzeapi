@@ -18,6 +18,12 @@ from .const import (
     REFRESH_TOKEN,
     REFRESH_TIME,
     BULB_LOCAL_CONTROL,
+    CONF_CAMERAS,
+    CONF_CLIENT,
+    CONF_RTSP_ENABLED,
+    CONF_RTSP_PASSWORD,
+    CONF_RTSP_SECURE,
+    CONF_RTSP_USERNAME,
     DEFAULT_LOCAL_CONTROL,
     KEY_ID,
     API_KEY,
@@ -156,8 +162,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an option flow for Wyze."""
 
+    _selected_camera_mac: str | None = None
+
     async def async_step_init(self, user_input=None):
-        """Handle options flow."""
+        """Show the top-level menu: general settings, or per-camera RTSP."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options={
+                "general": "General settings",
+                "camera_rtsp": "Configure camera RTSP snapshots",
+            },
+        )
+
+    async def async_step_general(self, user_input=None):
+        """Handle the general-settings step (was the whole flow before RTSP)."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -171,7 +189,62 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 ): bool
             }
         )
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+        return self.async_show_form(step_id="general", data_schema=data_schema)
+
+    async def async_step_camera_rtsp(self, user_input=None):
+        """Show a picker for which camera's RTSP settings to configure."""
+        if user_input is not None:
+            self._selected_camera_mac = user_input["camera"]
+            return await self.async_step_camera_rtsp_settings()
+
+        client = self.hass.data[DOMAIN][self.config_entry.entry_id][CONF_CLIENT]
+        camera_service = await client.camera_service
+        cameras = await camera_service.get_cameras()
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("camera"): vol.In(
+                    {camera.mac: camera.nickname for camera in cameras}
+                )
+            }
+        )
+        return self.async_show_form(step_id="camera_rtsp", data_schema=data_schema)
+
+    async def async_step_camera_rtsp_settings(self, user_input=None):
+        """Show (or save) RTSP settings for the previously-picked camera."""
+        mac = self._selected_camera_mac
+        existing = self.config_entry.options.get(CONF_CAMERAS, {}).get(mac, {})
+
+        if user_input is not None:
+            updated_options = dict(self.config_entry.options)
+            updated_cameras = dict(updated_options.get(CONF_CAMERAS, {}))
+            updated_cameras[mac] = user_input
+            updated_options[CONF_CAMERAS] = updated_cameras
+            return self.async_create_entry(title="", data=updated_options)
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_RTSP_ENABLED,
+                    default=existing.get(CONF_RTSP_ENABLED, False),
+                ): bool,
+                vol.Optional(
+                    CONF_RTSP_USERNAME,
+                    default=existing.get(CONF_RTSP_USERNAME, ""),
+                ): str,
+                vol.Optional(
+                    CONF_RTSP_PASSWORD,
+                    default=existing.get(CONF_RTSP_PASSWORD, ""),
+                ): str,
+                vol.Optional(
+                    CONF_RTSP_SECURE,
+                    default=existing.get(CONF_RTSP_SECURE, False),
+                ): bool,
+            }
+        )
+        return self.async_show_form(
+            step_id="camera_rtsp_settings", data_schema=data_schema
+        )
 
 
 class CannotConnect(HomeAssistantError):
