@@ -58,7 +58,22 @@ async def async_setup_entry(
     cameras = []
     for device in camera_devices:
         # Update the device to get its zones
-        device = await camera_service.update(device)
+        try:
+            device = await camera_service.update(device)
+        except Exception as e:
+            # One camera that cannot be updated must not take down the whole
+            # platform. This is reached when a camera is offline, or has been
+            # removed from the Wyze account but is still in the cached device
+            # list, in which case the property fetch answers 3005
+            # "unauthorized operation". Keep the un-updated device so the
+            # entity is still created (it just lacks its zones) rather than
+            # letting entities disappear on a transient failure.
+            _LOGGER.warning(
+                "Error updating camera %s during setup, adding it without "
+                "updated properties: %s",
+                device.nickname,
+                e,
+            )
         cameras.extend([WyzeCamera(camera_service, device)])
 
     for camera in cameras:
