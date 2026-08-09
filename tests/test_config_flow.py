@@ -270,6 +270,129 @@ async def test_saving_edits_to_an_existing_profile_updates_it_in_place(
 
 
 @pytest.mark.asyncio
+async def test_profile_edit_form_offers_a_bulk_assign_choice_defaulting_to_none(
+    config_entry: SimpleNamespace, cameras: list[SimpleNamespace]
+) -> None:
+    """The edit form's bulk-assign field defaults to doing nothing."""
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profile_edit()
+
+    schema = result["data_schema"].schema
+    key = next(k for k in schema if str(k) == "bulk_assign")
+    assert key.default() == "none"
+    assert set(schema[key].container) == {"none", "all", "unassigned"}
+
+
+@pytest.mark.asyncio
+async def test_saving_with_bulk_assign_all_links_every_live_camera(
+    cameras: list[SimpleNamespace],
+) -> None:
+    """Choosing "all" links the new profile to every camera, even pre-linked ones."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={
+            CONF_RTSP_PROFILES: {"Old": {}},
+            CONF_CAMERAS: {
+                "11:22:33:44:55:66": {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: "Old",
+                }
+            },
+        },
+    )
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profile_edit(
+        {
+            "name": "Wyze Account",
+            CONF_RTSP_USERNAME: "wyze",
+            CONF_RTSP_PASSWORD: "hunter2",
+            CONF_RTSP_SECURE: True,
+            "bulk_assign": "all",
+        }
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    saved = result["data"][CONF_CAMERAS]
+    assert saved["AA:BB:CC:DD:EE:FF"] == {
+        CONF_RTSP_ENABLED: True,
+        CONF_RTSP_PROFILE: "Wyze Account",
+    }
+    assert saved["11:22:33:44:55:66"] == {
+        CONF_RTSP_ENABLED: True,
+        CONF_RTSP_PROFILE: "Wyze Account",
+    }
+
+
+@pytest.mark.asyncio
+async def test_saving_with_bulk_assign_unassigned_skips_already_linked_cameras(
+    cameras: list[SimpleNamespace],
+) -> None:
+    """Choosing "unassigned" only touches cameras with no existing link."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1",
+        domain=DOMAIN,
+        options={
+            CONF_RTSP_PROFILES: {"Old": {}},
+            CONF_CAMERAS: {
+                "11:22:33:44:55:66": {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: "Old",
+                }
+            },
+        },
+    )
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profile_edit(
+        {
+            "name": "Wyze Account",
+            CONF_RTSP_USERNAME: "wyze",
+            CONF_RTSP_PASSWORD: "hunter2",
+            CONF_RTSP_SECURE: True,
+            "bulk_assign": "unassigned",
+        }
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    saved = result["data"][CONF_CAMERAS]
+    assert saved["AA:BB:CC:DD:EE:FF"] == {
+        CONF_RTSP_ENABLED: True,
+        CONF_RTSP_PROFILE: "Wyze Account",
+    }
+    # Already linked to "Old" -- bulk_assign="unassigned" must not touch it.
+    assert saved["11:22:33:44:55:66"] == {
+        CONF_RTSP_ENABLED: True,
+        CONF_RTSP_PROFILE: "Old",
+    }
+
+
+@pytest.mark.asyncio
+async def test_saving_with_bulk_assign_none_leaves_camera_links_untouched(
+    cameras: list[SimpleNamespace],
+) -> None:
+    """The default choice ("none", or simply omitted) does not touch any camera."""
+    config_entry = SimpleNamespace(
+        entry_id="entry-1", domain=DOMAIN, options={CONF_RTSP_PROFILES: {}}
+    )
+    flow = _flow_for(config_entry, cameras)
+
+    result = await flow.async_step_rtsp_profile_edit(
+        {
+            "name": "Wyze Account",
+            CONF_RTSP_USERNAME: "wyze",
+            CONF_RTSP_PASSWORD: "hunter2",
+            CONF_RTSP_SECURE: True,
+        }
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert CONF_CAMERAS not in result["data"]
+
+
+@pytest.mark.asyncio
 async def test_deleting_a_profile_removes_only_that_one(
     cameras: list[SimpleNamespace],
 ) -> None:

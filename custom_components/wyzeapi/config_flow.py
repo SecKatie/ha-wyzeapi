@@ -41,6 +41,11 @@ NONE_PROFILE_SENTINEL = "__none__"
 # Sentinel step-id for the "+ Add new profile" choice in the profile picker.
 _NEW_PROFILE_SENTINEL = "__new__"
 
+# Bulk-assign choices offered when saving an RTSP credential profile.
+_BULK_ASSIGN_NONE = "none"
+_BULK_ASSIGN_ALL = "all"
+_BULK_ASSIGN_UNASSIGNED = "unassigned"
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
@@ -182,7 +187,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             menu_options={
                 "general": "General settings",
                 "rtsp_profiles": "Manage RTSP credentials",
-                "camera_rtsp": "Configure camera RTSP snapshots",
+                "camera_rtsp": "Assign camera to RTSP credentials",
             },
         )
 
@@ -246,6 +251,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             updated_options = dict(self.config_entry.options)
             updated_profiles = dict(updated_options.get(CONF_RTSP_PROFILES, {}))
+            bulk_assign = user_input.pop("bulk_assign", _BULK_ASSIGN_NONE)
             if name is None:
                 name = user_input.pop("name")
             elif user_input.pop("delete"):
@@ -254,6 +260,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data=updated_options)
             updated_profiles[name] = user_input
             updated_options[CONF_RTSP_PROFILES] = updated_profiles
+
+            if bulk_assign != _BULK_ASSIGN_NONE:
+                updated_cameras = dict(updated_options.get(CONF_CAMERAS, {}))
+                client = self.hass.data[DOMAIN][self.config_entry.entry_id][CONF_CLIENT]
+                camera_service = await client.camera_service
+                for camera in await camera_service.get_cameras():
+                    if (
+                        bulk_assign == _BULK_ASSIGN_UNASSIGNED
+                        and camera.mac in updated_cameras
+                    ):
+                        continue
+                    updated_cameras[camera.mac] = {
+                        CONF_RTSP_ENABLED: True,
+                        CONF_RTSP_PROFILE: name,
+                    }
+                updated_options[CONF_CAMERAS] = updated_cameras
+
             return self.async_create_entry(title="", data=updated_options)
 
         schema_dict = {}
@@ -276,6 +299,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         ] = bool
         if name is not None:
             schema_dict[vol.Optional("delete", default=False)] = bool
+        schema_dict[vol.Optional("bulk_assign", default=_BULK_ASSIGN_NONE)] = vol.In(
+            {
+                _BULK_ASSIGN_NONE: "Do nothing",
+                _BULK_ASSIGN_ALL: "Assign to all cameras",
+                _BULK_ASSIGN_UNASSIGNED: "Assign to cameras without RTSP credentials",
+            }
+        )
 
         return self.async_show_form(
             step_id="rtsp_profile_edit", data_schema=vol.Schema(schema_dict)
