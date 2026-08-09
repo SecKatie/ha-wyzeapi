@@ -33,6 +33,14 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Sentinel stored nowhere -- picking it on a camera's profile selector means
+# "no profile", which async_step_camera_rtsp_settings turns into fully
+# removing that camera's entry rather than saving the sentinel itself.
+NONE_PROFILE_SENTINEL = "__none__"
+
+# Sentinel step-id for the "+ Add new profile" choice in the profile picker.
+_NEW_PROFILE_SENTINEL = "__new__"
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
@@ -165,6 +173,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an option flow for Wyze."""
 
     _selected_camera_mac: str | None = None
+    _editing_profile_name: str | None = None
 
     async def async_step_init(self, user_input=None):
         """Show the top-level menu: general settings, RTSP credentials, or per-camera RTSP."""
@@ -195,29 +204,82 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(step_id="general", data_schema=data_schema)
 
     async def async_step_rtsp_profiles(self, user_input=None):
-        """Add or overwrite a named RTSP credential profile.
+        """Pick an existing RTSP credential profile to edit, or add a new one.
 
         Wyze RTSP logins are commonly reused across multiple cameras, so
         credentials live here as named profiles instead of being retyped
-        on every camera's own settings form.
+        on every camera's own settings form. With nothing saved yet there
+        is nothing to pick, so this skips straight to a blank create form.
         """
+        profiles = self.config_entry.options.get(CONF_RTSP_PROFILES, {})
+        if not profiles:
+            self._editing_profile_name = None
+            return await self.async_step_rtsp_profile_edit()
+
+        if user_input is not None:
+            chosen = user_input["profile"]
+            self._editing_profile_name = (
+                None if chosen == _NEW_PROFILE_SENTINEL else chosen
+            )
+            return await self.async_step_rtsp_profile_edit()
+
+        options = {name: name for name in profiles}
+        options[_NEW_PROFILE_SENTINEL] = "+ Add new profile"
+        data_schema = vol.Schema({vol.Required("profile"): vol.In(options)})
+        return self.async_show_form(step_id="rtsp_profiles", data_schema=data_schema)
+
+    async def async_step_rtsp_profile_edit(self, user_input=None):
+        """Create a new RTSP credential profile, or edit/delete an existing one.
+
+        A profile's name is its identity in options[CONF_RTSP_PROFILES] and
+        in every camera that references it, so renaming isn't offered here
+        -- only new profiles get a name field. Editing an existing one adds
+        a delete checkbox instead.
+        """
+        name = self._editing_profile_name
+        existing = (
+            self.config_entry.options.get(CONF_RTSP_PROFILES, {}).get(name, {})
+            if name
+            else {}
+        )
+
         if user_input is not None:
             updated_options = dict(self.config_entry.options)
             updated_profiles = dict(updated_options.get(CONF_RTSP_PROFILES, {}))
-            name = user_input.pop("name")
+            if name is None:
+                name = user_input.pop("name")
+            elif user_input.pop("delete"):
+                del updated_profiles[name]
+                updated_options[CONF_RTSP_PROFILES] = updated_profiles
+                return self.async_create_entry(title="", data=updated_options)
             updated_profiles[name] = user_input
             updated_options[CONF_RTSP_PROFILES] = updated_profiles
             return self.async_create_entry(title="", data=updated_options)
 
-        data_schema = vol.Schema(
-            {
-                vol.Required("name", default=""): str,
-                vol.Optional(CONF_RTSP_USERNAME, default=""): str,
-                vol.Optional(CONF_RTSP_PASSWORD, default=""): str,
-                vol.Optional(CONF_RTSP_SECURE, default=False): bool,
-            }
+        schema_dict = {}
+        if name is None:
+            schema_dict[vol.Required("name", default="")] = str
+        schema_dict[
+            vol.Optional(
+                CONF_RTSP_USERNAME, default=existing.get(CONF_RTSP_USERNAME, "")
+            )
+        ] = str
+        schema_dict[
+            vol.Optional(
+                CONF_RTSP_PASSWORD, default=existing.get(CONF_RTSP_PASSWORD, "")
+            )
+        ] = str
+        schema_dict[
+            vol.Optional(
+                CONF_RTSP_SECURE, default=existing.get(CONF_RTSP_SECURE, False)
+            )
+        ] = bool
+        if name is not None:
+            schema_dict[vol.Optional("delete", default=False)] = bool
+
+        return self.async_show_form(
+            step_id="rtsp_profile_edit", data_schema=vol.Schema(schema_dict)
         )
-        return self.async_show_form(step_id="rtsp_profiles", data_schema=data_schema)
 
     async def async_step_camera_rtsp(self, user_input=None):
         """Show a picker for which camera's RTSP settings to configure."""
@@ -243,7 +305,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(step_id="camera_rtsp", data_schema=data_schema)
 
     async def async_step_camera_rtsp_settings(self, user_input=None):
-        """Show (or save) which RTSP profile this camera should use."""
+        """Show (or save) which RTSP profile this camera should use.
+
+        "Enabled" isn't a separate toggle -- picking a real profile means
+        enabled, picking None removes the camera's entry entirely (fully
+        unlinked, same end state as never having configured it).
+        """
         mac = self._selected_camera_mac
         existing = self.config_entry.options.get(CONF_CAMERAS, {}).get(mac, {})
         profiles = self.config_entry.options.get(CONF_RTSP_PROFILES, {})
@@ -251,20 +318,25 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             updated_options = dict(self.config_entry.options)
             updated_cameras = dict(updated_options.get(CONF_CAMERAS, {}))
-            updated_cameras[mac] = user_input
+            chosen_profile = user_input[CONF_RTSP_PROFILE]
+            if chosen_profile == NONE_PROFILE_SENTINEL:
+                updated_cameras.pop(mac, None)
+            else:
+                updated_cameras[mac] = {
+                    CONF_RTSP_ENABLED: True,
+                    CONF_RTSP_PROFILE: chosen_profile,
+                }
             updated_options[CONF_CAMERAS] = updated_cameras
             return self.async_create_entry(title="", data=updated_options)
 
+        options = {NONE_PROFILE_SENTINEL: "None (disable RTSP for this camera)"}
+        options.update({name: name for name in profiles})
         data_schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_RTSP_ENABLED,
-                    default=existing.get(CONF_RTSP_ENABLED, False),
-                ): bool,
-                vol.Optional(
+                vol.Required(
                     CONF_RTSP_PROFILE,
-                    default=existing.get(CONF_RTSP_PROFILE, next(iter(profiles))),
-                ): vol.In({name: name for name in profiles}),
+                    default=existing.get(CONF_RTSP_PROFILE, NONE_PROFILE_SENTINEL),
+                ): vol.In(options)
             }
         )
         return self.async_show_form(
