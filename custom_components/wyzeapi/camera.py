@@ -9,6 +9,7 @@ from typing import Any
 import logging
 import uuid
 import re
+from urllib.parse import quote
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
@@ -29,7 +30,20 @@ from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
 
-from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
+from .const import (
+    CAMERA_UPDATED,
+    CONF_CAMERAS,
+    CONF_CLIENT,
+    CONF_RTSP_ENABLED,
+    CONF_RTSP_PASSWORD,
+    CONF_RTSP_PROFILE,
+    CONF_RTSP_PROFILES,
+    CONF_RTSP_SECURE,
+    CONF_RTSP_USERNAME,
+    DOMAIN,
+    RTSP_PORT,
+    RTSPS_PORT,
+)
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,7 +73,7 @@ async def async_setup_entry(
     for device in camera_devices:
         # Update the device to get its zones
         device = await camera_service.update(device)
-        cameras.extend([WyzeCamera(camera_service, device)])
+        cameras.extend([WyzeCamera(camera_service, device, config_entry)])
 
     for camera in cameras:
         # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
@@ -80,11 +94,14 @@ async def async_setup_entry(
 class WyzeCamera(CameraEntity):
     """Representation of a Wyze Camera."""
 
-    def __init__(self, camera_service: CameraService, camera: Camera):
+    def __init__(
+        self, camera_service: CameraService, camera: Camera, config_entry: ConfigEntry
+    ):
         """Initialize the camera."""
         super().__init__()
         self._camera_service = camera_service
         self._camera = camera
+        self._config_entry = config_entry
         self.name = camera.nickname
         self._attr_unique_id = camera.mac
         self.brand = "Wyze"
@@ -180,6 +197,46 @@ class WyzeCamera(CameraEntity):
         """Return bytes of camera image.
         Currently not implemented"""
         return None
+
+    @cached_property
+    def use_stream_for_stills(self) -> bool:
+        """Use HA's native Stream engine (RTSP) to generate stills.
+
+        Wyze's cloud API has no endpoint for a live still image; RTSP is
+        the only source stream_source() can offer, and HA's own Stream
+        engine already knows how to pull a frame from an RTSP(S) URL --
+        no custom ffmpeg code needed here.
+        """
+        return True
+
+    async def stream_source(self) -> str | None:
+        """Return this camera's RTSP(S) URL, if the user has configured one.
+
+        Returns None (no snapshot support) until RTSP is enabled for this
+        specific camera's MAC and points at a named credential profile that
+        still exists -- configuring one camera does not enable snapshots
+        for the others, and deleting a profile safely disables any camera
+        still referencing it rather than raising.
+        """
+        camera_options = self._config_entry.options.get(CONF_CAMERAS, {}).get(
+            self._camera.mac, {}
+        )
+        if not camera_options.get(CONF_RTSP_ENABLED):
+            return None
+
+        profile_name = camera_options.get(CONF_RTSP_PROFILE)
+        profile = self._config_entry.options.get(CONF_RTSP_PROFILES, {}).get(
+            profile_name
+        )
+        if not profile:
+            return None
+
+        ip = self._camera.device_params["ip"]
+        username = quote(profile[CONF_RTSP_USERNAME], safe="")
+        password = quote(profile[CONF_RTSP_PASSWORD], safe="")
+        if profile.get(CONF_RTSP_SECURE):
+            return f"rtsps://{username}:{password}@{ip}:{RTSPS_PORT}/stream0"
+        return f"rtsp://{username}:{password}@{ip}:{RTSP_PORT}/stream0"
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the WebRTC client configuration for this camera, including ICE servers."""

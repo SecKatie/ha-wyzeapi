@@ -38,6 +38,39 @@
           "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
         }
       },
+      "rtsp_profiles": {
+        "title": "Manage RTSP credentials",
+        "data": {
+          "profile": "Profile"
+        }
+      },
+      "rtsp_profile_edit": {
+        "title": "RTSP credential profile",
+        "data": {
+          "name": "Profile name",
+          "rtsp_username": "Username",
+          "rtsp_password": "Password",
+          "rtsp_secure": "Use RTSPS (secure)",
+          "delete": "Delete this profile",
+          "bulk_assign": "Assign to cameras"
+        },
+        "data_description": {
+          "rtsp_secure": "Enable if this camera's RTSP setup uses the secure RTSPS mode (port 322) instead of plain RTSP (port 554).",
+          "bulk_assign": "Optionally link this profile to cameras right away instead of doing it one at a time."
+        }
+      },
+      "camera_rtsp": {
+        "title": "Assign camera to RTSP credentials",
+        "data": {
+          "camera": "Camera"
+        }
+      },
+      "camera_rtsp_settings": {
+        "title": "Camera RTSP settings",
+        "data": {
+          "rtsp_profile": "RTSP profile"
+        }
+      },
       "user": {
         "title": "[%key:common::config_flow::data::title%]",
         "data": {

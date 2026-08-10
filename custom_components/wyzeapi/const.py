@@ -23,6 +23,25 @@ WYZE_CAMERA_EVENT = "wyze_camera_event"
 BULB_LOCAL_CONTROL = "bulb_local_control"
 DEFAULT_LOCAL_CONTROL = True
 
+# Per-camera RTSP snapshot configuration.
+#
+# Named credential profiles live under options[CONF_RTSP_PROFILES][<name>]
+# as a dict with the CONF_RTSP_USERNAME/PASSWORD/SECURE keys below. Cameras
+# reference a profile by name rather than embedding their own credentials,
+# since Wyze RTSP logins are commonly reused across multiple cameras.
+#
+# Per-camera settings live under options[CONF_CAMERAS][<camera mac>] as a
+# dict with CONF_RTSP_ENABLED and CONF_RTSP_PROFILE.
+CONF_CAMERAS = "cameras"
+CONF_RTSP_ENABLED = "rtsp_enabled"
+CONF_RTSP_PROFILE = "rtsp_profile"
+CONF_RTSP_PROFILES = "rtsp_profiles"
+CONF_RTSP_USERNAME = "rtsp_username"
+CONF_RTSP_PASSWORD = "rtsp_password"
+CONF_RTSP_SECURE = "rtsp_secure"
+RTSP_PORT = 554
+RTSPS_PORT = 322
+
 # Yunding (YD) is the provider for Wyze Lock Bolt
 YDBLE_LOCK_STATE_UUID = "00002220-0000-6b63-6f6c-2e6b636f6f6c"
 YDBLE_UART_RX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
