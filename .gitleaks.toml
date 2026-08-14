@@ -1,3 +1,8 @@
+# Red Hat's PwnedAlert scanner reads only [allowlist] below; [extend] is for
+# the local gitleaks pre-commit hook, which would otherwise run with no rules.
+[extend]
+  useDefault = true
+
 [allowlist]
   description = "Global Allowlist"
 
