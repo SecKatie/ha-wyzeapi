@@ -1,0 +1,12 @@
+[allowlist]
+  description = "Global Allowlist"
+
+  # Fake RTSP credentials in camera tests. Wyze's local RTSP firmware uses a
+  # fixed "wyze" user and a user-chosen password; these fixtures are made up.
+  regexes = [
+    '''rtsps?:\/\/wyze:''',
+  ]
+
+  paths = [
+    '''^tests\/''',
+  ]
