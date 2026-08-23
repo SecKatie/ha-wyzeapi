@@ -14,5 +14,5 @@
     "wyzeapy>=0.6.1,<0.7",
     "websockets"
   ],
-  "version": "0.1.38"
+  "version": "0.1.39"
 }
