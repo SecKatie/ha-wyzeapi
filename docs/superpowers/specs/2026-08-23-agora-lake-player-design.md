@@ -68,10 +68,11 @@ in entity attributes or the recorder.
   (`wyze-agora-card`) taking `entity` (a camera entity_id) in its card config.
 - On connect it calls the WS command, loads the **vendored** Agora Web SDK,
   `setEncryptionConfig(mode, key, saltBytes)`, joins the channel, subscribes to
-  video + audio, and renders into the card. This mirrors the validated
-  `agora_viewer.html` flow.
-- The Agora Web SDK (`AgoraRTC_N-4.24.0.js`, ~1.2 MB — the version validated in
-  `agora_viewer.html`) is vendored under
+  video + audio, and renders into the card. This formalizes a standalone browser
+  client that was built to validate the Agora stream protocol end to end against
+  a real device.
+- The Agora Web SDK (`AgoraRTC_N-4.24.0.js`, ~1.2 MB — the version used to
+  validate the stream protocol) is vendored under
   `custom_components/wyzeapi/frontend/` and served locally — no CDN, matching
   HA's offline/CSP norms.
 - Lifecycle: play on card connected, stop on disconnected. On Agora
@@ -127,8 +128,9 @@ Native entity: async_camera_image → wyzeapy thumbnail URL → still image
   returns correct credentials for a lake camera; handles a non-lake camera;
   requires auth. `async_camera_image` fetches the URL and returns `None` on
   failure.
-- **Card JS:** no in-repo unit harness; verified live against a real Gwell camera
-  (the same way `agora_viewer.html` was validated).
+- **Card JS:** no in-repo unit harness; verified live against a real Gwell camera,
+  the same standalone-browser-client approach used to validate the stream
+  protocol during development.
 
 ## Dependencies & release ordering
 
