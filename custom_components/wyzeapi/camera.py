@@ -190,11 +190,12 @@ class WyzeCamera(CameraEntity):
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
         """Return the latest thumbnail still for this camera, if available."""
-        params = self._camera.device_params or {}
-        url = params.get("camera_thumbnails", {}).get("thumbnails_url")
-        if not url:
-            return None
         try:
+            params = self._camera.device_params or {}
+            thumbnails = params.get("camera_thumbnails") or {}
+            url = thumbnails.get("thumbnails_url")
+            if not url:
+                return None
             session = async_get_clientsession(self.hass)
             async with session.get(url) as response:
                 if response.status != 200:

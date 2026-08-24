@@ -86,3 +86,16 @@ async def test_camera_image_none_on_http_error() -> None:
         return_value=session,
     ):
         assert await entity.async_camera_image() is None
+
+
+@pytest.mark.asyncio
+async def test_camera_image_none_on_session_exception() -> None:
+    entity = WyzeCamera(Mock(), _camera_with_thumb("https://thumb/x.jpg"))
+    entity.hass = Mock()
+    session = Mock()
+    session.get = Mock(side_effect=RuntimeError("boom"))
+    with patch(
+        "custom_components.wyzeapi.camera.async_get_clientsession",
+        return_value=session,
+    ):
+        assert await entity.async_camera_image() is None
