@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from aiohttp.client_exceptions import ClientConnectorError
 from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady, SOURCE_IMPORT
@@ -12,10 +13,13 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from homeassistant.components import bluetooth
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from wyzeapy import Wyzeapy
 from wyzeapy.exceptions import AccessTokenError
 from wyzeapy.wyze_auth_lib import Token
 
+from .agora import async_register_agora_ws
 from .const import (
     DOMAIN,
     CONF_CLIENT,
@@ -46,6 +50,28 @@ PLATFORMS = [
     "camera",
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
+
+AGORA_STATIC_URL = "/wyzeapi_frontend"
+AGORA_CARD_URL = f"{AGORA_STATIC_URL}/wyze-agora-card.js"
+AGORA_SDK_URL = f"{AGORA_STATIC_URL}/AgoraRTC_N-4.24.0.js"
+_AGORA_REGISTERED = "agora_frontend_registered"
+
+
+async def async_register_agora_frontend(hass: HomeAssistant) -> None:
+    """Register the Agora websocket command, static assets, and card JS once."""
+    if hass.data.get(_AGORA_REGISTERED):
+        return
+    hass.data[_AGORA_REGISTERED] = True
+
+    async_register_agora_ws(hass)
+
+    frontend_dir = Path(__file__).parent / "frontend"
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(AGORA_STATIC_URL, str(frontend_dir), cache_headers=False)]
+    )
+    # The card references window.AgoraRTC, so load the SDK first, then the card.
+    add_extra_js_url(hass, AGORA_SDK_URL)
+    add_extra_js_url(hass, AGORA_CARD_URL)
 
 
 # noinspection PyUnusedLocal
@@ -142,6 +168,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         "coordinators": {},
     }
     await setup_coordinators(hass, config_entry, client)
+
+    await async_register_agora_frontend(hass)
 
     options_dict = {
         BULB_LOCAL_CONTROL: config_entry.options.get(
