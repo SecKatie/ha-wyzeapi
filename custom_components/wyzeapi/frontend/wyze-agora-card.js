@@ -69,6 +69,7 @@ class WyzeAgoraCard extends HTMLElement {
     if (this._started) return;
     this._started = true;
     if (!window.AgoraRTC) {
+      this._started = false;
       this._log("Agora SDK not loaded.");
       return;
     }
@@ -104,6 +105,7 @@ class WyzeAgoraCard extends HTMLElement {
       await client.subscribe(user, mediaType);
       if (mediaType === "video") {
         this._msg.textContent = "";
+        this._rejoinAttempts = 0;
         user.videoTrack.play(this._player);
       } else if (mediaType === "audio") {
         user.audioTrack.play();
@@ -121,10 +123,18 @@ class WyzeAgoraCard extends HTMLElement {
 
   async _rejoin() {
     if (this._rejoining || !this.isConnected) return;
+    if ((this._rejoinAttempts || 0) >= 5) {
+      this._log("Stream disconnected. Reload to retry.");
+      return;
+    }
     this._rejoining = true;
+    this._rejoinAttempts = (this._rejoinAttempts || 0) + 1;
     try {
       await this._stop();
       this._started = false;
+      const delay = Math.min(2000 * this._rejoinAttempts, 15000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      if (!this.isConnected) return;
       await this._start();
     } finally {
       this._rejoining = false;
@@ -132,11 +142,12 @@ class WyzeAgoraCard extends HTMLElement {
   }
 
   async _stop() {
+    // Capture and clear first: a concurrent _start() may reassign this._client
+    // while leave() is awaiting, and we must not null out the new client.
+    const client = this._client;
+    this._client = null;
     try {
-      if (this._client) {
-        await this._client.leave();
-        this._client = null;
-      }
+      if (client) await client.leave();
     } catch (e) {
       // ignore leave errors
     }
