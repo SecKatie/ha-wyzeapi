@@ -20,6 +20,7 @@ from homeassistant.components.camera.webrtc import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util.ssl import get_default_context
@@ -188,9 +189,25 @@ class WyzeCamera(CameraEntity):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return bytes of camera image.
-        Currently not implemented"""
-        return None
+        """Return the latest thumbnail still for this camera, if available."""
+        params = self._camera.device_params or {}
+        url = params.get("camera_thumbnails", {}).get("thumbnails_url")
+        if not url:
+            return None
+        try:
+            session = async_get_clientsession(self.hass)
+            async with session.get(url) as response:
+                if response.status != 200:
+                    _LOGGER.debug(
+                        "Thumbnail fetch for %s returned %s",
+                        self.name,
+                        response.status,
+                    )
+                    return None
+                return await response.read()
+        except Exception as e:  # noqa: BLE001 - never break the entity on fetch
+            _LOGGER.debug("Thumbnail fetch failed for %s: %s", self.name, e)
+            return None
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the WebRTC client configuration for this camera, including ICE servers."""
