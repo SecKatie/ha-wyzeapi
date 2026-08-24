@@ -119,6 +119,26 @@ class WyzeCamera(CameraEntity):
             self.name,
         )
 
+    async def async_agora_stream_info(self) -> dict:
+        """Return Agora ("lake") streaming credentials for the card.
+
+        Non-lake cameras return only their provider so the card can show
+        guidance instead of attempting an Agora join.
+        """
+        config = await self._camera_service.get_stream_info(self._camera)
+        if config.get("provider") != "lake":
+            return {"provider": config.get("provider")}
+        return {
+            "provider": "lake",
+            "app_id": config["app_id"],
+            "channel": config["channel"],
+            "token": config["rtc_token"],
+            "uid": config["uid"],
+            "encryption_mode": config.get("encryption_mode"),
+            "encryption_key": config.get("encryption_key"),
+            "encryption_salt": config.get("encryption_salt"),
+        }
+
     @cached_property
     def device_info(self) -> DeviceInfo | None:
         """Return the device info."""

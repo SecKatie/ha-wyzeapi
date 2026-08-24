@@ -1,7 +1,7 @@
 """Tests for Wyze Agora/lake camera handling."""
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from homeassistant.components.camera import CameraEntityFeature
@@ -99,3 +99,41 @@ async def test_camera_image_none_on_session_exception() -> None:
         return_value=session,
     ):
         assert await entity.async_camera_image() is None
+
+
+@pytest.mark.asyncio
+async def test_agora_stream_info_maps_lake_config() -> None:
+    service = Mock()
+    service.get_stream_info = AsyncMock(
+        return_value={
+            "provider": "lake",
+            "app_id": "app",
+            "channel": "chan",
+            "rtc_token": "tok",
+            "uid": 42,
+            "encryption_mode": 7,
+            "encryption_key": "k",
+            "encryption_salt": "s",
+        }
+    )
+    entity = WyzeCamera(service, _camera("ME_WCO3"))
+    info = await entity.async_agora_stream_info()
+    assert info == {
+        "provider": "lake",
+        "app_id": "app",
+        "channel": "chan",
+        "token": "tok",
+        "uid": 42,
+        "encryption_mode": 7,
+        "encryption_key": "k",
+        "encryption_salt": "s",
+    }
+
+
+@pytest.mark.asyncio
+async def test_agora_stream_info_non_lake_returns_provider_only() -> None:
+    service = Mock()
+    service.get_stream_info = AsyncMock(return_value={"provider": "webrtc"})
+    entity = WyzeCamera(service, _camera("WYZECP1_JEF"))
+    info = await entity.async_agora_stream_info()
+    assert info == {"provider": "webrtc"}
