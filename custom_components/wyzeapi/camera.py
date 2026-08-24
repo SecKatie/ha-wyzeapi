@@ -28,7 +28,15 @@ from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
-from wyzeapy.services.camera_service import Camera, LAKE_API_MODELS
+
+try:
+    from wyzeapy.services.camera_service import Camera, LAKE_API_MODELS
+except ImportError:
+    # Older wyzeapy without Agora/lake support: no lake cameras are
+    # detected and the existing WebRTC path is used unchanged.
+    from wyzeapy.services.camera_service import Camera
+
+    LAKE_API_MODELS = []
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler

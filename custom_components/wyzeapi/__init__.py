@@ -59,19 +59,24 @@ _AGORA_REGISTERED = "agora_frontend_registered"
 
 async def async_register_agora_frontend(hass: HomeAssistant) -> None:
     """Register the Agora websocket command, static assets, and card JS once."""
-    if hass.data.get(_AGORA_REGISTERED):
+    store = hass.data.setdefault(DOMAIN, {})
+    if store.get(_AGORA_REGISTERED):
         return
-    hass.data[_AGORA_REGISTERED] = True
+    store[_AGORA_REGISTERED] = True
+    try:
+        async_register_agora_ws(hass)
 
-    async_register_agora_ws(hass)
-
-    frontend_dir = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(AGORA_STATIC_URL, str(frontend_dir), cache_headers=False)]
-    )
-    # The card references window.AgoraRTC, so load the SDK first, then the card.
-    add_extra_js_url(hass, AGORA_SDK_URL)
-    add_extra_js_url(hass, AGORA_CARD_URL)
+        frontend_dir = Path(__file__).parent / "frontend"
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(AGORA_STATIC_URL, str(frontend_dir), cache_headers=False)]
+        )
+        # The card references window.AgoraRTC, so load the SDK first, then the card.
+        add_extra_js_url(hass, AGORA_SDK_URL)
+        add_extra_js_url(hass, AGORA_CARD_URL)
+    except Exception:
+        # Leave it unregistered so a later config-entry setup can retry the wiring.
+        store[_AGORA_REGISTERED] = False
+        raise
 
 
 # noinspection PyUnusedLocal
