@@ -27,7 +27,7 @@ from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
-from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.camera_service import Camera, LAKE_API_MODELS
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
@@ -62,7 +62,12 @@ async def async_setup_entry(
         cameras.extend([WyzeCamera(camera_service, device)])
 
     for camera in cameras:
-        # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
+        if camera._is_lake:
+            # Lake cameras fetch Agora credentials on demand from the card;
+            # there is no WebRTC config to pre-seed.
+            continue
+        # Pre-seed the ICE server config by fetching it during setup, so the
+        # frontend can collect ICE servers before the offer
         try:
             await camera.config_fetch()
         except Exception as e:
@@ -89,7 +94,13 @@ class WyzeCamera(CameraEntity):
         self._attr_unique_id = camera.mac
         self.brand = "Wyze"
         self.model = camera.product_model
-        self.supported_features = CameraEntityFeature.STREAM
+        self._is_lake = camera.product_model in LAKE_API_MODELS
+        # Lake (Agora) cameras cannot use HA's native WebRTC player; live view
+        # is provided by the custom wyze-agora-card. Only advertise STREAM for
+        # cameras that actually work with the built-in player.
+        self.supported_features = (
+            CameraEntityFeature(0) if self._is_lake else CameraEntityFeature.STREAM
+        )
         self._webrtc_provider = None
         self.sessions: dict[str, WyzeCameraWebRTCSession] = {}
         self._pending_candidates: dict[str, list[RTCIceCandidateInit]] = {}
