@@ -548,7 +548,7 @@ class WyzeIrrigationBaseSensor(SensorEntity):
     @callback
     def async_update_callback(self, irrigation: Irrigation) -> None:
         """Update the irrigation's state."""
-        self._device = self._irrigation_service.update_device_props(irrigation)
+        self._device = irrigation
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
