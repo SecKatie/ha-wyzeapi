@@ -18,6 +18,28 @@ def encrypt_ecb(key: str, data: bytes) -> bytes:
     return encrypted_data
 
 
+def parse_battery_block(key: str, data: bytes) -> int | None:
+    """Decode the Lock Bolt's battery characteristic (0x2A19).
+
+    Unlike a standard BLE Battery Level, the Bolt returns a 16-byte AES-128-ECB block
+    encrypted with the same key as the lock state characteristic. The decrypted layout
+    matches the status block: byte 0 is the percentage and bytes 11:16 carry the ASCII
+    marker "loock", which is absent if the key is wrong.
+
+    Returns the percentage, or None if the block does not validate.
+    """
+    try:
+        decrypted = decrypt_ecb(key, data)
+    except (ValueError, KeyError):
+        return None
+    if len(decrypted) < 16 or decrypted[11:16] != b"loock":
+        return None
+    percent = decrypted[0]
+    if not 0 < percent <= 100:
+        return None
+    return percent
+
+
 def pack_l1(flags: int, seq_no: int, data: bytes):
     data_crc = crc(data)
     result = b"\xab"
