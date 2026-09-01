@@ -27,7 +27,7 @@ from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
-from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.camera_service import Camera, DEVICEMGMT_API_MODELS
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
@@ -218,6 +218,17 @@ class WyzeCamera(CameraEntity):
             session_id,
         )
 
+        # Battery cameras must be told to wake and join the KVS signaling
+        # channel; without this the offer goes to a channel with no master
+        # and no answer ever arrives. Mirrors the my.wyze.com client, which
+        # runs the iot-device wakeup action before sending its offer.
+        if self._camera.product_model in DEVICEMGMT_API_MODELS:
+            try:
+                await self._camera_service.turn_on(self._camera)
+                _LOGGER.debug("Sent wakeup for camera %s", self.name)
+            except Exception as err:
+                _LOGGER.warning("Wakeup failed for camera %s: %s", self.name, err)
+
         # Always fetch a truly fresh config so the signaling URL and ICE servers
         # are never stale — KVS signed URLs are single-use and short-lived.
         config = await self._camera_service.get_stream_info(self._camera)
@@ -290,6 +301,15 @@ class WyzeCameraWebRTCSession:
         self.sdp_answer = None
         # Set once connect() succeeds; send_candidate waits on this instead of reconnecting
         self._connected = asyncio.Event()
+        # KVS does not buffer messages for a master that has not joined yet.
+        # Cameras (battery models especially) can take 10-20 s to wake and
+        # join the channel, so the first offer and any trickled candidates
+        # sent before that are silently dropped. We keep the serialized offer
+        # and candidates and re-send them until the camera answers.
+        self._offer_payload_str: str | None = None
+        self._candidate_payloads: list[str] = []
+        self._answered = False
+        self._reoffer_task: asyncio.Task | None = None
 
     async def connect(self):
         """Establish the WebSocket connection to the KVS signaling URL.
@@ -343,6 +363,43 @@ class WyzeCameraWebRTCSession:
             str_payload,
         )
         await self.websocket.send(str_payload)
+        self._offer_payload_str = str_payload
+        if self._reoffer_task is None:
+            self._reoffer_task = asyncio.create_task(self._reoffer_loop())
+
+    async def _reoffer_loop(self):
+        """Re-send the offer (and candidates) until the camera answers.
+
+        The camera joins the signaling channel only after its wakeup, which
+        takes 10-20 s on battery models; everything sent before that is lost.
+        """
+        for attempt in range(2, 12):
+            await asyncio.sleep(4)
+            if self._answered or self.websocket is None:
+                return
+            try:
+                _LOGGER.debug(
+                    "Re-sending SDP offer for camera %s session %s (attempt %d)",
+                    self.camera.name,
+                    self.session_id,
+                    attempt,
+                )
+                await self.websocket.send(self._offer_payload_str)
+                for cand in self._candidate_payloads:
+                    await self.websocket.send(cand)
+            except Exception as err:
+                _LOGGER.debug(
+                    "Re-offer stopped for camera %s session %s: %s",
+                    self.camera.name,
+                    self.session_id,
+                    err,
+                )
+                return
+        _LOGGER.warning(
+            "Camera %s never answered the WebRTC offer for session %s",
+            self.camera.name,
+            self.session_id,
+        )
 
     async def send_candidate(self, candidate: RTCIceCandidateInit):
         """Send an ICE candidate to the Kinesis Video Streams signaling channel."""
@@ -381,9 +438,12 @@ class WyzeCameraWebRTCSession:
             str_payload,
         )
         await self.websocket.send(str_payload)
+        self._candidate_payloads.append(str_payload)
 
     def close_connection(self):
         """Close the WebSocket connection to the Kinesis Video Streams signaling channel."""
+        if self._reoffer_task is not None:
+            self._reoffer_task.cancel()
         if self.close is not None:
             self.close()
 
@@ -482,6 +542,17 @@ class WyzeCameraWebRTCSession:
                         )
                         self.callback(WebRTCCandidate(candidate=rtccandidate))
                     case "SDP_ANSWER":
+                        # Re-sent offers can produce more than one answer once the
+                        # camera joins; forwarding a second answer would corrupt the
+                        # frontend's peer connection state, so only the first counts.
+                        if self._answered:
+                            _LOGGER.debug(
+                                "Ignoring duplicate SDP answer for camera %s session %s",
+                                self.camera.name,
+                                self.session_id,
+                            )
+                            continue
+                        self._answered = True
                         # Decode messagePayload (base64 JSON with "type"/"sdp" keys) → extract sdp string
                         answer_str = base64.b64decode(data["messagePayload"]).decode()
                         try:
