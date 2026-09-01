@@ -12,6 +12,7 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.services.switch_service import Switch, SwitchUsageService
+from wyzeapy.services.vacuum_service import Vacuum, VacuumService
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -25,6 +26,7 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfEnergy,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -74,6 +76,7 @@ async def async_setup_entry(
     switch_usage_service = await client.switch_usage_service
     irrigation_service = await client.irrigation_service
     air_purifier_service = await client.air_purifier_service
+    vacuum_service = await client.vacuum_service
 
     locks = await lock_service.get_locks()
     sensors = []
@@ -115,6 +118,15 @@ async def async_setup_entry(
                 WyzeIrrigationRSSI(irrigation_service, device),
                 WyzeIrrigationIP(irrigation_service, device),
                 WyzeIrrigationSSID(irrigation_service, device),
+            ]
+        )
+
+    for vacuum in await vacuum_service.get_vacuums():
+        sensors.extend(
+            [
+                WyzeVacuumLastCleanSizeSensor(vacuum_service, vacuum),
+                WyzeVacuumLastCleanDurationSensor(vacuum_service, vacuum),
+                WyzeVacuumLastCleanFinishedSensor(vacuum_service, vacuum),
             ]
         )
 
@@ -769,3 +781,111 @@ class WyzeAirPurifierHourlyMaxAQISensor(WyzeAirPurifierAirQualitySensor):
         if offset is not None:
             value += offset
         return value.isoformat()
+
+
+class WyzeVacuumLastCleanSensor(SensorEntity):
+    """Base class for sensors describing the vacuum's most recent cleaning run.
+
+    The vacuum's live `cleanSize` and `cleanTime` reset when it docks, so the
+    completed-run figures come from the cleaning history rather than device state.
+    """
+
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
+    _attr_should_poll = True
+
+    def __init__(self, vacuum_service: VacuumService, vacuum: Vacuum) -> None:
+        """Initialize the sensor."""
+        self._vacuum_service = vacuum_service
+        self._vacuum = vacuum
+        self._record: dict[str, Any] | None = None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._vacuum.mac)},
+            name=self._vacuum.nickname,
+            manufacturer="WyzeLabs",
+            model=self._vacuum.product_model,
+        )
+
+    async def async_update(self) -> None:
+        """Fetch the most recent cleaning record."""
+        self._record = await self._vacuum_service.get_last_clean(self._vacuum)
+
+
+class WyzeVacuumLastCleanSizeSensor(WyzeVacuumLastCleanSensor):
+    """How much the vacuum covered on its most recent cleaning run.
+
+    Wyze publishes `cleanSize` without stating a unit, and nothing in the API
+    identifies one, so the raw figure is reported and carries no unit or device
+    class. It is comparable between runs, which is what it is useful for.
+    """
+
+    _attr_translation_key = "last_clean_size"
+    _attr_name = "Last clean size"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, vacuum_service: VacuumService, vacuum: Vacuum) -> None:
+        """Initialize the sensor."""
+        super().__init__(vacuum_service, vacuum)
+        self._attr_unique_id = f"{vacuum.mac}-last-clean-size"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the run's clean size."""
+        return self._record.get("cleanSize") if self._record else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return how the run was started and what kind of run it was."""
+        if not self._record:
+            return {}
+        return {
+            "clean_type": self._record.get("cleanTypeText"),
+            "launch_type": self._record.get("launchTypeText"),
+        }
+
+
+class WyzeVacuumLastCleanDurationSensor(WyzeVacuumLastCleanSensor):
+    """How long the vacuum's most recent cleaning run took."""
+
+    _attr_translation_key = "last_clean_duration"
+    _attr_name = "Last clean duration"
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, vacuum_service: VacuumService, vacuum: Vacuum) -> None:
+        """Initialize the sensor."""
+        super().__init__(vacuum_service, vacuum)
+        self._attr_unique_id = f"{vacuum.mac}-last-clean-duration"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the run duration in minutes."""
+        return self._record.get("cleanTime") if self._record else None
+
+
+class WyzeVacuumLastCleanFinishedSensor(WyzeVacuumLastCleanSensor):
+    """When the vacuum's most recent cleaning run finished."""
+
+    _attr_translation_key = "last_clean_finished"
+    _attr_name = "Last clean finished"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, vacuum_service: VacuumService, vacuum: Vacuum) -> None:
+        """Initialize the sensor."""
+        super().__init__(vacuum_service, vacuum)
+        self._attr_unique_id = f"{vacuum.mac}-last-clean-finished"
+
+    @property
+    def native_value(self) -> datetime.datetime | None:
+        """Return the run's completion time."""
+        if not self._record:
+            return None
+        created = self._record.get("create_time")
+        if created is None:
+            return None
+        return datetime.datetime.fromtimestamp(created / 1000, tz=datetime.UTC)
