@@ -152,6 +152,17 @@ class WyzeThermostat(ClimateEntity):
         return self._thermostat.heat_set_point
 
     @property
+    def target_temperature(self) -> Optional[float]:
+        # In single-mode heat/cool only one set point is in play. Without this
+        # property the frontend renders a blank target ("cool °F") because the
+        # entity only ever exposed the low/high range pair.
+        if self._thermostat.hvac_mode == WyzeHVACMode.COOL:
+            return self._thermostat.cool_set_point
+        if self._thermostat.hvac_mode == WyzeHVACMode.HEAT:
+            return self._thermostat.heat_set_point
+        return None
+
+    @property
     def preset_mode(self) -> Optional[str]:
         match self._thermostat.preset:
             case Preset.HOME:
@@ -204,8 +215,20 @@ class WyzeThermostat(ClimateEntity):
 
     @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
-        target_temp_low = kwargs["target_temp_low"]
-        target_temp_high = kwargs["target_temp_high"]
+        # Single-target calls arrive with "temperature" (heat or cool mode);
+        # range calls arrive with the low/high pair (auto mode). Map a single
+        # target onto the set point the active mode actually uses, keeping the
+        # other side unchanged.
+        if "temperature" in kwargs and "target_temp_low" not in kwargs:
+            if self._thermostat.hvac_mode == WyzeHVACMode.COOL:
+                target_temp_low = self._thermostat.heat_set_point
+                target_temp_high = kwargs["temperature"]
+            else:
+                target_temp_low = kwargs["temperature"]
+                target_temp_high = self._thermostat.cool_set_point
+        else:
+            target_temp_low = kwargs["target_temp_low"]
+            target_temp_high = kwargs["target_temp_high"]
 
         try:
             # Always send setpoints unconditionally rather than guarding against
@@ -322,8 +345,15 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def supported_features(self) -> int:
+        # Range only applies in auto; heat/cool use a single set point. Wyze
+        # thermostats always store both set points, so switching the advertised
+        # feature by mode is safe and lets the UI show the right control.
+        if self._thermostat.hvac_mode == WyzeHVACMode.AUTO:
+            temperature_feature = ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        else:
+            temperature_feature = ClimateEntityFeature.TARGET_TEMPERATURE
         return (
-            ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+            temperature_feature
             | ClimateEntityFeature.FAN_MODE
             | ClimateEntityFeature.PRESET_MODE
         )
