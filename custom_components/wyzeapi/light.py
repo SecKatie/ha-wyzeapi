@@ -390,7 +390,6 @@ class WyzeCamerafloodlight(LightEntity):
         self._service = camera_service
         self._light_type = light_type
         self._attr_unique_id = f"{self._device.mac}-{self._light_type}"
-        self._is_on = self._device.floodlight
 
     @token_exception_handler
     async def async_turn_on(self, **kwargs) -> None:
@@ -402,7 +401,9 @@ class WyzeCamerafloodlight(LightEntity):
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
         else:
-            self._is_on = True
+            # Optimistic: is_on reads the camera object, which the next poll
+            # would otherwise only refresh up to INTERVAL seconds from now.
+            self._device.floodlight = True
             self._just_updated = True
             self.async_schedule_update_ha_state()
 
@@ -416,9 +417,14 @@ class WyzeCamerafloodlight(LightEntity):
         except ClientConnectionError as err:
             raise HomeAssistantError(err) from err
         else:
-            self._is_on = False
+            self._device.floodlight = False
             self._just_updated = True
             self.async_schedule_update_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """An offline camera cannot switch its light."""
+        return self._device.available
 
     @property
     def is_on(self):
