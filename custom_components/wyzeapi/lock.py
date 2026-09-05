@@ -22,7 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import CONF_CLIENT, DOMAIN, LOCK_UPDATED
+from .const import CONF_CLIENT, DOMAIN, IOT3_MODELS, LOCK_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +71,16 @@ async def async_setup_entry(
                 continue
             lock_bolts.append(WyzeLockBolt(coordinator))
 
-    async_add_entities(locks + lock_bolts, False)
+    # DX-family locks come from the device list, not get_locks()
+    iot3_locks = []
+    for _dev in hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", []):
+        _coord = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {}).get(
+            _dev.mac
+        )
+        if _coord is not None:
+            iot3_locks.append(WyzeIot3Lock(_coord))
+
+    async_add_entities(locks + lock_bolts + iot3_locks, False)
 
 
 class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
@@ -272,3 +281,69 @@ class WyzeLockBolt(CoordinatorEntity, homeassistant.components.lock.LockEntity):
         if self.coordinator.data is None:
             return {}
         return {"last_operated": self.coordinator.data["timestamp"]}
+
+
+# Wyze Lock Bolt v2 (DX_LB2) and Palm Lock (DX_PVLOC) over the IoT3 cloud API.
+class WyzeIot3Lock(CoordinatorEntity, homeassistant.components.lock.LockEntity):
+    """A Wyze DX-family lock driven through the IoT3 API."""
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._device = coordinator.device
+
+    @property
+    def name(self):
+        return self._device.nickname
+
+    @property
+    def unique_id(self):
+        return self._device.mac
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._device.mac)},
+            "name": self._device.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model,
+        }
+
+    @property
+    def available(self):
+        if self.coordinator.data is None:
+            return False
+        return bool(self.coordinator.data.get("online", False))
+
+    @property
+    def is_locked(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("locked")
+
+    @property
+    def is_locking(self):
+        return self.coordinator._current_command == "lock"
+
+    @property
+    def is_unlocking(self):
+        return self.coordinator._current_command == "unlock"
+
+    @property
+    def extra_state_attributes(self):
+        attrs = {ATTR_ATTRIBUTION: ATTRIBUTION}
+        data = self.coordinator.data or {}
+        for key, attr in (
+            ("battery_level", "battery_level"),
+            ("firmware_ver", "firmware_version"),
+            ("door_open", "door_open"),
+            ("power_source", "power_source"),
+        ):
+            if data.get(key) is not None:
+                attrs[attr] = data[key]
+        return attrs
+
+    async def async_lock(self, **kwargs):
+        await self.coordinator.lock_unlock("lock")
+
+    async def async_unlock(self, **kwargs):
+        await self.coordinator.lock_unlock("unlock")

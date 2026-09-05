@@ -29,6 +29,8 @@ from .const import (
     API_KEY,
 )
 from .coordinator import WyzeLockBoltCoordinator
+from .iot3_coordinator import WyzeIot3LockCoordinator
+from .iot3_service import Iot3Service
 from .token_manager import TokenManager
 
 PLATFORMS = [
@@ -199,6 +201,42 @@ async def setup_coordinators(
     hass: HomeAssistant, config_entry: ConfigEntry, client: Wyzeapy
 ):
     """Set up coordinators for Wyze devices that require Bluetooth."""
+    # IoT3 (DX-family) locks first - no Bluetooth involved. These report
+    # product_type "Common", so lock_service.get_locks() never sees them; find
+    # them by product_model in the full device list instead.
+    from .const import IOT3_MODELS
+
+    try:
+        _lock_service = await client.lock_service
+        _all_devices = await _lock_service.get_object_list()
+        _iot3_devices = [d for d in _all_devices if d.product_model in IOT3_MODELS]
+    except Exception as exc:  # noqa: BLE001 - never block setup of everything else
+        _LOGGER.warning("Wyze IoT3 device discovery failed: %s", exc)
+        _iot3_devices = []
+    hass.data[DOMAIN][config_entry.entry_id]["iot3_devices"] = _iot3_devices
+    if _iot3_devices:
+        _iot3_service = Iot3Service(hass, config_entry, client)
+        hass.data[DOMAIN][config_entry.entry_id]["iot3_service"] = _iot3_service
+        _coordinators = hass.data[DOMAIN][config_entry.entry_id].setdefault(
+            "coordinators", {}
+        )
+        for _dev in _iot3_devices:
+            _LOGGER.info(
+                "Wyze IoT3: setting up %s (%s)", _dev.nickname, _dev.product_model
+            )
+            _coord = WyzeIot3LockCoordinator(hass, _iot3_service, _dev)
+            # Populate before platforms are forwarded so the entities do not
+            # sit unavailable for the first poll interval. async_refresh rather
+            # than async_config_entry_first_refresh on purpose: a sick lock API
+            # should not take the whole config entry down with it.
+            await _coord.async_refresh()
+            if not _coord.last_update_success:
+                _LOGGER.warning(
+                    "Wyze IoT3: first poll of %s failed; it will retry on its interval",
+                    _dev.nickname,
+                )
+            _coordinators[_dev.mac] = _coord
+
     # Check if Bluetooth is active and functioning
     if bluetooth.async_scanner_count(hass, connectable=True) == 0:
         _LOGGER.info(
