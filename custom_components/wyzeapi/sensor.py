@@ -36,8 +36,11 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
     AIR_PURIFIER_UPDATED,
+    IOT3_MODELS,
     CAMERA_UPDATED,
     CONF_CLIENT,
     DOMAIN,
@@ -117,6 +120,15 @@ async def async_setup_entry(
                 WyzeIrrigationSSID(irrigation_service, device),
             ]
         )
+
+    # battery + firmware for DX-family locks
+    for _dev in hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", []):
+        _coord = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {}).get(
+            _dev.mac
+        )
+        if _coord is not None:
+            sensors.append(WyzeIot3BatterySensor(_coord))
+            sensors.append(WyzeIot3FirmwareSensor(_coord))
 
     async_add_entities(sensors, True)
 
@@ -769,3 +781,66 @@ class WyzeAirPurifierHourlyMaxAQISensor(WyzeAirPurifierAirQualitySensor):
         if offset is not None:
             value += offset
         return value.isoformat()
+
+
+class _WyzeIot3SensorBase(CoordinatorEntity, SensorEntity):
+    """Shared plumbing for the DX-family lock sensors."""
+
+    _attr_attribution = ATTRIBUTION
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._device = coordinator.device
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._device.mac)},
+            "name": self._device.nickname,
+            "manufacturer": "WyzeLabs",
+            "model": self._device.product_model,
+        }
+
+    @property
+    def available(self):
+        if self.coordinator.data is None:
+            return False
+        return bool(self.coordinator.data.get("online", False))
+
+
+class WyzeIot3BatterySensor(_WyzeIot3SensorBase):
+    """Battery level of a DX-family lock."""
+
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def name(self):
+        return f"{self._device.nickname} Battery"
+
+    @property
+    def unique_id(self):
+        return f"{self._device.mac}-battery"
+
+    @property
+    def native_value(self):
+        return (self.coordinator.data or {}).get("battery_level")
+
+
+class WyzeIot3FirmwareSensor(_WyzeIot3SensorBase):
+    """Firmware version of a DX-family lock."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def name(self):
+        return f"{self._device.nickname} Firmware"
+
+    @property
+    def unique_id(self):
+        return f"{self._device.mac}-firmware"
+
+    @property
+    def native_value(self):
+        return (self.coordinator.data or {}).get("firmware_ver")
