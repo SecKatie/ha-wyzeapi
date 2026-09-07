@@ -12,6 +12,9 @@ from wyzeapy.services.camera_service import Camera
 from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
 from wyzeapy.services.lock_service import Lock
 from wyzeapy.services.switch_service import Switch, SwitchUsageService
+from wyzeapy import SensorService
+from wyzeapy.services.sensor_service import Sensor
+from wyzeapy.types import DeviceTypes
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -25,6 +28,7 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfEnergy,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -74,6 +78,7 @@ async def async_setup_entry(
     switch_usage_service = await client.switch_usage_service
     irrigation_service = await client.irrigation_service
     air_purifier_service = await client.air_purifier_service
+    sensor_service = await client.sensor_service
 
     locks = await lock_service.get_locks()
     sensors = []
@@ -117,6 +122,15 @@ async def async_setup_entry(
                 WyzeIrrigationSSID(irrigation_service, device),
             ]
         )
+
+    temp_humidity_sensors = [
+        s
+        for s in await sensor_service.get_sensors()
+        if s.type is DeviceTypes.TEMPERATURE_HUMIDITY
+    ]
+    for th_sensor in temp_humidity_sensors:
+        sensors.append(WyzeTemperatureSensor(sensor_service, th_sensor))
+        sensors.append(WyzeHumiditySensor(sensor_service, th_sensor))
 
     async_add_entities(sensors, True)
 
@@ -769,3 +783,87 @@ class WyzeAirPurifierHourlyMaxAQISensor(WyzeAirPurifierAirQualitySensor):
         if offset is not None:
             value += offset
         return value.isoformat()
+
+
+class WyzeTempHumidityBaseSensor(SensorEntity):
+    """Base class for Wyze Temperature/Humidity sensors."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, sensor_service: SensorService, sensor: Sensor) -> None:
+        """Initialize the base sensor."""
+        self._sensor_service = sensor_service
+        self._sensor = sensor
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._sensor.mac)},
+            name=self._sensor.nickname,
+            manufacturer="WyzeLabs",
+            model=self._sensor.product_model,
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return device attributes of the entity."""
+        return {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "device model": self._sensor.product_model,
+        }
+
+    @callback
+    def process_update(self, sensor: Sensor) -> None:
+        """Handle sensor updates."""
+        self._sensor = sensor
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Register for updates when added to hass."""
+        await self._sensor_service.register_for_updates(
+            self._sensor, self.process_update
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Deregister updates on removal."""
+        await self._sensor_service.deregister_for_updates(self._sensor)
+
+
+class WyzeTemperatureSensor(WyzeTempHumidityBaseSensor):
+    """Representation of a Wyze Temperature sensor."""
+
+    _attr_name = "Temperature"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._sensor.mac}-temperature"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the temperature value."""
+        value = self._sensor.device_params.get("th_sensor_temperature")
+        return float(value) if value is not None else None
+
+
+class WyzeHumiditySensor(WyzeTempHumidityBaseSensor):
+    """Representation of a Wyze Humidity sensor."""
+
+    _attr_name = "Humidity"
+    _attr_device_class = SensorDeviceClass.HUMIDITY
+    _attr_native_unit_of_measurement = PERCENTAGE
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the sensor."""
+        return f"{self._sensor.mac}-humidity"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the humidity value."""
+        return self._sensor.device_params.get("th_sensor_humidity")
