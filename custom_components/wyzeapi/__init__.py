@@ -16,6 +16,8 @@ from wyzeapy import Wyzeapy
 from wyzeapy.exceptions import AccessTokenError
 from wyzeapy.wyze_auth_lib import Token
 
+from .ssl_warmup import async_warm_ssl_context
+
 from .const import (
     DOMAIN,
     CONF_CLIENT,
@@ -118,6 +120,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     client.register_for_token_callback(a_tkn_manager.token_callback)
     # We should probably try/catch here to invalidate the login credentials and throw a notification if we cannot get
     # a login with the token
+    # Build wyzeapy's cached SSL context in a worker thread first; login would
+    # otherwise do that disk read on the event loop.
+    await async_warm_ssl_context(hass)
+
     try:
         await client.login(
             config_entry.data.get(CONF_USERNAME),

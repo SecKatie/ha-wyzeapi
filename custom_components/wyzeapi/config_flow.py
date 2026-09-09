@@ -12,6 +12,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
+from .ssl_warmup import async_warm_ssl_context
 from .const import (
     DOMAIN,
     ACCESS_TOKEN,
@@ -67,6 +68,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         errors = {}
+
+        await async_warm_ssl_context(self.hass)
 
         # noinspection PyBroadException
         try:
