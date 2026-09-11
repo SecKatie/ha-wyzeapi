@@ -206,13 +206,31 @@ async def setup_coordinators(
     # them by product_model in the full device list instead.
     from .const import IOT3_MODELS
 
-    try:
-        _lock_service = await client.lock_service
-        _all_devices = await _lock_service.get_object_list()
-        _iot3_devices = [d for d in _all_devices if d.product_model in IOT3_MODELS]
-    except Exception as exc:  # noqa: BLE001 - never block setup of everything else
-        _LOGGER.warning("Wyze IoT3 device discovery failed: %s", exc)
-        _iot3_devices = []
+    # A transient cloud failure here would leave every DX lock absent until the
+    # integration is reloaded, so retry briefly before giving up. Raising
+    # ConfigEntryNotReady instead would hold back every other Wyze device too.
+    import asyncio
+
+    _iot3_devices = []
+    for _attempt in range(1, 4):
+        try:
+            _lock_service = await client.lock_service
+            _all_devices = await _lock_service.get_object_list()
+            _iot3_devices = [d for d in _all_devices if d.product_model in IOT3_MODELS]
+            break
+        except Exception as exc:  # noqa: BLE001 - never block setup of everything else
+            if _attempt == 3:
+                _LOGGER.warning(
+                    "Wyze IoT3 device discovery failed after %d attempts: %s; "
+                    "reload the integration to retry",
+                    _attempt,
+                    exc,
+                )
+            else:
+                _LOGGER.debug(
+                    "Wyze IoT3 device discovery attempt %d failed: %s", _attempt, exc
+                )
+                await asyncio.sleep(5 * _attempt)
     hass.data[DOMAIN][config_entry.entry_id]["iot3_devices"] = _iot3_devices
     if _iot3_devices:
         _iot3_service = Iot3Service(hass, config_entry, client)
