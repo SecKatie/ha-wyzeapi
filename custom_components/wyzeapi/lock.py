@@ -310,7 +310,10 @@ class WyzeIot3Lock(CoordinatorEntity, homeassistant.components.lock.LockEntity):
 
     @property
     def available(self):
-        if self.coordinator.data is None:
+        # A failed poll keeps the previous data, so reading `online` alone would
+        # show a stale state as current during an outage. Honour coordinator
+        # health first.
+        if not super().available or self.coordinator.data is None:
             return False
         return bool(self.coordinator.data.get("online", False))
 
