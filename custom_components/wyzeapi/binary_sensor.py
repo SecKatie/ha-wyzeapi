@@ -53,6 +53,7 @@ async def async_setup_entry(
     sensors = [
         WyzeSensor(sensor_service, sensor)
         for sensor in await sensor_service.get_sensors()
+        if sensor.type is not DeviceTypes.TEMPERATURE_HUMIDITY
     ]
 
     async_add_entities(cameras, True)
