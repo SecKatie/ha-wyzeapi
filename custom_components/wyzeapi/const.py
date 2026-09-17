@@ -25,5 +25,9 @@ DEFAULT_LOCAL_CONTROL = True
 
 # Yunding (YD) is the provider for Wyze Lock Bolt
 YDBLE_LOCK_STATE_UUID = "00002220-0000-6b63-6f6c-2e6b636f6f6c"
+# Standard BLE Battery Level UUID, but the Bolt does not follow the spec here: instead of
+# a one-byte percentage it returns a 16-byte AES-128-ECB block using the same key as the
+# lock state characteristic above. Reading byte 0 raw yields garbage. See ydble_utils.
+YDBLE_BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb"
 YDBLE_UART_RX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 YDBLE_UART_TX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"

@@ -35,6 +35,7 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
 )
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     AIR_PURIFIER_UPDATED,
@@ -77,7 +78,22 @@ async def async_setup_entry(
 
     locks = await lock_service.get_locks()
     sensors = []
+    coordinators = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {})
+    bolt_sensors = []
     for lock in locks:
+        if lock.product_model == "YD_BT1":
+            # The cloud battery sensor is inert for a Bolt. It becomes available only
+            # via the LOCK_UPDATED dispatch, which is sent by WyzeLock, and no WyzeLock
+            # is created for YD_BT1, so nothing registers the lock with the update
+            # manager and `_available` stays False for the entity's whole life.
+            # The cloud does hold a battery value, but only in the _get_lock_info
+            # payload that dispatch would have fetched, and it is only as fresh as the
+            # last time a phone synced the lock over Bluetooth (see `power_refreshtime`).
+            # Read it over BLE instead, where it is live and needs no cloud round trip.
+            coordinator = coordinators.get(lock.mac)
+            if coordinator is not None:
+                bolt_sensors.append(WyzeLockBoltBatterySensor(coordinator))
+            continue
         sensors.append(WyzeLockBatterySensor(lock, WyzeLockBatterySensor.LOCK_BATTERY))
         sensors.append(
             WyzeLockBatterySensor(lock, WyzeLockBatterySensor.KEYPAD_BATTERY)
@@ -119,6 +135,46 @@ async def async_setup_entry(
         )
 
     async_add_entities(sensors, True)
+    # Coordinator-backed; must not update before add or setup waits on a BLE connect.
+    if bolt_sensors:
+        async_add_entities(bolt_sensors, False)
+
+
+class WyzeLockBoltBatterySensor(CoordinatorEntity, SensorEntity):
+    """Battery for a Wyze Lock Bolt, read over BLE by the coordinator."""
+
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
+    _attr_name = "Battery"
+
+    def __init__(self, coordinator) -> None:
+        super().__init__(coordinator)
+        self._lock = coordinator._lock
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._lock.mac}.ble_battery"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        # Match WyzeLockBolt so this lands on the existing lock device.
+        return {
+            "identifiers": {(DOMAIN, self._lock.mac)},
+            "name": self._lock.nickname,
+        }
+
+    @property
+    def native_value(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("battery")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.native_value is not None
 
 
 class WyzeLockBatterySensor(SensorEntity):
