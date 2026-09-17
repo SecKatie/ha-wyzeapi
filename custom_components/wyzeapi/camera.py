@@ -27,12 +27,102 @@ from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
+from wyzeapy.exceptions import AccessTokenError, LoginError
 from wyzeapy.services.camera_service import Camera
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
+
+# Keep the startup prefetch, but don't let one slow/offline camera block every
+# other camera.  Three concurrent requests are enough to reduce startup time
+# without creating a burst against the Wyze API.
+CAMERA_SETUP_CONCURRENCY = 3
+CAMERA_SETUP_TIMEOUT = 15
+
+
+async def _update_camera(
+    camera_service: CameraService,
+    camera: Camera,
+    semaphore: asyncio.Semaphore,
+) -> Camera:
+    """Update one camera without preventing the other cameras from loading."""
+    async with semaphore:
+        try:
+            return await asyncio.wait_for(
+                camera_service.update(camera), timeout=CAMERA_SETUP_TIMEOUT
+            )
+        except (AccessTokenError, LoginError):
+            raise
+        except Exception as err:
+            _LOGGER.warning(
+                "Error updating Wyze camera %s during setup: %s",
+                camera.nickname,
+                err,
+            )
+            return camera
+
+
+async def _prefetch_camera_config(
+    camera: "WyzeCamera",
+    semaphore: asyncio.Semaphore,
+) -> None:
+    """Prefetch one camera's WebRTC config without blocking its peers."""
+    async with semaphore:
+        try:
+            await asyncio.wait_for(
+                camera.config_fetch(), timeout=CAMERA_SETUP_TIMEOUT
+            )
+        except (AccessTokenError, LoginError):
+            raise
+        except asyncio.TimeoutError:
+            _LOGGER.warning(
+                "Timed out fetching WebRTC session configuration for camera %s",
+                camera.name,
+            )
+        except Exception as err:
+            # A camera can be offline while the rest of the account is healthy.
+            _LOGGER.warning(
+                "Error fetching WebRTC session configuration for camera %s: %s",
+                camera.name,
+                err,
+            )
+
+
+async def _initialize_cameras(
+    camera_service: CameraService,
+    cameras: list["WyzeCamera"],
+) -> None:
+    """Refresh camera state and prefetch stream configs after entity creation."""
+    update_semaphore = asyncio.Semaphore(CAMERA_SETUP_CONCURRENCY)
+    try:
+        updated_devices = await asyncio.gather(
+            *(
+                _update_camera(camera_service, camera.camera, update_semaphore)
+                for camera in cameras
+            )
+        )
+        for camera, updated_device in zip(cameras, updated_devices, strict=True):
+            camera.update_camera(updated_device)
+
+        # Pre-seed the ICE server config in the background, as before.  This
+        # task must not delay entity creation or make the platform setup wait.
+        prefetch_semaphore = asyncio.Semaphore(CAMERA_SETUP_CONCURRENCY)
+        await asyncio.gather(
+            *(
+                _prefetch_camera_config(camera, prefetch_semaphore)
+                for camera in cameras
+            )
+        )
+        _LOGGER.info(
+            "Wyze camera initialization completed for %d cameras", len(cameras)
+        )
+    except (AccessTokenError, LoginError) as err:
+        _LOGGER.error(
+            "Wyze camera initialization stopped because authentication failed: %s",
+            err,
+        )
 
 
 @token_exception_handler
@@ -53,28 +143,18 @@ async def async_setup_entry(
     client: Wyzeapy = hass.data[DOMAIN][config_entry.entry_id][CONF_CLIENT]
     camera_service = await client.camera_service
     camera_devices = await camera_service.get_cameras()
+    _LOGGER.info("Wyze API returned %d cameras during setup", len(camera_devices))
 
-    # Create a camera entity for each camera device
-    cameras = []
-    for device in camera_devices:
-        # Update the device to get its zones
-        device = await camera_service.update(device)
-        cameras.extend([WyzeCamera(camera_service, device)])
-
-    for camera in cameras:
-        # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
-        try:
-            await camera.config_fetch()
-        except Exception as e:
-            # Don't block startup if the config fetch fails, but log the error
-            _LOGGER.warning(
-                "Error fetching WebRTC session configuration for camera %s: %s",
-                camera.name,
-                e,
-            )
-
-    _LOGGER.debug("Wyze camera component setup complete")
+    # Register entities as soon as the account's camera list is available.
+    # State updates and WebRTC prefetch continue in the background so a slow
+    # camera cannot delay the rest of the platform setup.
+    cameras = [WyzeCamera(camera_service, device) for device in camera_devices]
     async_add_entities(cameras, True)
+    _LOGGER.info("Wyze camera setup created %d camera entities", len(cameras))
+    hass.async_create_task(
+        _initialize_cameras(camera_service, cameras),
+        name=f"wyzeapi_initialize_cameras_{config_entry.entry_id}",
+    )
 
 
 class WyzeCamera(CameraEntity):
@@ -98,6 +178,19 @@ class WyzeCamera(CameraEntity):
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
         self._cached_config: dict | None = None
         self._config_task: asyncio.Task | None = None
+
+    @property
+    def camera(self) -> Camera:
+        """Return the underlying Wyze camera object."""
+        return self._camera
+
+    @callback
+    def update_camera(self, camera: Camera) -> None:
+        """Replace the underlying camera after its background refresh."""
+        self._camera = camera
+        self.name = camera.nickname
+        self.model = camera.product_model
+        self.async_write_ha_state()
 
     async def config_fetch(self) -> None:
         """Fetch the WebRTC session configuration for this camera and cache it for future use."""
