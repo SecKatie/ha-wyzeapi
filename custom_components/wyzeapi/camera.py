@@ -42,6 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 # they are not needed for WebRTC startup; the initial stream-info requests are
 # short-lived and run together so one offline camera cannot delay its peers.
 CAMERA_REFRESH_CONCURRENCY = 3
+WEBRTC_OFFER_CONCURRENCY = 3
 CAMERA_SETUP_TIMEOUT = 15
 CAMERA_INITIAL_CONFIG_TIMEOUT = 8
 
@@ -161,7 +162,10 @@ async def async_setup_entry(
     # Fetching the initial WebRTC configuration must finish before registration:
     # the native dashboard asks for ICE servers synchronously and cannot retry
     # a failed get_client_config request until the user opens the camera.
-    cameras = [WyzeCamera(camera_service, device) for device in camera_devices]
+    offer_semaphore = asyncio.Semaphore(WEBRTC_OFFER_CONCURRENCY)
+    cameras = [
+        WyzeCamera(camera_service, device, offer_semaphore) for device in camera_devices
+    ]
     await _prefetch_initial_camera_configs(cameras)
     async_add_entities(cameras, True)
     _LOGGER.info("Wyze camera setup created %d camera entities", len(cameras))
@@ -174,11 +178,17 @@ async def async_setup_entry(
 class WyzeCamera(CameraEntity):
     """Representation of a Wyze Camera."""
 
-    def __init__(self, camera_service: CameraService, camera: Camera):
+    def __init__(
+        self,
+        camera_service: CameraService,
+        camera: Camera,
+        offer_semaphore: asyncio.Semaphore,
+    ):
         """Initialize the camera."""
         super().__init__()
         self._camera_service = camera_service
         self._camera = camera
+        self._offer_semaphore = offer_semaphore
         self.name = camera.nickname
         self._attr_unique_id = camera.mac
         self.brand = "Wyze"
@@ -334,44 +344,49 @@ class WyzeCamera(CameraEntity):
             len(offer_sdp),
         )
 
-        # Always fetch a truly fresh config so the signaling URL and ICE servers
-        # are never stale — KVS signed URLs are single-use and short-lived.
-        config = await self._camera_service.get_stream_info(self._camera)
+        # KVS signed URLs are single-use and short-lived.  Limit only the
+        # setup burst; sessions remain independent after their offers are sent.
+        async with self._offer_semaphore:
+            # Always fetch a truly fresh config so the signaling URL and ICE
+            # servers are never stale.
+            config = await self._camera_service.get_stream_info(self._camera)
 
-        # Update cached config with the new ICE servers
-        self._cached_config = config
-        signaling_host = urlparse(config.get("signaling_url", "")).hostname or "unknown"
-        _LOGGER.warning(
-            "Wyze WebRTC config ready: camera=%s model=%s elapsed=%.2fs host=%s ice_servers=%d",
-            self.name,
-            self.model,
-            time.monotonic() - started_at,
-            signaling_host,
-            len(config.get("ice_servers", [])),
-        )
-        _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
-
-        self.sessions[session_id] = WyzeCameraWebRTCSession(
-            session_id, self, send_message, config
-        )
-        await self.sessions[session_id].send_offer(offer_sdp)
-        _LOGGER.warning(
-            "Wyze WebRTC SDP offer sent: camera=%s model=%s elapsed=%.2fs",
-            self.name,
-            self.model,
-            time.monotonic() - started_at,
-        )
-
-        pending = self._pending_candidates.pop(session_id, None)
-        if pending:
-            _LOGGER.debug(
-                "Flushing %d buffered ICE candidates for camera %s session %s",
-                len(pending),
-                self.name,
-                session_id,
+            # Update cached config with the new ICE servers
+            self._cached_config = config
+            signaling_host = (
+                urlparse(config.get("signaling_url", "")).hostname or "unknown"
             )
-            for cand in pending:
-                await self.sessions[session_id].send_candidate(cand)
+            _LOGGER.warning(
+                "Wyze WebRTC config ready: camera=%s model=%s elapsed=%.2fs host=%s ice_servers=%d",
+                self.name,
+                self.model,
+                time.monotonic() - started_at,
+                signaling_host,
+                len(config.get("ice_servers", [])),
+            )
+            _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
+
+            self.sessions[session_id] = WyzeCameraWebRTCSession(
+                session_id, self, send_message, config
+            )
+            await self.sessions[session_id].send_offer(offer_sdp)
+            _LOGGER.warning(
+                "Wyze WebRTC SDP offer sent: camera=%s model=%s elapsed=%.2fs",
+                self.name,
+                self.model,
+                time.monotonic() - started_at,
+            )
+
+            pending = self._pending_candidates.pop(session_id, None)
+            if pending:
+                _LOGGER.debug(
+                    "Flushing %d buffered ICE candidates for camera %s session %s",
+                    len(pending),
+                    self.name,
+                    session_id,
+                )
+                for cand in pending:
+                    await self.sessions[session_id].send_candidate(cand)
 
     async def async_on_webrtc_candidate(
         self, session_id: str, candidate: RTCIceCandidateInit
@@ -638,6 +653,13 @@ class WyzeCameraWebRTCSession:
                             sdp = answer_obj.get("sdp", answer_str)
                         except json.JSONDecodeError:
                             sdp = answer_str
+                        if self.sdp_answer is not None:
+                            _LOGGER.debug(
+                                "Ignoring duplicate SDP answer for camera %s session %s",
+                                self.camera.name,
+                                self.session_id,
+                            )
+                            continue
                         self.sdp_answer = sdp
                         self.force_correct_sdp_answer()
                         offer_elapsed = (
