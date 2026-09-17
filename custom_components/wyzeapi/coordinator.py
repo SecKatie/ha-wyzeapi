@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 from bleak import BleakClient
-from bleak.exc import BleakCharacteristicNotFoundError
+from bleak.exc import BleakCharacteristicNotFoundError, BleakError
 from bleak_retry_connector import establish_connection
 
 from homeassistant.components import bluetooth
@@ -14,10 +14,19 @@ from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from wyzeapy.services.lock_service import LockService, Lock
 
-from .const import YDBLE_LOCK_STATE_UUID, YDBLE_UART_RX_UUID, YDBLE_UART_TX_UUID
+from .const import (
+    BOLT_COMMAND_DISCONNECT_SECONDS,
+    BOLT_COMMAND_TIMEOUT_SECONDS,
+    YDBLE_CON_TYPE_PLAINTEXT,
+    YDBLE_CON_TYPE_UUID,
+    YDBLE_LOCK_STATE_UUID,
+    YDBLE_UART_RX_UUID,
+    YDBLE_UART_TX_UUID,
+)
 from .token_manager import token_exception_handler
 from .ydble_utils import (
     decrypt_ecb,
+    encrypt_ecb,
     pack_l1,
     pack_l2_dict,
     pack_l2_lock_unlock,
@@ -26,6 +35,9 @@ from .ydble_utils import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Subscribed together for the duration of a lock/unlock exchange.
+NOTIFY_UUIDS = (YDBLE_UART_RX_UUID, YDBLE_LOCK_STATE_UUID)
 
 
 class WyzeLockBoltCoordinator(DataUpdateCoordinator):
@@ -49,6 +61,7 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self._mac = None
         self._bleak_client = None
         self._current_command = None
+        self._disconnect_task: asyncio.Task | None = None
         # Initialize data to prevent errors during setup
         self.data = {"state": None, "timestamp": None}
 
@@ -94,17 +107,86 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
                 f"Could not find BLE device {self._lock.nickname} with address {self._mac}. Device may not be in range."
             )
 
-        # disconnect in 10 seconds in case of error
-        asyncio.create_task(self._disconnect(delay=10))
+        # Safety net only: if the exchange never completes, release the link so the
+        # owner's phone can reach the lock. A successful command disconnects sooner,
+        # from _handle_state.
+        self._schedule_disconnect(BOLT_COMMAND_TIMEOUT_SECONDS)
 
         context = {"command": command, "stage": 0}
 
         async def _handle_uart_rx_context(sender, data):
             await self._handle_uart_rx(sender, data, client, context)
 
+        # _get_ble_client() reuses a live connection, and the previous command may have
+        # left its subscriptions on it, so re-subscribing blindly raises
+        # "Notifications are already enabled" and the command silently never runs.
+        await self._clear_notifications(client)
+        # Order mirrors the Wyze app: subscribe UART RX, declare the connection type,
+        # then subscribe to lock state (C21530c.java onDescriptorWrite -> m67679b).
         await client.start_notify(YDBLE_UART_RX_UUID, _handle_uart_rx_context)
+        await self._send_connection_type(client)
         await client.start_notify(YDBLE_LOCK_STATE_UUID, self._handle_state)
         await self._request_challenge(client)
+
+    async def _send_connection_type(self, client: BleakClient) -> None:
+        """Tell the lock this is an interactive session so it keeps the link open.
+
+        Without this the lock hangs up roughly 6s after connecting, measured at 6.11s
+        on a YD_BT1, which silently truncates any command that is still in flight or
+        that reuses the connection. With it the link stayed up past 75s. The lock's
+        timer runs from connection establishment and is not extended by GATT traffic,
+        so there is no keepalive alternative; the Wyze app sends exactly this write and
+        has no heartbeat of its own.
+
+        A failure here is logged rather than raised: the command may still finish
+        inside the ~6s window.
+        """
+        try:
+            value = encrypt_ecb(self._uuid[-16:].lower(), YDBLE_CON_TYPE_PLAINTEXT)
+            await client.write_gatt_char(YDBLE_CON_TYPE_UUID, value, response=False)
+        except (BleakError, OSError, ValueError) as err:
+            _LOGGER.warning(
+                "Could not declare BLE connection type for %s (%s); the lock may drop "
+                "the connection ~6s after connecting",
+                self._lock.nickname,
+                err,
+            )
+
+    def _schedule_disconnect(self, delay: int) -> None:
+        """(Re)arm the teardown timer, replacing any previous one.
+
+        A stale timer left running would fire partway through the next command and
+        clear _current_command on an operation still in flight, which makes a failed
+        command look like a state that simply reverted.
+        """
+        if self._disconnect_task and not self._disconnect_task.done():
+            self._disconnect_task.cancel()
+        self._disconnect_task = asyncio.create_task(self._disconnect(delay=delay))
+
+    async def _clear_notifications(self, client: BleakClient) -> None:
+        """Drop any notification subscriptions left on this connection.
+
+        Must run before re-subscribing rather than during teardown: in the failing
+        sequence the teardown has not run yet, which is precisely why the connection is
+        still alive to be reused. Clearing rather than skipping the re-subscribe also
+        matters because the RX callback closes over a per-command ``context``, so a
+        stale subscription would keep feeding the previous command's closure.
+
+        ``stop_notify`` is a no-op when nothing is subscribed, so this is safe on a
+        freshly opened connection and needs no subscription bookkeeping.
+        """
+        for uuid in NOTIFY_UUIDS:
+            try:
+                await client.stop_notify(uuid)
+            except (BleakError, OSError) as err:
+                # Never subscribed, characteristic missing, or the link died under us.
+                # The start_notify calls that follow surface any real problem.
+                _LOGGER.debug(
+                    "Could not clear notifications on %s for %s: %s",
+                    uuid,
+                    self._lock.nickname,
+                    err,
+                )
 
     async def _request_challenge(self, client: BleakClient):
         l2_content = pack_l2_dict(0x91, 0, {10: b"\x27"})
@@ -126,6 +208,11 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         self.data = self._parse_state(data)
         self._current_command = None
         self.async_update_listeners()
+        # The command is done. The lock now holds the link open indefinitely because of
+        # the connection-type declaration, and it accepts only one connection at a time,
+        # so release it rather than waiting for the safety-net timeout. The short delay
+        # lets the closing ack in _handle_uart_rx go out first.
+        self._schedule_disconnect(BOLT_COMMAND_DISCONNECT_SECONDS)
 
     def _parse_state(self, state_data):
         data = decrypt_ecb(self._uuid[-16:].lower(), state_data)
@@ -197,8 +284,36 @@ class WyzeLockBoltCoordinator(DataUpdateCoordinator):
         return self._bleak_client
 
     async def _disconnect(self, delay=0):
-        await asyncio.sleep(delay)
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            # Superseded by a newer command; leave its connection alone.
+            raise
+        # A command still in flight here means the exchange never reported a new state.
+        timed_out = self._current_command is not None
         if self._bleak_client and self._bleak_client.is_connected:
             await self._bleak_client.disconnect()
         self._current_command = None
-        self.async_update_listeners()
+        if timed_out:
+            await self._resolve_state_after_timeout()
+        else:
+            self.async_update_listeners()
+
+    async def _resolve_state_after_timeout(self) -> None:
+        """Find out where the bolt actually is after a command with no confirmation.
+
+        Simply clearing the in-flight flag would publish ``self.data``, which still
+        holds the value from *before* the command. That is not merely stale, it can be
+        actively wrong: a lost confirmation does not mean the bolt did not move.
+        Observed on a YD_BT1 whose link dropped mid-exchange: the bolt locked, the
+        notification never arrived, and the entity reported ``unlocked`` for a door that
+        was locked. A wrong lock state is worse than no lock state, so re-read instead of
+        guessing, and let the refresh mark the entity unavailable if the lock cannot be
+        reached at all.
+        """
+        _LOGGER.warning(
+            "Command on %s completed without a state notification; re-reading the lock "
+            "rather than reporting its previous state",
+            self._lock.nickname,
+        )
+        await self.async_refresh()
