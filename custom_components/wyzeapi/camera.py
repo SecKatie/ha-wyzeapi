@@ -7,8 +7,9 @@ from dataclasses import asdict
 from collections.abc import Callable
 from typing import Any
 import logging
-import uuid
 import re
+import time
+from urllib.parse import urlparse
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
@@ -27,6 +28,7 @@ from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
+from wyzeapy.const import PHONE_ID
 from wyzeapy.exceptions import AccessTokenError, LoginError
 from wyzeapy.services.camera_service import Camera
 
@@ -35,11 +37,13 @@ from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
 
-# Keep the startup prefetch, but don't let one slow/offline camera block every
-# other camera.  Three concurrent requests are enough to reduce startup time
-# without creating a burst against the Wyze API.
-CAMERA_SETUP_CONCURRENCY = 3
+# Keep the startup prefetch so the native dashboard can request ICE servers as
+# soon as the entities are created.  Device refreshes stay limited because
+# they are not needed for WebRTC startup; the initial stream-info requests are
+# short-lived and run together so one offline camera cannot delay its peers.
+CAMERA_REFRESH_CONCURRENCY = 3
 CAMERA_SETUP_TIMEOUT = 15
+CAMERA_INITIAL_CONFIG_TIMEOUT = 8
 
 
 async def _update_camera(
@@ -66,14 +70,13 @@ async def _update_camera(
 
 async def _prefetch_camera_config(
     camera: "WyzeCamera",
-    semaphore: asyncio.Semaphore,
+    semaphore: asyncio.Semaphore | None = None,
+    timeout: float = CAMERA_SETUP_TIMEOUT,
 ) -> None:
     """Prefetch one camera's WebRTC config without blocking its peers."""
-    async with semaphore:
+    async def fetch() -> None:
         try:
-            await asyncio.wait_for(
-                camera.config_fetch(), timeout=CAMERA_SETUP_TIMEOUT
-            )
+            await asyncio.wait_for(camera.config_fetch(), timeout=timeout)
         except (AccessTokenError, LoginError):
             raise
         except asyncio.TimeoutError:
@@ -89,13 +92,32 @@ async def _prefetch_camera_config(
                 err,
             )
 
+    if semaphore is None:
+        await fetch()
+    else:
+        async with semaphore:
+            await fetch()
+
+
+async def _prefetch_initial_camera_configs(cameras: list["WyzeCamera"]) -> None:
+    """Fetch initial ICE configuration before registering camera entities."""
+    await asyncio.gather(
+        *(
+            _prefetch_camera_config(
+                camera,
+                timeout=CAMERA_INITIAL_CONFIG_TIMEOUT,
+            )
+            for camera in cameras
+        )
+    )
+
 
 async def _initialize_cameras(
     camera_service: CameraService,
     cameras: list["WyzeCamera"],
 ) -> None:
-    """Refresh camera state and prefetch stream configs after entity creation."""
-    update_semaphore = asyncio.Semaphore(CAMERA_SETUP_CONCURRENCY)
+    """Refresh camera state after entity creation."""
+    update_semaphore = asyncio.Semaphore(CAMERA_REFRESH_CONCURRENCY)
     try:
         updated_devices = await asyncio.gather(
             *(
@@ -105,16 +127,6 @@ async def _initialize_cameras(
         )
         for camera, updated_device in zip(cameras, updated_devices, strict=True):
             camera.update_camera(updated_device)
-
-        # Pre-seed the ICE server config in the background, as before.  This
-        # task must not delay entity creation or make the platform setup wait.
-        prefetch_semaphore = asyncio.Semaphore(CAMERA_SETUP_CONCURRENCY)
-        await asyncio.gather(
-            *(
-                _prefetch_camera_config(camera, prefetch_semaphore)
-                for camera in cameras
-            )
-        )
         _LOGGER.info(
             "Wyze camera initialization completed for %d cameras", len(cameras)
         )
@@ -146,9 +158,11 @@ async def async_setup_entry(
     _LOGGER.info("Wyze API returned %d cameras during setup", len(camera_devices))
 
     # Register entities as soon as the account's camera list is available.
-    # State updates and WebRTC prefetch continue in the background so a slow
-    # camera cannot delay the rest of the platform setup.
+    # Fetching the initial WebRTC configuration must finish before registration:
+    # the native dashboard asks for ICE servers synchronously and cannot retry
+    # a failed get_client_config request until the user opens the camera.
     cameras = [WyzeCamera(camera_service, device) for device in camera_devices]
+    await _prefetch_initial_camera_configs(cameras)
     async_add_entities(cameras, True)
     _LOGGER.info("Wyze camera setup created %d camera entities", len(cameras))
     hass.async_create_task(
@@ -297,18 +311,27 @@ class WyzeCamera(CameraEntity):
 
         _LOGGER.debug("ICE servers for camera %s: %s", self.name, ice_servers)
         configuration = RTCConfiguration(ice_servers=ice_servers)
-        return WebRTCClientConfiguration(
-            configuration=configuration, data_channel="data"
-        )
+        # Wyze cameras publish audio/video only.  Requesting a data channel
+        # makes the HA frontend add an `m=application` section to the offer;
+        # the Gwell signaling endpoint silently drops those offers instead of
+        # returning an SDP answer.
+        return WebRTCClientConfiguration(configuration=configuration)
 
     async def async_handle_async_webrtc_offer(
         self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage
     ) -> None:
         """Handle an incoming WebRTC offer from the frontend."""
+        started_at = time.monotonic()
         _LOGGER.debug(
             "Handling WebRTC offer for camera %s with session ID %s",
             self.name,
             session_id,
+        )
+        _LOGGER.warning(
+            "Wyze WebRTC offer started: camera=%s model=%s offer_bytes=%d",
+            self.name,
+            self.model,
+            len(offer_sdp),
         )
 
         # Always fetch a truly fresh config so the signaling URL and ICE servers
@@ -317,12 +340,27 @@ class WyzeCamera(CameraEntity):
 
         # Update cached config with the new ICE servers
         self._cached_config = config
+        signaling_host = urlparse(config.get("signaling_url", "")).hostname or "unknown"
+        _LOGGER.warning(
+            "Wyze WebRTC config ready: camera=%s model=%s elapsed=%.2fs host=%s ice_servers=%d",
+            self.name,
+            self.model,
+            time.monotonic() - started_at,
+            signaling_host,
+            len(config.get("ice_servers", [])),
+        )
         _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
 
         self.sessions[session_id] = WyzeCameraWebRTCSession(
             session_id, self, send_message, config
         )
         await self.sessions[session_id].send_offer(offer_sdp)
+        _LOGGER.warning(
+            "Wyze WebRTC SDP offer sent: camera=%s model=%s elapsed=%.2fs",
+            self.name,
+            self.model,
+            time.monotonic() - started_at,
+        )
 
         pending = self._pending_candidates.pop(session_id, None)
         if pending:
@@ -393,6 +431,7 @@ class WyzeCameraWebRTCSession:
         # that can change SigV4 canonical encoding and make KVS reject the handshake.
         # Instead, only "undouble" percent-escapes by converting "%25xx" -> "%xx",
         # leaving "%3A", "%2F", etc. intact.
+        started_at = time.monotonic()
         signaling_url = self.config["signaling_url"]
         for _ in range(3):
             if "%25" not in signaling_url:
@@ -405,6 +444,13 @@ class WyzeCameraWebRTCSession:
             "WebSocket connection established for camera %s with session ID %s",
             self.camera.name,
             self.session_id,
+        )
+        _LOGGER.warning(
+            "Wyze WebRTC websocket connected: camera=%s model=%s elapsed=%.2fs host=%s",
+            self.camera.name,
+            self.camera.model,
+            time.monotonic() - started_at,
+            urlparse(signaling_url).hostname or "unknown",
         )
         self._connected.set()
         asyncio.create_task(self.run_loop())
@@ -422,11 +468,15 @@ class WyzeCameraWebRTCSession:
         offer = {"type": "offer", "sdp": offer_sdp}
         payload = {
             "action": "SDP_OFFER",
-            "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
+            # Wyze's Gwell WebRTC endpoint routes the offer to the app
+            # installation that requested the stream.  This must be the same
+            # phone_id used by wyzeapy for the API session; a fixed UUID works
+            # intermittently on KVS cameras but leaves Gwell cameras waiting
+            # forever for an SDP answer.
+            "recipientClientId": PHONE_ID,
             "messagePayload": base64.b64encode(
                 json.dumps(offer, separators=(",", ":")).encode()
             ).decode(),
-            "correlationId": str(uuid.uuid4()),
         }
         str_payload = json.dumps(payload)
         _LOGGER.debug(
@@ -436,6 +486,7 @@ class WyzeCameraWebRTCSession:
             str_payload,
         )
         await self.websocket.send(str_payload)
+        self._offer_sent_at = time.monotonic()
 
     async def send_candidate(self, candidate: RTCIceCandidateInit):
         """Send an ICE candidate to the Kinesis Video Streams signaling channel."""
@@ -461,7 +512,7 @@ class WyzeCameraWebRTCSession:
             candidate_payload["usernameFragment"] = match.group(1)
         payload = {
             "action": "ICE_CANDIDATE",
-            "recipientClientId": "ada06f08-87f4-4e13-b699-e82db8517ae5",
+            "recipientClientId": PHONE_ID,
             "messagePayload": base64.b64encode(
                 json.dumps(candidate_payload, separators=(",", ":")).encode()
             ).decode(),
@@ -573,6 +624,11 @@ class WyzeCameraWebRTCSession:
                             sdp_m_line_index=candidate_data.get("sdpMLineIndex"),
                             user_fragment=candidate_data.get("usernameFragment"),
                         )
+                        _LOGGER.warning(
+                            "Wyze WebRTC ICE candidate received: camera=%s model=%s",
+                            self.camera.name,
+                            self.camera.model,
+                        )
                         self.callback(WebRTCCandidate(candidate=rtccandidate))
                     case "SDP_ANSWER":
                         # Decode messagePayload (base64 JSON with "type"/"sdp" keys) → extract sdp string
@@ -584,13 +640,28 @@ class WyzeCameraWebRTCSession:
                             sdp = answer_str
                         self.sdp_answer = sdp
                         self.force_correct_sdp_answer()
+                        offer_elapsed = (
+                            time.monotonic() - self._offer_sent_at
+                            if hasattr(self, "_offer_sent_at")
+                            else -1
+                        )
+                        _LOGGER.warning(
+                            "Wyze WebRTC SDP answer received: camera=%s model=%s elapsed=%.2fs",
+                            self.camera.name,
+                            self.camera.model,
+                            offer_elapsed,
+                        )
                         self.callback(WebRTCAnswer(answer=self.sdp_answer))
                     case "STATUS_RESPONSE" | "GO_AWAY" | "RECONNECT_ICE_SERVER":
-                        _LOGGER.debug(
-                            "KVS control message '%s' for session %s: %s",
+                        status = data.get("statusResponse")
+                        _LOGGER.warning(
+                            "Wyze WebRTC control message: camera=%s model=%s type=%s status_code=%s error_type=%s description=%s",
+                            self.camera.name,
+                            self.camera.model,
                             data.get("messageType"),
-                            self.session_id,
-                            data,
+                            status.get("statusCode") if isinstance(status, dict) else None,
+                            status.get("errorType") if isinstance(status, dict) else None,
+                            status.get("description") if isinstance(status, dict) else None,
                         )
                     case other:
                         _LOGGER.debug(
@@ -607,8 +678,11 @@ class WyzeCameraWebRTCSession:
                 e,
                 exc_info=True,
             )
-        _LOGGER.debug(
-            "run_loop exited for camera %s session %s",
+        _LOGGER.warning(
+            "run_loop exited for camera %s model %s session %s close_code=%s close_reason=%s",
             self.camera.name,
+            self.camera.model,
             self.session_id,
+            getattr(self.websocket, "close_code", None),
+            getattr(self.websocket, "close_reason", None),
         )
