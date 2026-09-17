@@ -53,6 +53,7 @@ async def async_setup_entry(
     sensors = [
         WyzeSensor(sensor_service, sensor)
         for sensor in await sensor_service.get_sensors()
+        if sensor.type is not DeviceTypes.TEMPERATURE_HUMIDITY
     ]
 
     async_add_entities(cameras, True)
@@ -135,6 +136,8 @@ class WyzeSensor(BinarySensorEntity):
             return BinarySensorDeviceClass.MOTION
         elif self._sensor.type is DeviceTypes.CONTACT_SENSOR:
             return BinarySensorDeviceClass.DOOR
+        elif self._sensor.type is DeviceTypes.LEAK_SENSOR:
+            return BinarySensorDeviceClass.MOISTURE
         else:
             raise RuntimeError(
                 f"The device type {self._sensor.type} is not supported by this class"
