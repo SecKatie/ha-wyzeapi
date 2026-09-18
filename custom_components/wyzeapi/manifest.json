@@ -11,7 +11,7 @@
   "issue_tracker": "https://github.com/SecKatie/ha-wyzeapi/issues",
   "loggers": ["custom_components.wyzeapi"],
   "requirements": [
-    "wyzeapy @ git+https://github.com/diogormendes/wyzeapy.git@32964a5",
+    "wyzeapy @ git+https://github.com/diogormendes/wyzeapy.git@6a19c27",
     "websockets"
   ],
   "version": "0.1.39"
