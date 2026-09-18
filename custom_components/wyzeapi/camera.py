@@ -242,7 +242,7 @@ class WyzeCamera(CameraEntity):
         self._config_task: asyncio.Task | None = None
         # KVS/Gwell can reject overlapping negotiations for the same camera.
         # Serialize only the offer handshake; established media sessions remain
-        # independent.
+        # independent until a new viewer replaces them.
         self._offer_lock = asyncio.Lock()
 
     @property
@@ -389,6 +389,7 @@ class WyzeCamera(CameraEntity):
         # KVS signed URLs are single-use and short-lived.  Limit the setup
         # burst globally and serialize handshakes for this camera.
         async with self._offer_semaphore, self._offer_lock:
+            self._replace_active_webrtc_sessions(session_id)
             pending = self._pending_candidates.pop(session_id, [])
             for attempt in range(1, WEBRTC_OFFER_ATTEMPTS + 1):
                 try:
@@ -470,6 +471,26 @@ class WyzeCamera(CameraEntity):
         session = self.sessions.pop(session_id, None)
         if session is not None:
             session.close_connection()
+
+    def _replace_active_webrtc_sessions(self, new_session_id: str) -> None:
+        """Close older viewers before starting a new Wyze camera session.
+
+        Wyze routes signaling using one account phone ID and some camera
+        channels do not reliably answer concurrent viewers.  Keeping stale
+        sessions alive also makes switching from desktop to mobile fail even
+        though the first viewer negotiated successfully.
+        """
+        for session_id, session in list(self.sessions.items()):
+            if session_id == new_session_id:
+                continue
+            _LOGGER.info(
+                "Replacing existing Wyze WebRTC session: camera=%s old_session=%s",
+                self.name,
+                session_id,
+            )
+            session.close_connection()
+            self.sessions.pop(session_id, None)
+            self._pending_candidates.pop(session_id, None)
 
     async def async_on_webrtc_candidate(
         self, session_id: str, candidate: RTCIceCandidateInit
