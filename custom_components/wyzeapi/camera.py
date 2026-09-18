@@ -31,6 +31,7 @@ from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.const import PHONE_ID
 from wyzeapy.exceptions import AccessTokenError, LoginError
 from wyzeapy.services.camera_service import Camera
+from websockets.exceptions import InvalidStatus
 
 from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
 from .token_manager import token_exception_handler
@@ -43,8 +44,45 @@ _LOGGER = logging.getLogger(__name__)
 # short-lived and run together so one offline camera cannot delay its peers.
 CAMERA_REFRESH_CONCURRENCY = 3
 WEBRTC_OFFER_CONCURRENCY = 3
+WEBRTC_OFFER_ATTEMPTS = 2
+WEBRTC_OFFER_RETRY_DELAY = 0.5
 CAMERA_SETUP_TIMEOUT = 15
 CAMERA_INITIAL_CONFIG_TIMEOUT = 8
+
+
+def _ice_candidate_type(candidate: str | None) -> str:
+    """Return only the ICE candidate type, never its address or credentials."""
+    if not candidate:
+        return "none"
+    match = re.search(r"\btyp\s+(host|srflx|prflx|relay)\b", candidate)
+    return match.group(1) if match else "unknown"
+
+
+def _sdp_summary(sdp: str) -> str:
+    """Summarize an SDP answer without logging its contents."""
+    media: list[str] = []
+    sections = re.split(r"(?=m=)", sdp)
+    for section in sections:
+        match = re.match(r"m=(audio|video|application)\s", section)
+        if match is None:
+            continue
+        kind = match.group(1)
+        direction_match = re.search(
+            r"^a=(sendrecv|sendonly|recvonly|inactive)$", section, re.MULTILINE
+        )
+        direction = direction_match.group(1) if direction_match else "unset"
+        codecs = sorted(
+            set(re.findall(r"^a=rtpmap:\d+\s+([^/\s]+)", section, re.MULTILINE))
+        )
+        media.append(f"{kind}:{direction}:{','.join(codecs) or 'none'}")
+
+    candidate_types = sorted(
+        set(re.findall(r"\ba=candidate:[^\r\n]*?\btyp\s+(host|srflx|prflx|relay)\b", sdp))
+    )
+    return "media=%s candidate_types=%s" % (
+        ";".join(media) or "none",
+        ",".join(candidate_types) or "none",
+    )
 
 
 async def _update_camera(
@@ -202,6 +240,10 @@ class WyzeCamera(CameraEntity):
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
         self._cached_config: dict | None = None
         self._config_task: asyncio.Task | None = None
+        # KVS/Gwell can reject overlapping negotiations for the same camera.
+        # Serialize only the offer handshake; established media sessions remain
+        # independent.
+        self._offer_lock = asyncio.Lock()
 
     @property
     def camera(self) -> Camera:
@@ -344,55 +386,97 @@ class WyzeCamera(CameraEntity):
             len(offer_sdp),
         )
 
-        # KVS signed URLs are single-use and short-lived.  Limit only the
-        # setup burst; sessions remain independent after their offers are sent.
-        async with self._offer_semaphore:
-            # Always fetch a truly fresh config so the signaling URL and ICE
-            # servers are never stale.
-            config = await self._camera_service.get_stream_info(self._camera)
+        # KVS signed URLs are single-use and short-lived.  Limit the setup
+        # burst globally and serialize handshakes for this camera.
+        async with self._offer_semaphore, self._offer_lock:
+            pending = self._pending_candidates.pop(session_id, [])
+            for attempt in range(1, WEBRTC_OFFER_ATTEMPTS + 1):
+                try:
+                    # Always fetch a truly fresh config so the signaling URL
+                    # and ICE servers are never stale after a rejected URL.
+                    config = await self._camera_service.get_stream_info(self._camera)
 
-            # Update cached config with the new ICE servers
-            self._cached_config = config
-            signaling_host = (
-                urlparse(config.get("signaling_url", "")).hostname or "unknown"
-            )
-            _LOGGER.warning(
-                "Wyze WebRTC config ready: camera=%s model=%s elapsed=%.2fs host=%s ice_servers=%d",
-                self.name,
-                self.model,
-                time.monotonic() - started_at,
-                signaling_host,
-                len(config.get("ice_servers", [])),
-            )
-            _LOGGER.debug("Fresh config for offer on camera %s: %s", self.name, config)
+                    # Update cached config with the new ICE servers
+                    self._cached_config = config
+                    signaling_host = (
+                        urlparse(config.get("signaling_url", "")).hostname or "unknown"
+                    )
+                    _LOGGER.warning(
+                        "Wyze WebRTC config ready: camera=%s model=%s elapsed=%.2fs host=%s ice_servers=%d attempt=%d",
+                        self.name,
+                        self.model,
+                        time.monotonic() - started_at,
+                        signaling_host,
+                        len(config.get("ice_servers", [])),
+                        attempt,
+                    )
+                    _LOGGER.debug(
+                        "Fresh config for offer on camera %s is ready", self.name
+                    )
 
-            self.sessions[session_id] = WyzeCameraWebRTCSession(
-                session_id, self, send_message, config
-            )
-            await self.sessions[session_id].send_offer(offer_sdp)
-            _LOGGER.warning(
-                "Wyze WebRTC SDP offer sent: camera=%s model=%s elapsed=%.2fs",
-                self.name,
-                self.model,
-                time.monotonic() - started_at,
-            )
+                    session = WyzeCameraWebRTCSession(
+                        session_id, self, send_message, config
+                    )
+                    self.sessions[session_id] = session
+                    await session.send_offer(offer_sdp)
+                except InvalidStatus as err:
+                    self._discard_webrtc_session(session_id)
+                    _LOGGER.warning(
+                        "Wyze WebRTC signaling rejected: camera=%s model=%s status=%s attempt=%d/%d",
+                        self.name,
+                        self.model,
+                        getattr(
+                            getattr(err, "response", None),
+                            "status_code",
+                            "unknown",
+                        ),
+                        attempt,
+                        WEBRTC_OFFER_ATTEMPTS,
+                    )
+                    if attempt == WEBRTC_OFFER_ATTEMPTS:
+                        raise
+                    await asyncio.sleep(WEBRTC_OFFER_RETRY_DELAY)
+                    continue
+                except Exception:
+                    self._discard_webrtc_session(session_id)
+                    raise
 
-            pending = self._pending_candidates.pop(session_id, None)
-            if pending:
-                _LOGGER.debug(
-                    "Flushing %d buffered ICE candidates for camera %s session %s",
-                    len(pending),
+                _LOGGER.warning(
+                    "Wyze WebRTC SDP offer sent: camera=%s model=%s elapsed=%.2fs attempt=%d",
                     self.name,
-                    session_id,
+                    self.model,
+                    time.monotonic() - started_at,
+                    attempt,
                 )
-                for cand in pending:
-                    await self.sessions[session_id].send_candidate(cand)
+
+                pending.extend(self._pending_candidates.pop(session_id, []))
+                if pending:
+                    _LOGGER.debug(
+                        "Flushing %d buffered ICE candidates for camera %s session %s",
+                        len(pending),
+                        self.name,
+                        session_id,
+                    )
+                    try:
+                        for cand in pending:
+                            await session.send_candidate(cand)
+                    except Exception:
+                        self._discard_webrtc_session(session_id)
+                        raise
+                return
+
+    def _discard_webrtc_session(self, session_id: str) -> None:
+        """Remove a failed session without discarding candidates for a retry."""
+        session = self.sessions.pop(session_id, None)
+        if session is not None:
+            session.close_connection()
 
     async def async_on_webrtc_candidate(
         self, session_id: str, candidate: RTCIceCandidateInit
     ) -> None:
         """Handle an incoming ICE candidate for a WebRTC session."""
-        if session_id not in self.sessions:
+        session = self.sessions.get(session_id)
+        if session is None or not session.is_connected:
             self._pending_candidates.setdefault(session_id, []).append(candidate)
             _LOGGER.debug(
                 "Buffered ICE candidate for camera %s session %s (session not ready yet)",
@@ -401,7 +485,7 @@ class WyzeCamera(CameraEntity):
             )
             return
 
-        await self.sessions[session_id].send_candidate(candidate)
+        await session.send_candidate(candidate)
 
     def close_webrtc_session(self, session_id: str) -> None:
         """Close a WebRTC session and clean up resources."""
@@ -436,6 +520,11 @@ class WyzeCameraWebRTCSession:
         self.sdp_answer = None
         # Set once connect() succeeds; send_candidate waits on this instead of reconnecting
         self._connected = asyncio.Event()
+
+    @property
+    def is_connected(self) -> bool:
+        """Return whether the signaling WebSocket is ready for candidates."""
+        return self._connected.is_set() and self.websocket is not None
 
     async def connect(self):
         """Establish the WebSocket connection to the KVS signaling URL.
@@ -640,9 +729,10 @@ class WyzeCameraWebRTCSession:
                             user_fragment=candidate_data.get("usernameFragment"),
                         )
                         _LOGGER.warning(
-                            "Wyze WebRTC ICE candidate received: camera=%s model=%s",
+                            "Wyze WebRTC ICE candidate received: camera=%s model=%s type=%s",
                             self.camera.name,
                             self.camera.model,
+                            _ice_candidate_type(candidate_data.get("candidate")),
                         )
                         self.callback(WebRTCCandidate(candidate=rtccandidate))
                     case "SDP_ANSWER":
@@ -668,10 +758,11 @@ class WyzeCameraWebRTCSession:
                             else -1
                         )
                         _LOGGER.warning(
-                            "Wyze WebRTC SDP answer received: camera=%s model=%s elapsed=%.2fs",
+                            "Wyze WebRTC SDP answer received: camera=%s model=%s elapsed=%.2fs %s",
                             self.camera.name,
                             self.camera.model,
                             offer_elapsed,
+                            _sdp_summary(self.sdp_answer),
                         )
                         self.callback(WebRTCAnswer(answer=self.sdp_answer))
                     case "STATUS_RESPONSE" | "GO_AWAY" | "RECONNECT_ICE_SERVER":
