@@ -19,6 +19,7 @@ note this mimics the Wyze app and therefore access may be cut off at anytime.
 * Use Wyze Cameras as motion sensors **NOTE:** Disabled following API usage incident with Wyze
 * Turn on and off Wyze Cameras
 * Lock, unlock, and view status of lock and door for the Wyze Lock
+* Read Wyze Scale weight and body composition as sensors (latest cloud measurement)
 
 ### Potential Downsides
 
@@ -51,11 +52,14 @@ After you have done that if you feel like my work has been valuable to you I wel
 
 ## Usage
 
-* Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>`
-  or `lock.<friendly name>` for example (`light.livingroom_lamp`).
+* Entities will show up as `light.<friendly name>`, `switch.<friendly name>`, `binary_sensor.<friendly name>`,
+  `lock.<friendly name>`, or `sensor.<friendly name>` for example (`light.livingroom_lamp`, `sensor.wyze_scale_weight`).
+* Scale sensors (per device): Weight, BMI, Body Fat, Muscle Mass, Last Measured; optional Body Water, Bone Mineral,
+  Protein, BMR, Metabolic Age, Heart Rate (disabled by default).
 * Instructions for interacting with lights can be found here: https://www.home-assistant.io/integrations/light/
     * Switches: https://www.home-assistant.io/integrations/switch/
     * Camera motion sensors: https://www.home-assistant.io/integrations/binary_sensor/
+    * Sensors: https://www.home-assistant.io/integrations/sensor/
 
 ## Contributing
 

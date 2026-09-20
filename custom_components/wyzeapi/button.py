@@ -7,6 +7,7 @@ from typing import Any
 from aiohttp.client_exceptions import ClientConnectionError
 from wyzeapy import Wyzeapy
 from wyzeapy.services.irrigation_service import Irrigation, IrrigationService, Zone
+from wyzeapy.services.scale_service import Scale, ScaleService
 from wyzeapy.services.switch_service import Switch
 
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
@@ -18,7 +19,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_registry import EntityCategory
 
-from .const import CONF_CLIENT, DOMAIN, RESET_BUTTON_PRESSED
+from .const import CONF_CLIENT, DOMAIN, RESET_BUTTON_PRESSED, SCALE_UPDATED
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,6 +73,12 @@ async def async_setup_entry(
             if plug.product_model in OUTDOOR_PLUGS
         ]
     )
+
+    scale_service = await client.scale_service
+    scales = await scale_service.get_scales()
+    for scale in scales:
+        scale = await scale_service.update(scale)
+        buttons.append(WyzeScaleRefreshButton(scale_service, scale))
 
     async_add_entities(buttons, True)
 
@@ -314,4 +321,54 @@ class WyzePowerSensorResetButton(ButtonEntity):
             self.hass,
             f"{RESET_BUTTON_PRESSED}-{self._switch.mac}",
             self._switch,
+        )
+
+
+class WyzeScaleRefreshButton(ButtonEntity):
+    """Immediately refresh Wyze Scale cloud measurements."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_name = "Refresh"
+    _attr_icon = "mdi:refresh"
+
+    def __init__(self, scale_service: ScaleService, scale: Scale) -> None:
+        """Initialize a scale refresh button."""
+        self._scale_service = scale_service
+        self._scale = scale
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._scale.mac)},
+            name=self._scale.nickname,
+            manufacturer="WyzeLabs",
+            model=self._scale.product_model,
+            sw_version=self._scale.firmware_ver,
+        )
+
+    @property
+    def unique_id(self) -> str:
+        """Create a unique ID for the button."""
+        return f"{self._scale.mac}-refresh"
+
+    async def async_press(self) -> None:
+        """Fetch the latest scale data from Wyze and update all scale sensors."""
+        try:
+            updated = await self._scale_service.update(self._scale)
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to refresh scale %s: %s", self._scale.nickname, err
+            )
+            raise HomeAssistantError(
+                f"Failed to refresh scale {self._scale.nickname}: {err}"
+            ) from err
+
+        self._scale = updated
+        async_dispatcher_send(
+            self.hass,
+            f"{SCALE_UPDATED}-{self._scale.mac}",
+            updated,
         )

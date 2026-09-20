@@ -1,18 +1,12 @@
 """Platform for sensor integration."""
 
-from collections.abc import Callable
 import datetime
 import json
 import logging
+from collections.abc import Callable
 from typing import Any
 
-from wyzeapy import Wyzeapy
-from wyzeapy.services.air_purifier_service import AirPurifier
-from wyzeapy.services.camera_service import Camera
-from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
-from wyzeapy.services.lock_service import Lock
-from wyzeapy.services.switch_service import Switch, SwitchUsageService
-
+import homeassistant.helpers.entity_registry as er
 from homeassistant.components.sensor import (
     RestoreSensor,
     SensorDeviceClass,
@@ -25,16 +19,27 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfEnergy,
+    UnitOfMass,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 from homeassistant.helpers.entity import DeviceInfo
-import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
 )
+from homeassistant.util import dt as dt_util
+from wyzeapy import Wyzeapy
+from wyzeapy.services.air_purifier_service import AirPurifier
+from wyzeapy.services.camera_service import Camera
+from wyzeapy.services.irrigation_service import Irrigation, IrrigationService
+from wyzeapy.services.lock_service import Lock
+from wyzeapy.services.scale_service import Scale, ScaleService
+from wyzeapy.services.switch_service import Switch, SwitchUsageService
 
 from .const import (
     AIR_PURIFIER_UPDATED,
@@ -43,6 +48,7 @@ from .const import (
     DOMAIN,
     LOCK_UPDATED,
     RESET_BUTTON_PRESSED,
+    SCALE_UPDATED,
 )
 from .token_manager import token_exception_handler
 
@@ -102,6 +108,27 @@ async def async_setup_entry(
     for air_purifier in air_purifiers:
         sensors.append(WyzeAirPurifierAQISensor(air_purifier))
         sensors.append(WyzeAirPurifierHourlyMaxAQISensor(air_purifier))
+
+    scale_service = await client.scale_service
+    scales = await scale_service.get_scales()
+    for scale in scales:
+        scale = await scale_service.update(scale)
+        sensors.extend(
+            [
+                WyzeScaleWeightSensor(scale_service, scale),
+                WyzeScaleBMISensor(scale),
+                WyzeScaleBodyFatSensor(scale),
+                WyzeScaleMuscleMassSensor(scale),
+                WyzeScaleLastMeasuredSensor(scale),
+                WyzeScaleBodyWaterSensor(scale),
+                WyzeScaleBoneMineralSensor(scale),
+                WyzeScaleProteinSensor(scale),
+                WyzeScaleVisceralFatSensor(scale),
+                WyzeScaleBMRSensor(scale),
+                WyzeScaleMetabolicAgeSensor(scale),
+                WyzeScaleHeartRateSensor(scale),
+            ]
+        )
 
     # Get all irrigation devices
     irrigation_devices = await irrigation_service.get_irrigations()
@@ -769,3 +796,335 @@ class WyzeAirPurifierHourlyMaxAQISensor(WyzeAirPurifierAirQualitySensor):
         if offset is not None:
             value += offset
         return value.isoformat()
+
+
+SCALE_UPDATE_INTERVAL = 900  # 15 minutes
+
+
+class WyzeScaleBaseSensor(SensorEntity):
+    """Base class for Wyze Scale measurement sensors."""
+
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the scale sensor."""
+        self._scale = scale
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._scale.mac)},
+            name=self._scale.nickname,
+            manufacturer="WyzeLabs",
+            model=self._scale.product_model,
+            sw_version=self._scale.firmware_ver,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Return whether the scale cloud data is available."""
+        return self._scale.available
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return device attributes of the entity."""
+        attributes: dict[str, Any] = {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+            "device model": self._scale.product_model,
+        }
+        record = self._scale.latest_record
+        if record and record.measure_ts is not None:
+            attributes["measure_ts"] = record.measure_ts
+        return attributes
+
+    @callback
+    def handle_scale_update(self, scale: Scale) -> None:
+        """Handle scale updates from the updater or siblings."""
+        self._scale = scale
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Listen for scale update events."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{SCALE_UPDATED}-{self._scale.mac}",
+                self.handle_scale_update,
+            )
+        )
+
+
+class WyzeScaleWeightSensor(WyzeScaleBaseSensor):
+    """Primary Wyze Scale weight sensor; owns the cloud updater."""
+
+    _attr_name = "Weight"
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, scale_service: ScaleService, scale: Scale) -> None:
+        """Initialize the weight sensor."""
+        super().__init__(scale)
+        self._scale_service = scale_service
+        self._attr_unique_id = f"{self._scale.mac}-weight"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return weight in kilograms."""
+        record = self._scale.latest_record
+        return None if record is None else record.weight_kg
+
+    @callback
+    def async_update_callback(self, scale: Scale) -> None:
+        """Update from the wyzeapy updater and notify sibling sensors."""
+        self._scale = scale
+        async_dispatcher_send(
+            self.hass,
+            f"{SCALE_UPDATED}-{self._scale.mac}",
+            self._scale,
+        )
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Register cloud updater and listen for sibling dispatches."""
+        await super().async_added_to_hass()
+        self._scale.callback_function = self.async_update_callback
+        self._scale_service.register_updater(self._scale, SCALE_UPDATE_INTERVAL)
+        await self._scale_service.start_update_manager()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister updater on removal."""
+        self._scale_service.unregister_updater(self._scale)
+
+
+class WyzeScaleBMISensor(WyzeScaleBaseSensor):
+    """Wyze Scale BMI sensor."""
+
+    _attr_name = "BMI"
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:human"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the BMI sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-bmi"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return BMI."""
+        record = self._scale.latest_record
+        return None if record is None else record.bmi
+
+
+class WyzeScaleBodyFatSensor(WyzeScaleBaseSensor):
+    """Wyze Scale body fat percentage sensor."""
+
+    _attr_name = "Body Fat"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:percent"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the body fat sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-body-fat"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return body fat percentage."""
+        record = self._scale.latest_record
+        return None if record is None else record.body_fat
+
+
+class WyzeScaleMuscleMassSensor(WyzeScaleBaseSensor):
+    """Wyze Scale muscle mass sensor."""
+
+    _attr_name = "Muscle Mass"
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:weight-lifter"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the muscle mass sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-muscle-mass"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return muscle mass in kilograms."""
+        record = self._scale.latest_record
+        return None if record is None else record.muscle
+
+
+class WyzeScaleLastMeasuredSensor(WyzeScaleBaseSensor):
+    """Timestamp of the latest Wyze Scale measurement."""
+
+    _attr_name = "Last Measured"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_state_class = None
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the last measured sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-last-measured"
+
+    @property
+    def native_value(self) -> datetime.datetime | None:
+        """Return the measurement timestamp."""
+        record = self._scale.latest_record
+        if record is None or record.measure_ts is None:
+            return None
+        # Wyze measure_ts is milliseconds since epoch
+        return dt_util.utc_from_timestamp(record.measure_ts / 1000)
+
+
+class WyzeScaleOptionalBaseSensor(WyzeScaleBaseSensor):
+    """Optional scale metrics disabled by default."""
+
+    _attr_entity_registry_enabled_default = False
+
+
+class WyzeScaleBodyWaterSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale body water percentage sensor."""
+
+    _attr_name = "Body Water"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the body water sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-body-water"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return body water percentage."""
+        record = self._scale.latest_record
+        return None if record is None else record.body_water
+
+
+class WyzeScaleBoneMineralSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale bone mineral mass sensor."""
+
+    _attr_name = "Bone Mineral"
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the bone mineral sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-bone-mineral"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return bone mineral mass."""
+        record = self._scale.latest_record
+        return None if record is None else record.bone_mineral
+
+
+class WyzeScaleProteinSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale protein percentage sensor."""
+
+    _attr_name = "Protein"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the protein sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-protein"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return protein percentage."""
+        record = self._scale.latest_record
+        return None if record is None else record.protein
+
+
+class WyzeScaleVisceralFatSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale visceral fat rating sensor (dimensionless index)."""
+
+    _attr_name = "Visceral Fat"
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:stomach"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the visceral fat sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-visceral-fat"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return visceral fat rating."""
+        record = self._scale.latest_record
+        return None if record is None else record.body_vfr
+
+
+class WyzeScaleBMRSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale basal metabolic rate sensor."""
+
+    _attr_name = "BMR"
+    _attr_native_unit_of_measurement = "kcal/day"
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:fire"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the BMR sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-bmr"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return basal metabolic rate."""
+        record = self._scale.latest_record
+        return None if record is None else record.bmr
+
+
+class WyzeScaleMetabolicAgeSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale metabolic age sensor."""
+
+    _attr_name = "Metabolic Age"
+    _attr_native_unit_of_measurement = "years"
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:calendar-account"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the metabolic age sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-metabolic-age"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return metabolic age."""
+        record = self._scale.latest_record
+        return None if record is None else record.metabolic_age
+
+
+class WyzeScaleHeartRateSensor(WyzeScaleOptionalBaseSensor):
+    """Wyze Scale heart rate sensor."""
+
+    _attr_name = "Heart Rate"
+    _attr_native_unit_of_measurement = "bpm"
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:heart-pulse"
+
+    def __init__(self, scale: Scale) -> None:
+        """Initialize the heart rate sensor."""
+        super().__init__(scale)
+        self._attr_unique_id = f"{self._scale.mac}-heart-rate"
+        # HEART_RATE device class is not available on all HA versions
+        heart_rate_class = getattr(SensorDeviceClass, "HEART_RATE", None)
+        if heart_rate_class is not None:
+            self._attr_device_class = heart_rate_class
+
+    @property
+    def native_value(self) -> int | None:
+        """Return heart rate."""
+        record = self._scale.latest_record
+        return None if record is None else record.heart_rate
