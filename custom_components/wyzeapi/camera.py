@@ -9,8 +9,10 @@ from typing import Any
 import logging
 import re
 import time
+import uuid
 from urllib.parse import urlparse
 
+from aiohttp import ClientError, ClientTimeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
 from homeassistant.components.camera.webrtc import (
@@ -23,12 +25,12 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util.ssl import get_default_context
 from propcache.api import cached_property
 from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
-from wyzeapy.const import PHONE_ID
 from wyzeapy.exceptions import AccessTokenError, LoginError
 from wyzeapy.services.camera_service import Camera
 from websockets.exceptions import InvalidStatus
@@ -48,6 +50,10 @@ WEBRTC_OFFER_ATTEMPTS = 2
 WEBRTC_OFFER_RETRY_DELAY = 0.5
 CAMERA_SETUP_TIMEOUT = 15
 CAMERA_INITIAL_CONFIG_TIMEOUT = 8
+SNAPSHOT_TIMEOUT = 8
+SNAPSHOT_CACHE_TTL = 10
+SNAPSHOT_FAILURE_BACKOFF = 30
+WYZE_RECIPIENT_CLIENT_ID = "ada06f08-87f4-4e13-b699-e82db8517ae5"
 
 
 def _ice_candidate_type(candidate: str | None) -> str:
@@ -244,6 +250,10 @@ class WyzeCamera(CameraEntity):
         # Serialize only the offer handshake; established media sessions remain
         # independent until a new viewer replaces them.
         self._offer_lock = asyncio.Lock()
+        self._snapshot_lock = asyncio.Lock()
+        self._snapshot_cache: bytes | None = None
+        self._snapshot_cache_at = 0.0
+        self._snapshot_backoff_until = 0.0
 
     @property
     def camera(self) -> Camera:
@@ -336,8 +346,72 @@ class WyzeCamera(CameraEntity):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return bytes of camera image.
-        Currently not implemented"""
+        """Return the latest Wyze thumbnail/event image for HA camera_proxy."""
+        now = time.monotonic()
+        if (
+            self._snapshot_cache is not None
+            and now - self._snapshot_cache_at < SNAPSHOT_CACHE_TTL
+        ):
+            return self._snapshot_cache
+        if now < self._snapshot_backoff_until:
+            return None
+
+        urls: list[str] = []
+        device_params = getattr(self._camera, "device_params", {}) or {}
+        thumbnails = device_params.get("camera_thumbnails", {}) or {}
+        if isinstance(thumbnails, dict):
+            thumbnail_url = thumbnails.get("thumbnails_url")
+            if isinstance(thumbnail_url, str) and thumbnail_url:
+                urls.append(thumbnail_url)
+
+        last_event = getattr(self._camera, "last_event", None)
+        for resource in getattr(last_event, "file_list", []) or []:
+            if not isinstance(resource, dict) or resource.get("type") != 1:
+                continue
+            event_url = resource.get("url")
+            if isinstance(event_url, str) and event_url:
+                urls.append(event_url)
+
+        # Preserve the order while avoiding duplicate downloads.
+        urls = list(dict.fromkeys(urls))
+        if not urls:
+            self._snapshot_backoff_until = now + SNAPSHOT_FAILURE_BACKOFF
+            _LOGGER.debug("No Wyze snapshot URL available for camera %s", self.name)
+            return None
+
+        async with self._snapshot_lock:
+            now = time.monotonic()
+            if (
+                self._snapshot_cache is not None
+                and now - self._snapshot_cache_at < SNAPSHOT_CACHE_TTL
+            ):
+                return self._snapshot_cache
+            if now < self._snapshot_backoff_until:
+                return None
+
+            session = async_get_clientsession(self.hass)
+            for url in urls:
+                try:
+                    async with session.get(
+                        url, timeout=ClientTimeout(total=SNAPSHOT_TIMEOUT)
+                    ) as response:
+                        if response.status != 200:
+                            continue
+                        image = await response.read()
+                        if image.startswith((b"\xff\xd8", b"\x89PNG", b"RIFF")):
+                            self._snapshot_cache = image
+                            self._snapshot_cache_at = time.monotonic()
+                            self._snapshot_backoff_until = 0.0
+                            return image
+                except (ClientError, asyncio.TimeoutError) as err:
+                    _LOGGER.debug(
+                        "Error fetching Wyze snapshot for camera %s: %s",
+                        self.name,
+                        err,
+                    )
+
+        self._snapshot_backoff_until = time.monotonic() + SNAPSHOT_FAILURE_BACKOFF
+        _LOGGER.debug("Wyze snapshot unavailable for camera %s", self.name)
         return None
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
@@ -593,12 +667,11 @@ class WyzeCameraWebRTCSession:
         offer = {"type": "offer", "sdp": offer_sdp}
         payload = {
             "action": "SDP_OFFER",
-            # Wyze's Gwell WebRTC endpoint routes the offer to the app
-            # installation that requested the stream.  This must be the same
-            # phone_id used by wyzeapy for the API session; a fixed UUID works
-            # intermittently on KVS cameras but leaves Gwell cameras waiting
-            # forever for an SDP answer.
-            "recipientClientId": PHONE_ID,
+            # Wyze's KVS endpoint expects this client ID for the app stream
+            # receiver. A random phone ID can return an SDP answer while
+            # leaving the browser without usable media candidates.
+            "recipientClientId": WYZE_RECIPIENT_CLIENT_ID,
+            "correlationId": str(uuid.uuid4()),
             "messagePayload": base64.b64encode(
                 json.dumps(offer, separators=(",", ":")).encode()
             ).decode(),
@@ -637,7 +710,7 @@ class WyzeCameraWebRTCSession:
             candidate_payload["usernameFragment"] = match.group(1)
         payload = {
             "action": "ICE_CANDIDATE",
-            "recipientClientId": PHONE_ID,
+            "recipientClientId": WYZE_RECIPIENT_CLIENT_ID,
             "messagePayload": base64.b64encode(
                 json.dumps(candidate_payload, separators=(",", ":")).encode()
             ).decode(),
