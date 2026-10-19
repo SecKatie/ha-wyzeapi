@@ -35,7 +35,13 @@
     "step": {
       "init": {
         "data": {
-          "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips"
+          "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips",
+          "bridge_url": "Local bridge URL",
+          "bridge_stream_url": "Local bridge stream URL"
+        },
+        "data_description": {
+          "bridge_url": "go2rtc API address, such as http://127.0.0.1:1984. Card previews load from /api/frame.jpeg. Leave blank to skip.",
+          "bridge_stream_url": "Optional. rtsp://host:8554/{name} plays that stream instead of Wyze cloud WebRTC. {name} is the camera nickname, lowercased, with spaces as underscores."
         }
       },
       "user": {

@@ -25,6 +25,8 @@ from .const import (
     WYZE_NOTIFICATION_TOGGLE,
     BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
+    CONF_BRIDGE_URL,
+    CONF_BRIDGE_STREAM_URL,
     KEY_ID,
     API_KEY,
 )
@@ -144,9 +146,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await setup_coordinators(hass, config_entry, client)
 
     options_dict = {
+        **config_entry.options,
         BULB_LOCAL_CONTROL: config_entry.options.get(
             BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
-        )
+        ),
+        CONF_BRIDGE_URL: config_entry.options.get(CONF_BRIDGE_URL, ""),
+        CONF_BRIDGE_STREAM_URL: config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
     }
     hass.config_entries.async_update_entry(config_entry, options=options_dict)
 

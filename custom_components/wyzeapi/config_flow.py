@@ -12,6 +12,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
+from .bridge import clean_bridge_stream_url, clean_bridge_url
 from .const import (
     DOMAIN,
     ACCESS_TOKEN,
@@ -19,6 +20,8 @@ from .const import (
     REFRESH_TIME,
     BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
+    CONF_BRIDGE_URL,
+    CONF_BRIDGE_STREAM_URL,
     KEY_ID,
     API_KEY,
 )
@@ -168,7 +171,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     default=self.config_entry.options.get(
                         BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
                     ),
-                ): bool
+                ): bool,
+                vol.Optional(
+                    CONF_BRIDGE_URL,
+                    default=self.config_entry.options.get(CONF_BRIDGE_URL, ""),
+                ): clean_bridge_url,
+                vol.Optional(
+                    CONF_BRIDGE_STREAM_URL,
+                    default=self.config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
+                ): clean_bridge_stream_url,
             }
         )
         return self.async_show_form(step_id="init", data_schema=data_schema)
