@@ -161,28 +161,44 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
+        errors: dict[str, str] = {}
+        current = dict(self.config_entry.options)
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            try:
+                user_input[CONF_BRIDGE_URL] = clean_bridge_url(
+                    user_input.get(CONF_BRIDGE_URL, "")
+                )
+            except ValueError:
+                errors[CONF_BRIDGE_URL] = "invalid_bridge_url"
+            try:
+                user_input[CONF_BRIDGE_STREAM_URL] = clean_bridge_stream_url(
+                    user_input.get(CONF_BRIDGE_STREAM_URL, "")
+                )
+            except ValueError:
+                errors[CONF_BRIDGE_STREAM_URL] = "invalid_bridge_stream_url"
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
+            current.update(user_input)
 
         data_schema = vol.Schema(
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(
-                        BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
-                    ),
+                    default=current.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
                 ): bool,
                 vol.Optional(
                     CONF_BRIDGE_URL,
-                    default=self.config_entry.options.get(CONF_BRIDGE_URL, ""),
-                ): clean_bridge_url,
+                    default=current.get(CONF_BRIDGE_URL, ""),
+                ): str,
                 vol.Optional(
                     CONF_BRIDGE_STREAM_URL,
-                    default=self.config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
-                ): clean_bridge_stream_url,
+                    default=current.get(CONF_BRIDGE_STREAM_URL, ""),
+                ): str,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+        return self.async_show_form(
+            step_id="init", data_schema=data_schema, errors=errors
+        )
 
 
 class CannotConnect(HomeAssistantError):

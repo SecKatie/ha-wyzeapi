@@ -64,7 +64,9 @@
         "error": {
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
+            "unknown": "Unexpected error",
+            "invalid_bridge_url": "Enter an http(s) URL, or leave this blank",
+            "invalid_bridge_stream_url": "Enter an rtsp or http URL that includes {name}, or leave this blank"
         },
         "abort": {
             "already_configured": "Device is already configured",

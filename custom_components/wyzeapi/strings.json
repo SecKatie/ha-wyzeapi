@@ -63,7 +63,9 @@
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "unknown": "[%key:common::config_flow::error::unknown%]",
+      "invalid_bridge_url": "Enter an http(s) URL, or leave this blank",
+      "invalid_bridge_stream_url": "Enter an rtsp or http URL that includes {name}, or leave this blank"
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
