@@ -188,18 +188,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     return True
 
 
-async def options_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Handle options update."""
-    _LOGGER.debug("Updated options")
-    entry_data = config_entry.as_dict().get("data")
-    hass.config_entries.async_update_entry(
-        config_entry,
-        data=entry_data,
-    )
-    _LOGGER.debug("Reload entry: " + config_entry.entry_id)
-    await hass.config_entries.async_reload(config_entry.entry_id)
-
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
