@@ -42,6 +42,13 @@ def test_clean_bridge_url():
         bridge.clean_bridge_url("rtsp://127.0.0.1:8554/front_door")
 
 
+def test_default_bridge_playback():
+    assert bridge.default_bridge_playback(None, "") is False
+    assert bridge.default_bridge_playback(None, "rtsp://127.0.0.1:8554/{name}") is True
+    assert bridge.default_bridge_playback(False, "rtsp://127.0.0.1:8554/{name}") is False
+    assert bridge.default_bridge_playback(True, "") is True
+
+
 def test_clean_bridge_stream_url():
     assert bridge.clean_bridge_stream_url("  ") == ""
     assert (

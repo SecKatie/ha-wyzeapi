@@ -37,12 +37,14 @@
             "init": {
                 "data": {
                     "bulb_local_control": "Use Local Control for Color Bulbs and Light Strips",
-                    "bridge_url": "Local bridge URL",
-                    "bridge_stream_url": "Local bridge stream URL"
+                    "bridge_url": "Camera bridge URL",
+                    "bridge_stream_url": "Camera bridge stream URL",
+                    "bridge_rtsp": "Play cameras from the bridge"
                 },
                 "data_description": {
-                    "bridge_url": "go2rtc API address, such as http://127.0.0.1:1984. Card previews load from /api/frame.jpeg. Leave blank to skip.",
-                    "bridge_stream_url": "Optional. rtsp://host:8554/{name} plays that stream instead of Wyze cloud WebRTC. {name} is the camera nickname, lowercased, with spaces as underscores."
+                    "bridge_url": "go2rtc API address for Wyze cameras, such as http://127.0.0.1:1984. Card previews load from /api/frame.jpeg. Leave blank to skip.",
+                    "bridge_stream_url": "rtsp://host:8554/{name} for Wyze cameras. {name} is the camera nickname, lowercased, with spaces as underscores.",
+                    "bridge_rtsp": "Play Wyze cameras from the bridge stream URL instead of Wyze cloud WebRTC. Lights and other devices are unchanged."
                 }
             },
             "user": {
@@ -66,7 +68,8 @@
             "invalid_auth": "Invalid authentication",
             "unknown": "Unexpected error",
             "invalid_bridge_url": "Enter an http(s) URL, or leave this blank",
-            "invalid_bridge_stream_url": "Enter an rtsp or http URL that includes {name}, or leave this blank"
+            "invalid_bridge_stream_url": "Enter an rtsp or http URL that includes {name}, or leave this blank",
+            "bridge_stream_required": "Enter a camera stream URL to play from the bridge"
         },
         "abort": {
             "already_configured": "Device is already configured",

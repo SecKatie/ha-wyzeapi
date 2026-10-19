@@ -32,6 +32,13 @@ def playback_url(template: str, name: str) -> str:
     return template.replace("{name}", name)
 
 
+def default_bridge_playback(value: object, stream_url: str) -> bool:
+    """Checkbox default. A saved stream URL keeps playback on until turned off."""
+    if value is None:
+        return bool((stream_url or "").strip())
+    return bool(value)
+
+
 def clean_bridge_url(value: object) -> str:
     """Accept a blank value or an http(s) bridge API URL."""
     text = "" if value is None else str(value).strip().rstrip("/")

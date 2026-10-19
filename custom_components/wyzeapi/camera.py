@@ -32,9 +32,10 @@ from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
 
-from .bridge import frame_url, playback_url, stream_name
+from .bridge import default_bridge_playback, frame_url, playback_url, stream_name
 from .const import (
     CAMERA_UPDATED,
+    CONF_BRIDGE_RTSP,
     CONF_BRIDGE_STREAM_URL,
     CONF_BRIDGE_URL,
     CONF_CLIENT,
@@ -66,7 +67,10 @@ async def async_setup_entry(
 
     bridge_url = config_entry.options.get(CONF_BRIDGE_URL) or ""
     bridge_stream = config_entry.options.get(CONF_BRIDGE_STREAM_URL) or ""
-    camera_cls = WyzeBridgeCamera if bridge_stream else WyzeCamera
+    use_bridge_stream = default_bridge_playback(
+        config_entry.options.get(CONF_BRIDGE_RTSP), bridge_stream
+    ) and bool(bridge_stream)
+    camera_cls = WyzeBridgeCamera if use_bridge_stream else WyzeCamera
 
     # Create a camera entity for each camera device
     cameras = []

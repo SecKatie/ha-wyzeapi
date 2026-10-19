@@ -26,6 +26,7 @@ DEFAULT_LOCAL_CONTROL = True
 # Optional go2rtc / wyze-bridge endpoints. Blank leaves cloud WebRTC alone.
 CONF_BRIDGE_URL = "bridge_url"
 CONF_BRIDGE_STREAM_URL = "bridge_stream_url"
+CONF_BRIDGE_RTSP = "bridge_rtsp"
 
 # Yunding (YD) is the provider for Wyze Lock Bolt
 YDBLE_LOCK_STATE_UUID = "00002220-0000-6b63-6f6c-2e6b636f6f6c"

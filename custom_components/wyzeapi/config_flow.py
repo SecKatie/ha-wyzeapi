@@ -12,7 +12,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
-from .bridge import clean_bridge_stream_url, clean_bridge_url
+from .bridge import clean_bridge_stream_url, clean_bridge_url, default_bridge_playback
 from .const import (
     DOMAIN,
     ACCESS_TOKEN,
@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_LOCAL_CONTROL,
     CONF_BRIDGE_URL,
     CONF_BRIDGE_STREAM_URL,
+    CONF_BRIDGE_RTSP,
     KEY_ID,
     API_KEY,
 )
@@ -176,6 +177,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 )
             except ValueError:
                 errors[CONF_BRIDGE_STREAM_URL] = "invalid_bridge_stream_url"
+            else:
+                if user_input.get(CONF_BRIDGE_RTSP) and not user_input[
+                    CONF_BRIDGE_STREAM_URL
+                ]:
+                    errors[CONF_BRIDGE_STREAM_URL] = "bridge_stream_required"
             if not errors:
                 return self.async_create_entry(title="", data=user_input)
             current.update(user_input)
@@ -194,6 +200,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_BRIDGE_STREAM_URL,
                     default=current.get(CONF_BRIDGE_STREAM_URL, ""),
                 ): str,
+                vol.Optional(
+                    CONF_BRIDGE_RTSP,
+                    default=default_bridge_playback(
+                        current.get(CONF_BRIDGE_RTSP),
+                        current.get(CONF_BRIDGE_STREAM_URL, ""),
+                    ),
+                ): bool,
             }
         )
         return self.async_show_form(

@@ -27,9 +27,11 @@ from .const import (
     DEFAULT_LOCAL_CONTROL,
     CONF_BRIDGE_URL,
     CONF_BRIDGE_STREAM_URL,
+    CONF_BRIDGE_RTSP,
     KEY_ID,
     API_KEY,
 )
+from .bridge import default_bridge_playback
 from .coordinator import WyzeLockBoltCoordinator
 from .token_manager import TokenManager
 
@@ -152,6 +154,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         ),
         CONF_BRIDGE_URL: config_entry.options.get(CONF_BRIDGE_URL, ""),
         CONF_BRIDGE_STREAM_URL: config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
+        CONF_BRIDGE_RTSP: default_bridge_playback(
+            config_entry.options.get(CONF_BRIDGE_RTSP),
+            config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
+        ),
     }
     hass.config_entries.async_update_entry(config_entry, options=options_dict)
 
