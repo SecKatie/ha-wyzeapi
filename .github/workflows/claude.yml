@@ -12,16 +12,19 @@ on:
 
 jobs:
   claude:
+    # Only run when SecKatie triggers it
     if: |
+      github.event.sender.login == 'SecKatie' && (
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      )
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write # commit and push
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
@@ -58,7 +61,8 @@ jobs:
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # Allowed: tests and ruff via uv, plus read-only gh for PR, issue and CI context
+          # Extra tools on top of the action's defaults (file edits in the repo, Read/Grep/Glob,
+          # git add/commit/push): web access, tests and ruff via uv, and read-only gh
           claude_args: |
-            --allowedTools "Bash(uv sync),Bash(uv sync *),Bash(uv run pytest),Bash(uv run pytest *),Bash(uv run ruff check),Bash(uv run ruff check *),Bash(uv run ruff format),Bash(uv run ruff format *),Bash(gh pr view),Bash(gh pr view *),Bash(gh pr diff),Bash(gh pr diff *),Bash(gh pr checks),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh issue list),Bash(gh issue list *),Bash(gh run view *),Bash(gh run list),Bash(gh run list *)"
+            --allowedTools "WebFetch,WebSearch,Bash(uv sync),Bash(uv sync *),Bash(uv run pytest),Bash(uv run pytest *),Bash(uv run ruff check),Bash(uv run ruff check *),Bash(uv run ruff format),Bash(uv run ruff format *),Bash(gh pr view),Bash(gh pr view *),Bash(gh pr diff),Bash(gh pr diff *),Bash(gh pr checks),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh issue list),Bash(gh issue list *),Bash(gh run view *),Bash(gh run list),Bash(gh run list *)"
 
