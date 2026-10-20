@@ -25,5 +25,5 @@ If you feel like my work has been valuable to you I welcome your support through
 
 ## Useful Links
 
-* [README](https://github.com/JoshuaMulliken/ha-wyzeapi/blob/master/README.md)
+* [README](https://github.com/JoshuaMulliken/ha-wyzeapi/blob/main/README.md)
 * [Repository](https://github.com/JoshuaMulliken/ha-wyzeapi)
