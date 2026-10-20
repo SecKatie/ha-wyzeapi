@@ -12,12 +12,15 @@ on:
 
 jobs:
   claude:
-    # Only run when SecKatie triggers it
+    # Only run when SecKatie triggers it. Review events on fork PRs don't get
+    # repo secrets, so skip them there (a top-level PR comment still works).
     if: |
       github.event.sender.login == 'SecKatie' && (
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
       )
     runs-on: ubuntu-latest
