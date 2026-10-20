@@ -45,6 +45,13 @@ def token_exception_handler(func):
                 func(*args, **kwargs)
         except (AccessTokenError, LoginError) as err:
             _LOGGER.error("TokenManager detected a login issue please re-login.")
+            # Home Assistant only starts reauth on its own for
+            # ConfigEntryAuthFailed raised from the entry setup or a
+            # coordinator. Raised from a platform setup or an entity action it
+            # is just logged, so start the reauth flow here. Home Assistant
+            # ignores the call if a reauth flow is already in progress.
+            if TokenManager.hass is not None and TokenManager.config_entry is not None:
+                TokenManager.config_entry.async_start_reauth(TokenManager.hass)
             raise ConfigEntryAuthFailed("Unable to login, please re-login.") from err
 
     return inner_function

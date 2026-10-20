@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from wyzeapy.exceptions import AccessTokenError, LoginError
 
 from custom_components.wyzeapi.const import (
     ACCESS_TOKEN,
@@ -12,7 +14,10 @@ from custom_components.wyzeapi.const import (
     REFRESH_TIME,
     REFRESH_TOKEN,
 )
-from custom_components.wyzeapi.token_manager import TokenManager
+from custom_components.wyzeapi.token_manager import (
+    TokenManager,
+    token_exception_handler,
+)
 
 
 @pytest.mark.asyncio
@@ -54,3 +59,41 @@ async def test_token_callback_preserves_api_credentials() -> None:
             REFRESH_TIME: "2.0",
         },
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [AccessTokenError, LoginError])
+async def test_token_exception_handler_starts_reauth(error, monkeypatch) -> None:
+    """A login failure starts Home Assistant's reauth flow, then raises.
+
+    Home Assistant only starts reauth by itself for ConfigEntryAuthFailed
+    raised from the entry setup or a coordinator. From a platform setup or an
+    entity action it is just logged, so the handler starts the flow itself.
+    """
+    hass = SimpleNamespace()
+    entry = SimpleNamespace(async_start_reauth=Mock())
+    monkeypatch.setattr(TokenManager, "hass", hass)
+    monkeypatch.setattr(TokenManager, "config_entry", entry)
+
+    @token_exception_handler
+    async def platform_setup() -> None:
+        raise error("Authentication failed")
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        await platform_setup()
+
+    entry.async_start_reauth.assert_called_once_with(hass)
+
+
+@pytest.mark.asyncio
+async def test_token_exception_handler_without_entry_still_raises(monkeypatch) -> None:
+    """With no config entry registered yet, the handler still raises."""
+    monkeypatch.setattr(TokenManager, "hass", None)
+    monkeypatch.setattr(TokenManager, "config_entry", None)
+
+    @token_exception_handler
+    async def platform_setup() -> None:
+        raise AccessTokenError("Authentication failed")
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        await platform_setup()
