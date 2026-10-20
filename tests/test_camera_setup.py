@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from wyzeapy.exceptions import UnknownApiError
+from wyzeapy.exceptions import AccessTokenError, UnknownApiError
 
 from custom_components.wyzeapi import camera as camera_module
 from custom_components.wyzeapi.camera import WyzeCamera
@@ -56,14 +56,7 @@ async def test_setup_entry_adds_cameras() -> None:
 
 @pytest.mark.asyncio
 async def test_setup_entry_survives_a_camera_that_cannot_be_updated() -> None:
-    """One failing camera must not stop the other cameras from loading.
-
-    A camera removed from the Wyze account can linger in the cached device
-    list, and fetching its properties then answers 3005 "unauthorized
-    operation". Before this was guarded, that exception propagated out of
-    async_setup_entry and the whole camera platform failed, so every camera
-    on the account disappeared.
-    """
+    """A device-specific failure must not prevent other cameras from loading."""
     bad = _camera("11:22:33:44:55:66", "Deleted Cam")
     good = _camera("AA:BB:CC:DD:EE:FF", "Front Door")
 
@@ -86,3 +79,29 @@ async def test_setup_entry_survives_a_camera_that_cannot_be_updated() -> None:
     assert "Front Door" in names, "a healthy camera must still be added"
     assert "Deleted Cam" in names, "the failing camera is kept, just not updated"
     assert len(entities) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stage", ["update", "get_stream_info"])
+async def test_setup_entry_survives_an_expired_token(stage) -> None:
+    """An expired access token on one camera is logged, not fatal.
+
+    wyzeapy marks the token expired and refreshes it on the next call, so the
+    camera is still added and setup carries on.
+    """
+    device = _camera("AA:BB:CC:DD:EE:FF", "Front Door")
+    service = SimpleNamespace(
+        get_cameras=AsyncMock(return_value=[device]),
+        update=AsyncMock(return_value=device),
+        get_stream_info=AsyncMock(),
+    )
+    getattr(service, stage).side_effect = AccessTokenError(
+        "2001", "Access Token expired, attempting to refresh"
+    )
+    hass, config_entry = _hass_and_client(service)
+    async_add_entities = Mock()
+
+    await camera_module.async_setup_entry(hass, config_entry, async_add_entities)
+
+    entities, _ = async_add_entities.call_args.args
+    assert [entity.name for entity in entities] == ["Front Door"]

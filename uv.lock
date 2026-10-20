@@ -776,7 +776,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "aiousbwatcher" },
-    { name = "numpy" },
     { name = "pyserial" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -794,7 +793,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiousbwatcher", specifier = "==1.1.2" },
-    { name = "numpy", specifier = ">=2.5.2" },
     { name = "pyserial", specifier = "==3.5" },
     { name = "pytest", specifier = ">=8.0.0,<10.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0,<2.0.0" },
