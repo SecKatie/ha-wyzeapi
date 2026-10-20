@@ -31,29 +31,50 @@ def _entity(mode: WyzeHVACMode) -> tuple[WyzeThermostat, SimpleNamespace]:
     return entity, service
 
 
-def _sent_set_points(service: SimpleNamespace) -> tuple[int, int]:
-    """Return the (heat, cool) set points sent to Wyze."""
-    return (
-        service.set_heat_point.call_args.args[1],
-        service.set_cool_point.call_args.args[1],
-    )
+def _sent_set_points(service: SimpleNamespace) -> tuple[int | None, int | None]:
+    """Return the (heat, cool) set points sent to Wyze, None if not sent."""
+
+    def sent(setter: AsyncMock) -> int | None:
+        if not setter.called:
+            return None
+        setter.assert_awaited_once()
+        return setter.call_args.args[1]
+
+    return sent(service.set_heat_point), sent(service.set_cool_point)
 
 
 @pytest.mark.parametrize(
     ("mode", "expected"),
     [
-        (WyzeHVACMode.HEAT, (70, COOL_SET_POINT)),
-        (WyzeHVACMode.COOL, (HEAT_SET_POINT, 70)),
+        (WyzeHVACMode.HEAT, (70, None)),
+        (WyzeHVACMode.COOL, (None, 70)),
     ],
 )
 @pytest.mark.asyncio
 async def test_single_target_uses_the_active_mode_set_point(mode, expected) -> None:
-    """A single target lands on the active mode's set point; the other is kept."""
+    """A single target only sends the active mode's set point."""
     entity, service = _entity(mode)
 
     await entity.async_set_temperature(temperature=70)
 
     assert _sent_set_points(service) == expected
+
+
+@pytest.mark.asyncio
+async def test_single_target_does_not_revert_the_other_set_point() -> None:
+    """A stale cached heat set point is not written back when cooling.
+
+    If heat was changed in the Wyze app since the last refresh, resending the
+    cached value would revert it on the thermostat.
+    """
+    entity, service = _entity(WyzeHVACMode.COOL)
+    entity._thermostat.heat_set_point = 60  # stale: the app has since set 66
+
+    await entity.async_set_temperature(temperature=72)
+
+    service.set_heat_point.assert_not_called()
+    assert entity._thermostat.heat_set_point == 60
+    assert entity._thermostat.cool_set_point == 72
 
 
 @pytest.mark.asyncio
@@ -70,7 +91,7 @@ async def test_single_target_after_mode_change_from_home_assistant() -> None:
     await entity.async_set_temperature(temperature=70)
 
     assert entity.hvac_mode == HVACMode.COOL
-    assert _sent_set_points(service) == (HEAT_SET_POINT, 70)
+    assert _sent_set_points(service) == (None, 70)
     assert entity.target_temperature == 70
 
 
@@ -84,7 +105,7 @@ async def test_hvac_mode_passed_with_the_target_is_applied_first() -> None:
     service.set_hvac_mode.assert_awaited_once_with(
         entity._thermostat, WyzeHVACMode.COOL
     )
-    assert _sent_set_points(service) == (HEAT_SET_POINT, 72)
+    assert _sent_set_points(service) == (None, 72)
 
 
 @pytest.mark.parametrize("mode", [WyzeHVACMode.AUTO, WyzeHVACMode.OFF])
@@ -121,7 +142,7 @@ async def test_converted_targets_are_rounded() -> None:
 
     await entity.async_set_temperature(temperature=69.8)
 
-    assert _sent_set_points(service) == (70, COOL_SET_POINT)
+    assert _sent_set_points(service) == (70, None)
 
 
 @pytest.mark.parametrize(
