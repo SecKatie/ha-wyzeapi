@@ -23,7 +23,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from wyzeapy import Wyzeapy, ThermostatService
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
@@ -216,19 +216,29 @@ class WyzeThermostat(ClimateEntity):
     @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
         # Single-target calls arrive with "temperature" (heat or cool mode);
-        # range calls arrive with the low/high pair (auto mode). Map a single
-        # target onto the set point the active mode actually uses, keeping the
-        # other side unchanged.
-        if "temperature" in kwargs and "target_temp_low" not in kwargs:
-            if self._thermostat.hvac_mode == WyzeHVACMode.COOL:
-                target_temp_low = self._thermostat.heat_set_point
-                target_temp_high = kwargs["temperature"]
-            else:
-                target_temp_low = kwargs["temperature"]
-                target_temp_high = self._thermostat.cool_set_point
-        else:
+        # range calls arrive with the low/high pair. Map a single target onto
+        # the set point the active mode actually uses, keeping the other side
+        # unchanged. HA passes an optional hvac_mode through; apply it first so
+        # the target lands on the set point of the requested mode.
+        if (hvac_mode := kwargs.get("hvac_mode")) is not None:
+            await self.async_set_hvac_mode(hvac_mode)
+
+        if "target_temp_low" in kwargs:
             target_temp_low = kwargs["target_temp_low"]
             target_temp_high = kwargs["target_temp_high"]
+        elif self._thermostat.hvac_mode == WyzeHVACMode.COOL:
+            target_temp_low = self._thermostat.heat_set_point
+            target_temp_high = kwargs["temperature"]
+        elif self._thermostat.hvac_mode == WyzeHVACMode.HEAT:
+            target_temp_low = kwargs["temperature"]
+            target_temp_high = self._thermostat.cool_set_point
+        else:
+            raise ServiceValidationError(
+                "A single target temperature can only be set in heat or cool "
+                "mode; use target_temp_low/target_temp_high instead"
+            )
+        target_temp_low = round(target_temp_low)
+        target_temp_high = round(target_temp_high)
 
         try:
             # Always send setpoints unconditionally rather than guarding against
@@ -242,13 +252,13 @@ class WyzeThermostat(ClimateEntity):
             # (set_iot_prop_by_topic) is idempotent, so always sending is safe.
             # See: https://github.com/SecKatie/ha-wyzeapi/issues/813
             await self._thermostat_service.set_heat_point(
-                self._thermostat, int(target_temp_low)
+                self._thermostat, target_temp_low
             )
-            self._thermostat.heat_set_point = int(target_temp_low)
+            self._thermostat.heat_set_point = target_temp_low
             await self._thermostat_service.set_cool_point(
-                self._thermostat, int(target_temp_high)
+                self._thermostat, target_temp_high
             )
-            self._thermostat.cool_set_point = int(target_temp_high)
+            self._thermostat.cool_set_point = target_temp_high
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
@@ -288,22 +298,22 @@ class WyzeThermostat(ClimateEntity):
                 await self._thermostat_service.set_hvac_mode(
                     self._thermostat, WyzeHVACMode.OFF
                 )
-                self._thermostat.hvac_mode = HVACMode.OFF
+                self._thermostat.hvac_mode = WyzeHVACMode.OFF
             elif hvac_mode == HVACMode.HEAT:
                 await self._thermostat_service.set_hvac_mode(
                     self._thermostat, WyzeHVACMode.HEAT
                 )
-                self._thermostat.hvac_mode = HVACMode.HEAT
+                self._thermostat.hvac_mode = WyzeHVACMode.HEAT
             elif hvac_mode == HVACMode.COOL:
                 await self._thermostat_service.set_hvac_mode(
                     self._thermostat, WyzeHVACMode.COOL
                 )
-                self._thermostat.hvac_mode = HVACMode.COOL
+                self._thermostat.hvac_mode = WyzeHVACMode.COOL
             elif hvac_mode == HVACMode.AUTO:
                 await self._thermostat_service.set_hvac_mode(
                     self._thermostat, WyzeHVACMode.AUTO
                 )
-                self._thermostat.hvac_mode = HVACMode.AUTO
+                self._thermostat.hvac_mode = WyzeHVACMode.AUTO
         except (AccessTokenError, ParameterError, UnknownApiError) as err:
             raise HomeAssistantError(f"Wyze returned an error: {err.args}") from err
         except ClientConnectionError as err:
@@ -345,15 +355,12 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def supported_features(self) -> int:
-        # Range only applies in auto; heat/cool use a single set point. Wyze
-        # thermostats always store both set points, so switching the advertised
-        # feature by mode is safe and lets the UI show the right control.
-        if self._thermostat.hvac_mode == WyzeHVACMode.AUTO:
-            temperature_feature = ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
-        else:
-            temperature_feature = ClimateEntityFeature.TARGET_TEMPERATURE
+        # Advertise both: HA's frontend shows the single control whenever
+        # target_temperature is set (heat/cool) and the range otherwise, while
+        # range-based service calls keep validating in every mode.
         return (
-            temperature_feature
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
             | ClimateEntityFeature.FAN_MODE
             | ClimateEntityFeature.PRESET_MODE
         )
