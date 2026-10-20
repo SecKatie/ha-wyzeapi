@@ -2,7 +2,6 @@ import logging
 from inspect import iscoroutinefunction
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from wyzeapy.exceptions import AccessTokenError, LoginError
@@ -29,8 +28,7 @@ class TokenManager:
                 TokenManager.hass.config_entries.async_update_entry(
                     entry,
                     data={
-                        CONF_USERNAME: entry.data.get(CONF_USERNAME),
-                        CONF_PASSWORD: entry.data.get(CONF_PASSWORD),
+                        **entry.data,
                         ACCESS_TOKEN: token.access_token,
                         REFRESH_TOKEN: token.refresh_token,
                         REFRESH_TIME: str(token.refresh_time),
