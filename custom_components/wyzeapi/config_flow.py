@@ -12,6 +12,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from wyzeapy import Wyzeapy, exceptions
 
+from .bridge import clean_bridge_stream_url, clean_bridge_url, default_bridge_playback
 from .const import (
     DOMAIN,
     ACCESS_TOKEN,
@@ -19,6 +20,9 @@ from .const import (
     REFRESH_TIME,
     BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
+    CONF_BRIDGE_URL,
+    CONF_BRIDGE_STREAM_URL,
+    CONF_BRIDGE_RTSP,
     KEY_ID,
     API_KEY,
 )
@@ -153,25 +157,61 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return OptionsFlowHandler()
 
 
-class OptionsFlowHandler(config_entries.OptionsFlow):
+class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """Handle an option flow for Wyze."""
 
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
+        errors: dict[str, str] = {}
+        current = dict(self.config_entry.options)
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            try:
+                user_input[CONF_BRIDGE_URL] = clean_bridge_url(
+                    user_input.get(CONF_BRIDGE_URL, "")
+                )
+            except ValueError:
+                errors[CONF_BRIDGE_URL] = "invalid_bridge_url"
+            try:
+                user_input[CONF_BRIDGE_STREAM_URL] = clean_bridge_stream_url(
+                    user_input.get(CONF_BRIDGE_STREAM_URL, "")
+                )
+            except ValueError:
+                errors[CONF_BRIDGE_STREAM_URL] = "invalid_bridge_stream_url"
+            else:
+                if user_input.get(CONF_BRIDGE_RTSP) and not user_input[
+                    CONF_BRIDGE_STREAM_URL
+                ]:
+                    errors[CONF_BRIDGE_STREAM_URL] = "bridge_stream_required"
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
+            current.update(user_input)
 
         data_schema = vol.Schema(
             {
                 vol.Optional(
                     BULB_LOCAL_CONTROL,
-                    default=self.config_entry.options.get(
-                        BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
+                    default=current.get(BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
+                ): bool,
+                vol.Optional(
+                    CONF_BRIDGE_URL,
+                    default=current.get(CONF_BRIDGE_URL, ""),
+                ): str,
+                vol.Optional(
+                    CONF_BRIDGE_STREAM_URL,
+                    default=current.get(CONF_BRIDGE_STREAM_URL, ""),
+                ): str,
+                vol.Optional(
+                    CONF_BRIDGE_RTSP,
+                    default=default_bridge_playback(
+                        current.get(CONF_BRIDGE_RTSP),
+                        current.get(CONF_BRIDGE_STREAM_URL, ""),
                     ),
-                ): bool
+                ): bool,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+        return self.async_show_form(
+            step_id="init", data_schema=data_schema, errors=errors
+        )
 
 
 class CannotConnect(HomeAssistantError):
