@@ -8,10 +8,10 @@ version = "0.1.39"
 description = "A Home Assistant integration for Wyze devices"
 authors = [{ name = "Katie Mulliken", email = "katie@mulliken.net" }]
 license = { text = "Apache-2.0" }
-requires-python = ">=3.13.2,<3.14"
+requires-python = ">=3.14.2,<3.15"
 
 dependencies = [
-    "homeassistant>=2026.1.0",
+    "homeassistant>=2026.10.2",
     "wyzeapy>=0.6.1,<0.7.0",
     "websockets",
 ]
@@ -25,8 +25,11 @@ packages = ["custom_components"]
 
 [dependency-groups]
 dev = [
+    # HA integration requirements needed by imports in the test environment.
+    "aiohasupervisor==0.6.0",
     "aiousbwatcher==1.1.2",
-    "pyserial==3.5",
+    "habluetooth==7.1.2",
+    "serialx==1.11.0",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
     "ruff>=0.12.1",
