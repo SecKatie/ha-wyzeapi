@@ -3,6 +3,8 @@
     "config": {
         "abort": {
             "already_configured": "Device is already configured",
+            "reauth_entry_missing": "The entry being reauthenticated no longer exists.",
+            "wrong_account": "Sign in with the same username stored in this entry.",
             "reauth_successful": "Reauthentication Successful"
         },
         "error": {
