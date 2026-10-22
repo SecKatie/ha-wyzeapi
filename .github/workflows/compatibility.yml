@@ -1,0 +1,44 @@
+name: Compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    name: HA ${{ matrix.ha }} / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ha: "2025.2.1"
+            python: "3.13.0"
+          - ha: "2025.6.3"
+            python: "3.13"
+          - ha: "2026.2.3"
+            python: "3.13"
+          - ha: "2026.10.2"
+            python: "3.14.2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+      - name: Install isolated Home Assistant environment
+        run: |
+          uv venv --python "${{ matrix.python }}" .venv-compat
+          uv pip install --python .venv-compat/bin/python "homeassistant==${{ matrix.ha }}" "pytest==8.4.2" "pytest-asyncio==1.2.0"
+          .venv-compat/bin/python scripts/install_compatibility_dependencies.py
+          uv pip check --python .venv-compat/bin/python
+      - name: Run unit tests
+        run: .venv-compat/bin/python -m pytest -q tests
+      - name: Import and set up integration platforms
+        env:
+          PYTHONPATH: .
+        run: .venv-compat/bin/python scripts/compatibility_smoke.py

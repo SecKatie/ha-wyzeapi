@@ -34,6 +34,14 @@ or paying for a Nabu Casa subscription. None of this could happen without them.
 
 After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee or Github Sponsers in the right hand menu.
 
+## Requirements
+
+Home Assistant **2025.2.1 or newer**. Earlier versions use an aiohttp release
+that is incompatible with the Wyze library required by this integration.
+HACS installs the library automatically.
+
+See [what changed in 0.1.40](RELEASE_NOTES.md) before updating.
+
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
@@ -58,6 +66,10 @@ After you have done that if you feel like my work has been valuable to you I wel
     * Camera motion sensors: https://www.home-assistant.io/integrations/binary_sensor/
 
 ## Contributing
+
+The default development environment uses Python 3.14.2 or newer (below 3.15)
+and Home Assistant 2026.10.2. Compatibility CI also tests older supported HA
+versions on Python 3.13. These development pins do not raise the HACS minimum.
 
 * For development contributions please join our IRC channel #wyzeapi on Libre.Chat
 * For instructions on intercepting data from the Wyze app see: https://mulliken.net/p/intercepting-pinned-tls-connections-on-android/

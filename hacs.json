@@ -1,3 +1,4 @@
 {
-  "name": "Wyze"
+  "name": "Wyze",
+  "homeassistant": "2025.2.1"
 }
