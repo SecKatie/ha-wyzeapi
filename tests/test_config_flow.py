@@ -1,4 +1,7 @@
-"""Exercise real HA config flows with fake Wyze authentication."""
+"""Exercise real HA config flows with fake Wyze authentication.
+
+Injected exceptions test flow handling, not Wyze endpoint error mapping.
+"""
 
 import asyncio
 import inspect
@@ -12,7 +15,7 @@ import pytest_asyncio
 from homeassistant import config_entries, loader
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, UnknownFlow
 from wyzeapy import exceptions
 
 from custom_components.wyzeapi import config_flow
@@ -44,7 +47,7 @@ def tokens(username):
 
 
 class FakeWyzeAuth:
-    """Retain an account-specific challenge across invalid MFA codes."""
+    """Retain account-specific challenges across injected authentication errors."""
 
     def __init__(self):
         self.credentials = None
@@ -201,6 +204,56 @@ async def test_parallel_flows_keep_credentials_and_challenges_independent(env, m
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("username", ["a@example.com", "c@example.com"])
+async def test_removed_mfa_flow_restarts_with_fresh_authentication(env, username):
+    """HA cancellation leaves a new attempt independent of all previous flows."""
+    data_a, data_b = (
+        credentials("a@example.com", "mfa"),
+        credentials("b@example.com", "mfa"),
+    )
+    abandoned = await authenticate(env, await start(env), data_a)
+    other = await authenticate(env, await start(env), data_b)
+    abandoned_client, other_client = env.clients
+    other_challenge = other_client.challenge
+    manager = env.hass.config_entries.flow
+
+    manager.async_abort(abandoned["flow_id"])
+    with pytest.raises(UnknownFlow):
+        manager.async_get(abandoned["flow_id"])
+    with pytest.raises(UnknownFlow):
+        await manager.async_configure(
+            abandoned["flow_id"], {CONF_ACCESS_TOKEN: "valid:a@example.com"}
+        )
+    assert env.hass.config_entries.async_entries(DOMAIN) == []
+
+    restarted = await start(env)
+    flow = manager._progress[restarted["flow_id"]]
+    assert flow.client is None
+    assert flow.user_params == {}
+    data = credentials(username, "mfa")
+    restarted = await authenticate(env, restarted, data)
+    assert restarted["step_id"] == "2fa"
+    assert flow.client not in (abandoned_client, other_client)
+    assert flow.client.challenge is not abandoned_client.challenge
+    assert flow.client.challenge is not other_challenge
+    assert flow.client.credentials == tuple(data.values())
+    assert flow.user_params == data
+
+    result = await manager.async_configure(
+        restarted["flow_id"], {CONF_ACCESS_TOKEN: f"valid:{username}"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["result"].data == {**data, **tokens(username)}
+    assert abandoned_client.credentials == tuple(data_a.values())
+    assert abandoned_client.codes == []
+    assert other_client.credentials == tuple(data_b.values())
+    assert other_client.challenge is other_challenge
+    assert other_client.codes == []
+    assert manager.async_get(other["flow_id"])["step_id"] == "2fa"
+    env.reload.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mfa", [False, True])
 async def test_reauth_targets_b_when_a_is_first_and_preserves_other_data(env, mfa):
     first = add_entry(env, "a@example.com", unrelated="keep A", **tokens("old A"))
@@ -318,7 +371,7 @@ async def test_new_flow_does_not_overwrite_existing_account(
 @pytest.mark.parametrize(
     "password,error", [("invalid", "invalid_auth"), ("offline", "cannot_connect")]
 )
-async def test_password_errors_allow_retry(env, password, error):
+async def test_injected_password_errors_allow_retry(env, password, error):
     result = await start(env)
     result = await authenticate(env, result, credentials(password=password))
     assert result["step_id"] == "user"
