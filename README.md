@@ -34,6 +34,12 @@ or paying for a Nabu Casa subscription. None of this could happen without them.
 
 After you have done that if you feel like my work has been valuable to you I welcome your support through BuyMeACoffee or Github Sponsers in the right hand menu.
 
+## Requirements
+
+Version 0.1.40 requires Home Assistant 2026.10.2 or newer. Upgrade Home Assistant
+before updating this integration. The development environment requires Python
+3.14.2 or newer (below 3.15). See [release notes](RELEASE_NOTES.md) for changes.
+
 ## Installation (HACS) - Highly Recommended
 
 1. Have HACS installed, this will allow you to easily update
