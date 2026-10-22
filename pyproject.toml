@@ -8,6 +8,7 @@ version = "0.1.40"
 description = "A Home Assistant integration for Wyze devices"
 authors = [{ name = "Katie Mulliken", email = "katie@mulliken.net" }]
 license = { text = "Apache-2.0" }
+# Development environment; the HACS minimum is declared in hacs.json.
 requires-python = ">=3.14.2,<3.15"
 
 dependencies = [
