@@ -27,3 +27,15 @@ DEFAULT_LOCAL_CONTROL = True
 YDBLE_LOCK_STATE_UUID = "00002220-0000-6b63-6f6c-2e6b636f6f6c"
 YDBLE_UART_RX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 YDBLE_UART_TX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+
+# Wyze IoT3 API, used by the DX device family.
+# Lock Bolt v2 (DX_LB2) and Palm Lock (DX_PVLOC) report product_type "Common" and
+# are served by a different cloud API than the Yunding locks.
+IOT3_APP_HOST = "https://app.wyzecam.com"
+IOT3_GET_PROPERTY_PATH = "/app/v4/iot3/get-property"
+IOT3_RUN_ACTION_PATH = "/app/v4/iot3/run-action"
+IOT3_APP_VERSION = "3.11.0.758"
+OLIVE_SIGNING_SECRET = "wyze_app_secret_key_132"
+OLIVE_APP_ID = "9319141212m2ik"
+OLIVE_APP_INFO = "wyze_android_3.11.0.758"
+IOT3_MODELS = {"DX_LB2", "DX_PVLOC"}
