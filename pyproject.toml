@@ -27,7 +27,7 @@ packages = ["custom_components"]
 [dependency-groups]
 dev = [
     # HA integration requirements needed by imports in the test environment.
-    "aiohasupervisor==0.6.0",
+    "aiohasupervisor==0.7.0",
     "aiousbwatcher==1.1.2",
     "habluetooth==7.1.2",
     "serialx==1.11.0",
