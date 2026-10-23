@@ -41,32 +41,45 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
-    client: Wyzeapy = None
-    user_params = {}
 
     def __init__(self):
         """Initialize."""
-        self.email = None
-        self.password = None
-        self.key_id = None
-        self.api_key = None
+        self.client: Wyzeapy | None = None
+        self.user_params = {}
 
-    async def get_client(self):
-        if not self.client:
-            self.client = await Wyzeapy.create()
+    def _async_finish_auth(self):
+        """Complete authentication for this flow's account."""
+        if self.source == config_entries.SOURCE_REAUTH:
+            entry = self.hass.config_entries.async_get_entry(
+                self.context.get("entry_id")
+            )
+            if entry is None or entry.domain != DOMAIN:
+                return self.async_abort(reason="reauth_entry_missing")
+            if entry.data.get(CONF_USERNAME) != self.user_params[CONF_USERNAME]:
+                return self.async_abort(reason="wrong_account")
+            data = dict(entry.data)
+            for key in (ACCESS_TOKEN, REFRESH_TOKEN, REFRESH_TIME):
+                data.pop(key, None)
+            return self.async_update_reload_and_abort(
+                entry, data=data | self.user_params
+            )
+        if self._async_current_entries(include_ignore=True):
+            return self.async_abort(reason="already_configured")
+        return self.async_create_entry(title="", data=self.user_params)
 
     async def async_step_user(
         self, user_input: Optional[dict[str, any]] = None
     ) -> dict[str, Any]:
         """Handle the initial step."""
-        await self.get_client()
-
         if user_input is None:
             return self.async_show_form(
                 step_id="user", data_schema=STEP_USER_DATA_SCHEMA
             )
 
         errors = {}
+        self.user_params = dict(user_input)
+        if self.client is None:
+            self.client = await Wyzeapy.create()
 
         # noinspection PyBroadException
         try:
@@ -81,19 +94,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except exceptions.AccessTokenError:
             errors["base"] = "invalid_auth"
         except exceptions.TwoFactorAuthenticationEnabled:
-            self.user_params[CONF_USERNAME] = user_input[CONF_USERNAME]
-            self.user_params[CONF_PASSWORD] = user_input[CONF_PASSWORD]
-            self.user_params[KEY_ID] = user_input[KEY_ID]
-            self.user_params[API_KEY] = user_input[API_KEY]
             return await self.async_step_2fa()
         else:
-            if self.hass.config_entries.async_entries(DOMAIN):
-                for entry in self.hass.config_entries.async_entries(DOMAIN):
-                    self.hass.config_entries.async_update_entry(entry, data=user_input)
-                    await self.hass.config_entries.async_reload(entry.entry_id)
-                    return self.async_abort(reason="reauth_successful")
-            else:
-                return self.async_create_entry(title="", data=user_input)
+            return self._async_finish_auth()
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
@@ -117,15 +120,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.user_params[ACCESS_TOKEN] = token.access_token
             self.user_params[REFRESH_TOKEN] = token.refresh_token
             self.user_params[REFRESH_TIME] = token.refresh_time
-            if self.hass.config_entries.async_entries(DOMAIN):
-                for entry in self.hass.config_entries.async_entries(DOMAIN):
-                    self.hass.config_entries.async_update_entry(
-                        entry, data=self.user_params
-                    )
-                    await self.hass.config_entries.async_reload(entry.entry_id)
-                    return self.async_abort(reason="reauth_successful")
-            else:
-                return self.async_create_entry(title="", data=self.user_params)
+            return self._async_finish_auth()
 
         return self.async_show_form(
             step_id="2fa", data_schema=STEP_2FA_DATA_SCHEMA, errors=errors
@@ -137,11 +132,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reauth(self, user_input=None):
         """Perform reauth upon an API authentication error."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="reauth_confirm",
-                data_schema=vol.Schema({}),
-            )
+        entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id"))
+        if entry is None or entry.domain != DOMAIN:
+            return self.async_abort(reason="reauth_entry_missing")
         return await self.async_step_user()
 
     @staticmethod
