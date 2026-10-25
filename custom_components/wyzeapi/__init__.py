@@ -25,9 +25,13 @@ from .const import (
     WYZE_NOTIFICATION_TOGGLE,
     BULB_LOCAL_CONTROL,
     DEFAULT_LOCAL_CONTROL,
+    CONF_BRIDGE_URL,
+    CONF_BRIDGE_STREAM_URL,
+    CONF_BRIDGE_RTSP,
     KEY_ID,
     API_KEY,
 )
+from .bridge import default_bridge_playback
 from .coordinator import WyzeLockBoltCoordinator
 from .token_manager import TokenManager
 
@@ -144,9 +148,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await setup_coordinators(hass, config_entry, client)
 
     options_dict = {
+        **config_entry.options,
         BULB_LOCAL_CONTROL: config_entry.options.get(
             BULB_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
-        )
+        ),
+        CONF_BRIDGE_URL: config_entry.options.get(CONF_BRIDGE_URL, ""),
+        CONF_BRIDGE_STREAM_URL: config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
+        CONF_BRIDGE_RTSP: default_bridge_playback(
+            config_entry.options.get(CONF_BRIDGE_RTSP),
+            config_entry.options.get(CONF_BRIDGE_STREAM_URL, ""),
+        ),
     }
     hass.config_entries.async_update_entry(config_entry, options=options_dict)
 
@@ -175,18 +186,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 )
                 device_registry.async_remove_device(device.id)
     return True
-
-
-async def options_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Handle options update."""
-    _LOGGER.debug("Updated options")
-    entry_data = config_entry.as_dict().get("data")
-    hass.config_entries.async_update_entry(
-        config_entry,
-        data=entry_data,
-    )
-    _LOGGER.debug("Reload entry: " + config_entry.entry_id)
-    await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
