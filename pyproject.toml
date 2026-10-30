@@ -30,7 +30,7 @@ dev = [
     "aiohasupervisor==0.6.0",
     "aiousbwatcher==1.1.2",
     "habluetooth==7.1.2",
-    "serialx==1.11.0",
+    "serialx==1.15.1",
     "pytest>=8.0.0,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
     "ruff>=0.12.1",
