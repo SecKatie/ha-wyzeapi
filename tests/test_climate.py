@@ -92,7 +92,7 @@ async def test_single_target_after_mode_change_from_home_assistant() -> None:
 
     assert entity.hvac_mode == HVACMode.COOL
     assert _sent_set_points(service) == (None, 70)
-    assert entity.target_temperature == 70
+    assert entity.native_target_temperature == 70
 
 
 @pytest.mark.asyncio
@@ -158,5 +158,25 @@ def test_target_temperature_follows_the_mode(mode, expected) -> None:
     """Heat and cool expose one target; auto and off fall back to the range."""
     entity, _ = _entity(mode)
 
-    assert entity.target_temperature == expected
+    assert entity.native_target_temperature == expected
     assert entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "current_temperature",
+        "target_temperature",
+        "target_temperature_high",
+        "target_temperature_low",
+        "temperature_unit",
+    ],
+)
+def test_provides_native_temperature_properties(name) -> None:
+    """The entity implements the native_ names, not the deprecated ones.
+
+    Home Assistant 2026.11 logs a deprecation warning for the old names and
+    stops serving them in 2027.11.
+    """
+    assert f"native_{name}" in vars(WyzeThermostat)
+    assert name not in vars(WyzeThermostat)
