@@ -162,6 +162,30 @@ class WyzeThermostat(ClimateEntity):
             return self._thermostat.heat_set_point
         return None
 
+    # Home Assistant before 2026.11 only reads the old names. Keep them as
+    # aliases while hacs.json still allows those versions. Because the class
+    # also provides the native_ names, 2026.11+ reads those and logs no
+    # deprecation warning. Drop these once the minimum is 2026.11.
+    @property
+    def current_temperature(self) -> float:
+        return self.native_current_temperature
+
+    @property
+    def temperature_unit(self) -> str:
+        return self.native_temperature_unit
+
+    @property
+    def target_temperature(self) -> Optional[float]:
+        return self.native_target_temperature
+
+    @property
+    def target_temperature_high(self) -> Optional[float]:
+        return self.native_target_temperature_high
+
+    @property
+    def target_temperature_low(self) -> Optional[float]:
+        return self.native_target_temperature_low
+
     @property
     def preset_mode(self) -> Optional[str]:
         match self._thermostat.preset:
