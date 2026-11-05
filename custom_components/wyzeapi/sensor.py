@@ -123,8 +123,10 @@ async def async_setup_entry(
 
     # battery + firmware for DX-family locks
     for _dev in hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", []):
-        _coord = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {}).get(
-            _dev.mac
+        _coord = (
+            hass.data[DOMAIN][config_entry.entry_id]
+            .get("coordinators", {})
+            .get(_dev.mac)
         )
         if _coord is not None:
             sensors.append(WyzeIot3BatterySensor(_coord))

@@ -90,7 +90,11 @@ class WyzeIot3LockCoordinator(DataUpdateCoordinator):
         self._current_command = command
         self.async_update_listeners()
         try:
-            call = self._iot3_service.lock if command == "lock" else self._iot3_service.unlock
+            call = (
+                self._iot3_service.lock
+                if command == "lock"
+                else self._iot3_service.unlock
+            )
             result = await call(self._lock.mac, self._lock.product_model)
         except HomeAssistantError:
             self._current_command = None

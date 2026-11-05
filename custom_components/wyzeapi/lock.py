@@ -74,8 +74,10 @@ async def async_setup_entry(
     # DX-family locks come from the device list, not get_locks()
     iot3_locks = []
     for _dev in hass.data[DOMAIN][config_entry.entry_id].get("iot3_devices", []):
-        _coord = hass.data[DOMAIN][config_entry.entry_id].get("coordinators", {}).get(
-            _dev.mac
+        _coord = (
+            hass.data[DOMAIN][config_entry.entry_id]
+            .get("coordinators", {})
+            .get(_dev.mac)
         )
         if _coord is not None:
             iot3_locks.append(WyzeIot3Lock(_coord))
