@@ -99,9 +99,29 @@ class WyzeCamera(CameraEntity):
         self._cached_config: dict | None = None
         self._config_task: asyncio.Task | None = None
 
+    async def _fetch_stream_params(self) -> dict:
+        """Return WebRTC params for this camera.
+
+        Some cameras, including the v1 doorbell (WYZEDB3) and the Duo Cam
+        Doorbell (GW_DBD), report iot-state and omit iot-power. wyzeapy 0.6.1
+        raises KeyError on that missing field and never returns the signaling
+        params. SecKatie/wyzeapy#351 fixes the library. This keeps streaming
+        working until that release is pinned.
+        """
+        try:
+            return await self._camera_service.get_stream_info(self._camera)
+        except KeyError as err:
+            if err.args != ("iot-device::iot-power",):
+                raise
+        data = await self._camera_service._get_camera_stream(self._camera)
+        item = data["data"][0]
+        if item["property"].get("iot-device::iot-state") != 1:
+            raise HomeAssistantError(f"{self.name} is offline")
+        return item["params"]
+
     async def config_fetch(self) -> None:
         """Fetch the WebRTC session configuration for this camera and cache it for future use."""
-        self._cached_config = await self._camera_service.get_stream_info(self._camera)
+        self._cached_config = await self._fetch_stream_params()
         _LOGGER.debug(
             "Initial fetch of WebRTC session configuration complete for camera %s",
             self.name,
@@ -220,7 +240,7 @@ class WyzeCamera(CameraEntity):
 
         # Always fetch a truly fresh config so the signaling URL and ICE servers
         # are never stale — KVS signed URLs are single-use and short-lived.
-        config = await self._camera_service.get_stream_info(self._camera)
+        config = await self._fetch_stream_params()
 
         # Update cached config with the new ICE servers
         self._cached_config = config
