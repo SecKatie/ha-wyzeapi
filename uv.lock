@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14.2, <3.15"
 
 [[package]]
@@ -54,16 +54,16 @@ wheels = [
 
 [[package]]
 name = "aiohasupervisor"
-version = "0.8.1"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "mashumaro" },
     { name = "orjson" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/66/86c3f39f50cb123420f658cc5936461dcc862a0272ecc53d356e6eb28fa7/aiohasupervisor-0.8.1.tar.gz", hash = "sha256:493fac66cd7dae51c56635f58c0c98e10ac611b2082c4de6130f04f55cf93d99", size = 67388, upload-time = "2026-10-22T08:12:53.495Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/c4/34c270d3a3a125f53f9c51b9761c3837fdf675a30beac686e7f5c3689bea/aiohasupervisor-0.9.0.tar.gz", hash = "sha256:c55f37b74fbe9a76bd9a0fb26b5908da626d665ca8b5ba77d985f0150541b048", size = 69075, upload-time = "2026-10-28T15:56:16.992Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/11/b0b9137e016b79224a58cae4e585a0cd09b88573ec88917d62a51f941983/aiohasupervisor-0.8.1-py3-none-any.whl", hash = "sha256:0f309a002c9027754c023dd01695a3ec03381f181261252eb529a648b1e035e5", size = 51183, upload-time = "2026-10-22T08:12:52.056Z" },
+    { url = "https://files.pythonhosted.org/packages/14/f5/958a6574c3df975c37f101c486a9ba8d3c6572823ab1272bb65c67c1b05b/aiohasupervisor-0.9.0-py3-none-any.whl", hash = "sha256:249952fb9e8b8bd49bcadc9f6d1eff8293838c73fcf298a550c7537fb77c9812", size = 51857, upload-time = "2026-10-28T15:56:15.663Z" },
 ]
 
 [[package]]
@@ -909,7 +909,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "aiohasupervisor", specifier = "==0.8.1" },
+    { name = "aiohasupervisor", specifier = "==0.9.0" },
     { name = "aiousbwatcher", specifier = "==1.1.2" },
     { name = "habluetooth", specifier = "==7.1.2" },
     { name = "pytest", specifier = ">=8.0.0,<10.0.0" },
@@ -1050,6 +1050,7 @@ dependencies = [
     { name = "yarl" },
     { name = "zeroconf" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/13/ab2c1e18f48341791a77520a869cdb12f1cebd3e6e292ddf2061891b0fc6/homeassistant-2026.11.0.tar.gz", hash = "sha256:5a5e6af380793d53ab37fd9ce5b7a7e00a408a7258923fe75d0610e31a394468", size = 42012362, upload-time = "2026-11-05T13:03:49.664Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/28/0a/10c900142dfff3c8bda64e75d0077519c4ee9a3e0f18aabc67c023ac079f/homeassistant-2026.11.0-py3-none-any.whl", hash = "sha256:7ca5fbde9dea879ac7723949fc84347aac5182e6309c357b2e4973fd391b00f7", size = 67607712, upload-time = "2026-11-04T18:00:10.238Z" },
 ]
