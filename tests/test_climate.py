@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
+from homeassistant.const import UnitOfTemperature
 from homeassistant.exceptions import ServiceValidationError
 from wyzeapy.services.thermostat_service import HVACMode as WyzeHVACMode
 
@@ -92,7 +93,7 @@ async def test_single_target_after_mode_change_from_home_assistant() -> None:
 
     assert entity.hvac_mode == HVACMode.COOL
     assert _sent_set_points(service) == (None, 70)
-    assert entity.target_temperature == 70
+    assert entity.native_target_temperature == 70
 
 
 @pytest.mark.asyncio
@@ -158,5 +159,44 @@ def test_target_temperature_follows_the_mode(mode, expected) -> None:
     """Heat and cool expose one target; auto and off fall back to the range."""
     entity, _ = _entity(mode)
 
-    assert entity.target_temperature == expected
+    assert entity.native_target_temperature == expected
     assert entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+
+
+LEGACY_TO_NATIVE = [
+    "current_temperature",
+    "target_temperature",
+    "target_temperature_high",
+    "target_temperature_low",
+    "temperature_unit",
+]
+
+
+@pytest.mark.parametrize("name", LEGACY_TO_NATIVE)
+def test_provides_native_temperature_properties(name) -> None:
+    """The class defines the native_ names itself.
+
+    Home Assistant 2026.11 logs a deprecation warning when a climate entity
+    only provides the old names, and stops serving them in 2027.11. vars()
+    only sees this class's own namespace, which is where they live today.
+    """
+    assert isinstance(vars(WyzeThermostat)[f"native_{name}"], property)
+
+
+@pytest.mark.parametrize("mode", [WyzeHVACMode.HEAT, WyzeHVACMode.COOL])
+@pytest.mark.parametrize("name", LEGACY_TO_NATIVE)
+def test_old_names_match_native_names(name, mode) -> None:
+    """Home Assistant before 2026.11 reads the old names; they must agree."""
+    entity, _ = _entity(mode)
+    entity._thermostat.temperature = 71
+
+    assert getattr(entity, name) == getattr(entity, f"native_{name}")
+
+
+def test_current_temperature_and_unit() -> None:
+    """The current reading and the unit come straight from the thermostat."""
+    entity, _ = _entity(WyzeHVACMode.HEAT)
+    entity._thermostat.temperature = 71
+
+    assert entity.native_current_temperature == 71
+    assert entity.native_temperature_unit == UnitOfTemperature.FAHRENHEIT
