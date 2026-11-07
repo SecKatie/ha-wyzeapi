@@ -223,7 +223,7 @@ class WyzeLockBatterySensor(SensorEntity):
                     self._lock.mac,
                 )
             },
-            "name": f"{self._lock.nickname}.{self._battery_type}",
+            "name": self._lock.nickname,
         }
 
     @property
