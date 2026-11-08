@@ -108,7 +108,7 @@ class WyzeThermostat(ClimateEntity):
         raise NotImplementedError
 
     @property
-    def current_temperature(self) -> float:
+    def native_current_temperature(self) -> float:
         return self._thermostat.temperature
 
     @property
@@ -116,7 +116,7 @@ class WyzeThermostat(ClimateEntity):
         return self._thermostat.humidity
 
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         # if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
         return UnitOfTemperature.FAHRENHEIT
         # return TEMP_CELSIUS
@@ -144,15 +144,15 @@ class WyzeThermostat(ClimateEntity):
         return [HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
 
     @property
-    def target_temperature_high(self) -> Optional[float]:
+    def native_target_temperature_high(self) -> Optional[float]:
         return self._thermostat.cool_set_point
 
     @property
-    def target_temperature_low(self) -> Optional[float]:
+    def native_target_temperature_low(self) -> Optional[float]:
         return self._thermostat.heat_set_point
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def native_target_temperature(self) -> Optional[float]:
         # In single-mode heat/cool only one set point is in play. Without this
         # property the frontend renders a blank target ("cool °F") because the
         # entity only ever exposed the low/high range pair.
@@ -161,6 +161,30 @@ class WyzeThermostat(ClimateEntity):
         if self._thermostat.hvac_mode == WyzeHVACMode.HEAT:
             return self._thermostat.heat_set_point
         return None
+
+    # Home Assistant before 2026.11 only reads the old names. Keep them as
+    # aliases while hacs.json still allows those versions. Because the class
+    # also provides the native_ names, 2026.11+ reads those and logs no
+    # deprecation warning. Drop these once the minimum is 2026.11.
+    @property
+    def current_temperature(self) -> float:
+        return self.native_current_temperature
+
+    @property
+    def temperature_unit(self) -> str:
+        return self.native_temperature_unit
+
+    @property
+    def target_temperature(self) -> Optional[float]:
+        return self.native_target_temperature
+
+    @property
+    def target_temperature_high(self) -> Optional[float]:
+        return self.native_target_temperature_high
+
+    @property
+    def target_temperature_low(self) -> Optional[float]:
+        return self.native_target_temperature_low
 
     @property
     def preset_mode(self) -> Optional[str]:
@@ -360,8 +384,9 @@ class WyzeThermostat(ClimateEntity):
     @property
     def supported_features(self) -> int:
         # Advertise both: HA's frontend shows the single control whenever
-        # target_temperature is set (heat/cool) and the range otherwise, while
-        # range-based service calls keep validating in every mode.
+        # native_target_temperature is set (heat/cool) and the range
+        # otherwise, while range-based service calls keep validating in
+        # every mode.
         return (
             ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
