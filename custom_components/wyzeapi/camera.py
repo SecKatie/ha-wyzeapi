@@ -57,8 +57,22 @@ async def async_setup_entry(
     # Create a camera entity for each camera device
     cameras = []
     for device in camera_devices:
-        # Update the device to get its zones
-        device = await camera_service.update(device)
+        # Refresh the device's state (power, availability, motion, events)
+        try:
+            device = await camera_service.update(device)
+        except Exception as e:
+            # One camera that cannot be updated (offline, or deleted from the
+            # account but still in the cached device list, which answers 3005
+            # "unauthorized operation") must not take down the whole platform.
+            # Keep the un-updated device so its entity still exists.
+            # AccessTokenError lands here too: wyzeapy marks the token expired
+            # and refreshes it on the next call, so it is not a login failure.
+            _LOGGER.warning(
+                "Error updating camera %s during setup, adding it without "
+                "updated properties: %r",
+                device.nickname,
+                e,
+            )
         cameras.extend([WyzeCamera(camera_service, device)])
 
     for camera in cameras:
