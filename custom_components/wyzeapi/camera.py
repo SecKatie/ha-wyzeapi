@@ -10,6 +10,8 @@ import logging
 import uuid
 import re
 
+import aiohttp
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera as CameraEntity, CameraEntityFeature
 from homeassistant.components.camera.webrtc import (
@@ -20,6 +22,7 @@ from homeassistant.components.camera.webrtc import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util.ssl import get_default_context
@@ -29,7 +32,15 @@ from websockets.asyncio.client import connect as websocket_connect
 from wyzeapy import Wyzeapy, CameraService
 from wyzeapy.services.camera_service import Camera
 
-from .const import CAMERA_UPDATED, CONF_CLIENT, DOMAIN
+from .bridge import default_bridge_playback, frame_url, playback_url, stream_name
+from .const import (
+    CAMERA_UPDATED,
+    CONF_BRIDGE_RTSP,
+    CONF_BRIDGE_STREAM_URL,
+    CONF_BRIDGE_URL,
+    CONF_CLIENT,
+    DOMAIN,
+)
 from .token_manager import token_exception_handler
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,12 +65,19 @@ async def async_setup_entry(
     camera_service = await client.camera_service
     camera_devices = await camera_service.get_cameras()
 
+    bridge_url = config_entry.options.get(CONF_BRIDGE_URL) or ""
+    bridge_stream = config_entry.options.get(CONF_BRIDGE_STREAM_URL) or ""
+    use_bridge_stream = default_bridge_playback(
+        config_entry.options.get(CONF_BRIDGE_RTSP), bridge_stream
+    ) and bool(bridge_stream)
+    camera_cls = WyzeBridgeCamera if use_bridge_stream else WyzeCamera
+
     # Create a camera entity for each camera device
     cameras = []
     for device in camera_devices:
         # Update the device to get its zones
         device = await camera_service.update(device)
-        cameras.extend([WyzeCamera(camera_service, device)])
+        cameras.append(camera_cls(camera_service, device, bridge_url, bridge_stream))
 
     for camera in cameras:
         # Pre-seed the ICE server config by fetching it during setup, so the frontend can collect ICE servers before the offer
@@ -80,7 +98,13 @@ async def async_setup_entry(
 class WyzeCamera(CameraEntity):
     """Representation of a Wyze Camera."""
 
-    def __init__(self, camera_service: CameraService, camera: Camera):
+    def __init__(
+        self,
+        camera_service: CameraService,
+        camera: Camera,
+        bridge_url: str = "",
+        bridge_stream: str = "",
+    ):
         """Initialize the camera."""
         super().__init__()
         self._camera_service = camera_service
@@ -98,6 +122,8 @@ class WyzeCamera(CameraEntity):
         # async_handle_async_webrtc_offer awaits it to guarantee a fresh config.
         self._cached_config: dict | None = None
         self._config_task: asyncio.Task | None = None
+        self._bridge_url = bridge_url
+        self._bridge_stream = bridge_stream
 
     async def config_fetch(self) -> None:
         """Fetch the WebRTC session configuration for this camera and cache it for future use."""
@@ -177,9 +203,13 @@ class WyzeCamera(CameraEntity):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return bytes of camera image.
-        Currently not implemented"""
-        return None
+        """Return a JPEG from the local bridge when one is configured."""
+        if not self._bridge_url:
+            return None
+        name = stream_name(self._camera.nickname, self._camera.mac)
+        if not name:
+            return None
+        return await _fetch_bridge_jpeg(self.hass, frame_url(self._bridge_url, name))
 
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the WebRTC client configuration for this camera, including ICE servers."""
@@ -265,6 +295,41 @@ class WyzeCamera(CameraEntity):
             session = self.sessions[session_id]
             session.close_connection()
             del self.sessions[session_id]
+
+
+async def _fetch_bridge_jpeg(hass: HomeAssistant, url: str) -> bytes | None:
+    session = async_get_clientsession(hass)
+    try:
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status != 200:
+                return None
+            body = await resp.read()
+    except (aiohttp.ClientError, TimeoutError):
+        return None
+    if not body.startswith(b"\xff\xd8"):
+        return None
+    return body
+
+
+class WyzeBridgeCamera(WyzeCamera):
+    """Play cameras from a local bridge stream instead of Wyze cloud WebRTC.
+
+    Home Assistant treats any override of async_handle_async_webrtc_offer as
+    native WebRTC. Keep the base implementation so the player uses stream_source.
+    """
+
+    async_handle_async_webrtc_offer = CameraEntity.async_handle_async_webrtc_offer
+
+    async def config_fetch(self) -> None:
+        """Cloud signaling is unused while playback comes from the bridge."""
+        return
+
+    async def stream_source(self) -> str | None:
+        """Return the bridge stream URL for this camera."""
+        name = stream_name(self._camera.nickname, self._camera.mac)
+        if not name or not self._bridge_stream:
+            return None
+        return playback_url(self._bridge_stream, name)
 
 
 class WyzeCameraWebRTCSession:
