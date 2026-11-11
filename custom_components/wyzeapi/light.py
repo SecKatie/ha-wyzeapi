@@ -46,9 +46,17 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 EFFECT_MODE = "effects mode"
 EFFECT_SUN_MATCH = "sun match"
-EFFECT_SHADOW = "shadow"
-EFFECT_LEAP = "leap"
-EFFECT_FLICKER = "flicker"
+LIGHTSTRIP_EFFECTS_MAP = {
+    "shadow": "1",
+    "leap": "2",
+    "flicker": "3",
+    "marquee": "4",
+    "color focus": "5",
+    "water": "6",
+    "sea wave": "7",
+    "shooting star": "8",
+    "starlight": "9",
+}
 
 
 @token_exception_handler
@@ -215,24 +223,17 @@ class WyzeLight(LightEntity):
                     self._local_control = False
                 options.append(create_pid_pair(PropertyIDs.COLOR_MODE, str(3)))
                 self._bulb.color_mode = "3"
-                if kwargs.get(ATTR_EFFECT) == EFFECT_SHADOW:
-                    _LOGGER.debug("Setting Shadow Effect")
+                if self._bulb.sun_match:
+                    options.append(create_pid_pair(PropertyIDs.SUN_MATCH, str(0)))
+                    self._bulb.sun_match = False
+                effect = kwargs.get(ATTR_EFFECT)
+                if effect in LIGHTSTRIP_EFFECTS_MAP:
+                    _LOGGER.debug("Setting %s effect", effect)
+                    value = LIGHTSTRIP_EFFECTS_MAP[effect]
                     options.append(
-                        create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(1))
+                        create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, value)
                     )
-                    self._bulb.effects = "1"
-                elif kwargs.get(ATTR_EFFECT) == EFFECT_LEAP:
-                    _LOGGER.debug("Setting Leap Effect")
-                    options.append(
-                        create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(2))
-                    )
-                    self._bulb.effects = "2"
-                elif kwargs.get(ATTR_EFFECT) == EFFECT_FLICKER:
-                    _LOGGER.debug("Setting Flicker Effect")
-                    options.append(
-                        create_pid_pair(PropertyIDs.LIGHTSTRIP_EFFECTS, str(3))
-                    )
-                    self._bulb.effects = "3"
+                    self._bulb.effects = value
 
         _LOGGER.debug("Turning on light")
         try:
@@ -305,12 +306,10 @@ class WyzeLight(LightEntity):
         )
 
         if self._device_type is DeviceTypes.LIGHTSTRIP and self._bulb.color_mode == "3":
-            if self._bulb.effects == "1":
-                dev_info["effect_mode"] = "Shadow"
-            elif self._bulb.effects == "2":
-                dev_info["effect_mode"] = "Leap"
-            elif self._bulb.effects == "3":
-                dev_info["effect_mode"] = "Flicker"
+            names = {v: k.title() for k, v in LIGHTSTRIP_EFFECTS_MAP.items()}
+            dev_info["effect_mode"] = names.get(
+                self._bulb.effects, f"Unknown ({self._bulb.effects})"
+            )
 
         if (
             self._device_type is DeviceTypes.MESH_LIGHT
@@ -336,10 +335,20 @@ class WyzeLight(LightEntity):
         return self._bulb.color_temp
 
     @property
+    def effect(self):
+        """Return the currently active effect."""
+        if self._bulb.sun_match:
+            return EFFECT_SUN_MATCH
+        if self._device_type is DeviceTypes.LIGHTSTRIP and self._bulb.color_mode == "3":
+            names = {v: k for k, v in LIGHTSTRIP_EFFECTS_MAP.items()}
+            return names.get(self._bulb.effects)
+        return None
+
+    @property
     def effect_list(self):
         """Return the list of effects."""
         if self._device_type is DeviceTypes.LIGHTSTRIP:
-            return [EFFECT_SHADOW, EFFECT_LEAP, EFFECT_FLICKER, EFFECT_SUN_MATCH]
+            return [*LIGHTSTRIP_EFFECTS_MAP, EFFECT_SUN_MATCH]
         return [EFFECT_SUN_MATCH]
 
     @property
