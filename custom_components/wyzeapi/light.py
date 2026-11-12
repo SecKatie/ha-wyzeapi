@@ -46,16 +46,27 @@ ATTRIBUTION = "Data provided by Wyze"
 SCAN_INTERVAL = timedelta(seconds=30)
 EFFECT_MODE = "effects mode"
 EFFECT_SUN_MATCH = "sun match"
-LIGHTSTRIP_EFFECTS_MAP = {
+# Effects available on every light strip
+LIGHTSTRIP_EFFECTS_BASE = {
     "shadow": "1",
     "leap": "2",
     "flicker": "3",
-    "marquee": "4",
-    "color focus": "5",
-    "water": "6",
-    "sea wave": "7",
-    "shooting star": "8",
-    "starlight": "9",
+}
+# Effects only offered on specific models (keyed by product_model)
+LIGHTSTRIP_EFFECTS_BY_MODEL = {
+    "HL_LSLP": {  # Wyze Light Strip Pro
+        "marquee": "4",
+        "color focus": "5",
+        "water": "6",
+        "sea wave": "7",
+        "shooting star": "8",
+        "starlight": "9",
+    },
+}
+# Every known effect, used for name <-> value lookups
+LIGHTSTRIP_EFFECTS_MAP = {
+    **LIGHTSTRIP_EFFECTS_BASE,
+    **{k: v for effects in LIGHTSTRIP_EFFECTS_BY_MODEL.values() for k, v in effects.items()},
 }
 
 
@@ -348,7 +359,11 @@ class WyzeLight(LightEntity):
     def effect_list(self):
         """Return the list of effects."""
         if self._device_type is DeviceTypes.LIGHTSTRIP:
-            return [*LIGHTSTRIP_EFFECTS_MAP, EFFECT_SUN_MATCH]
+            effects = {
+                **LIGHTSTRIP_EFFECTS_BASE,
+                **LIGHTSTRIP_EFFECTS_BY_MODEL.get(self._bulb.product_model, {}),
+            }
+            return [*effects, EFFECT_SUN_MATCH]
         return [EFFECT_SUN_MATCH]
 
     @property
