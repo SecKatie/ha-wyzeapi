@@ -66,7 +66,11 @@ LIGHTSTRIP_EFFECTS_BY_MODEL = {
 # Every known effect, used for name <-> value lookups
 LIGHTSTRIP_EFFECTS_MAP = {
     **LIGHTSTRIP_EFFECTS_BASE,
-    **{k: v for effects in LIGHTSTRIP_EFFECTS_BY_MODEL.values() for k, v in effects.items()},
+    **{
+        k: v
+        for effects in LIGHTSTRIP_EFFECTS_BY_MODEL.values()
+        for k, v in effects.items()
+    },
 }
 
 
