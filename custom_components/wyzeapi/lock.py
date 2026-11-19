@@ -9,7 +9,7 @@ from typing import Any, Callable, List
 from aiohttp.client_exceptions import ClientConnectionError
 
 from wyzeapy import LockService, Wyzeapy
-from wyzeapy.services.lock_service import Lock
+from wyzeapy.services.lock_service import IOT3_LOCK_PRODUCT_MODELS, Lock
 from wyzeapy.types import DeviceTypes
 from wyzeapy.exceptions import AccessTokenError, ParameterError, UnknownApiError
 
@@ -80,7 +80,10 @@ class WyzeLock(homeassistant.components.lock.LockEntity, ABC):
     def __init__(self, lock_service: LockService, lock: Lock):
         """Initialize a Wyze lock."""
         self._lock = lock
-        if self._lock.type not in [DeviceTypes.LOCK]:
+        if (
+            self._lock.type not in [DeviceTypes.LOCK]
+            and self._lock.product_model not in IOT3_LOCK_PRODUCT_MODELS
+        ):
             raise AttributeError("Device type not supported")
 
         self._lock_service = lock_service
