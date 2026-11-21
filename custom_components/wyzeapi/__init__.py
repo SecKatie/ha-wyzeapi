@@ -13,7 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.check_config import HomeAssistantConfig
 from homeassistant.components import bluetooth
 from wyzeapy import Wyzeapy
-from wyzeapy.exceptions import AccessTokenError
+from wyzeapy.exceptions import AccessTokenError, UnknownApiError
 from wyzeapy.wyze_auth_lib import Token
 
 from .const import (
@@ -46,6 +46,9 @@ PLATFORMS = [
     "camera",
 ]  # Fixme: Re add scene
 _LOGGER = logging.getLogger(__name__)
+
+# Wyze API response code for an invalid or expired refresh token
+REFRESH_TOKEN_ERROR_CODE = "2002"
 
 
 # noinspection PyUnusedLocal
@@ -134,6 +137,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
         _LOGGER.error(e)
         raise ConfigEntryAuthFailed("Unable to login, please re-login.") from None
+    except UnknownApiError as e:
+        # wyzeapy surfaces a rejected refresh token as a generic API error.
+        # Without this, setup fails with no way to re-enter credentials.
+        if e.args and str(e.args[0]) == REFRESH_TOKEN_ERROR_CODE:
+            _LOGGER.error(
+                "Wyzeapi: Stored refresh token was rejected. Please re-login "
+                "through integration configuration"
+            )
+            raise ConfigEntryAuthFailed(
+                "Refresh token rejected, please re-login."
+            ) from e
+        raise
 
     hass.data[DOMAIN][config_entry.entry_id] = {
         CONF_CLIENT: client,
